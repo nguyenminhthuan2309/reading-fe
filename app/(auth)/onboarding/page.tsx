@@ -30,7 +30,7 @@ export default function OnboardingPage() {
   };
   
   return (
-    <div className="max-h-[90vh] flex flex-col bg-background">
+    <div className="max-h-[90vh] flex flex-col">
 
       {/* Main content */}
       <div className="flex-1 container mx-auto px-4 py-8">

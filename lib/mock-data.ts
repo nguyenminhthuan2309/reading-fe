@@ -165,5 +165,16 @@ export const featuredBooks = [
     rating: 4.4,
     genre: "Adventure" as Genre,
     progress: 0.08 // just started
+  },
+  {
+    id: "16",
+    title: "Whispers in the Wind",
+    author: "Aria Nightshade",
+    description: "A haunting tale of a small town where the winds carry secrets and whispers of the past, and a young woman who can hear them all, uncovering dark truths long buried.",
+    coverImage: "/images/book-cover.jpeg",
+    chapters: 27,
+    rating: 4.8,
+    genre: "Mystery" as Genre,
+    progress: 0.82 // 82% read
   }
 ]; 

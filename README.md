@@ -2,7 +2,17 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, install the dependencies:
+
+```bash
+npm install
+# If you encounter dependency conflicts, try:
+npm install --legacy-peer-deps
+# If issues persist, use:
+npm install --force
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
@@ -19,6 +29,24 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Troubleshooting Dependencies
+
+If you encounter issues with dependencies, it might be due to:
+
+1. Version conflicts between packages
+2. React version compatibility issues
+3. Peer dependency requirements
+
+Try the following approaches in order:
+
+```bash
+# First attempt - with legacy peer deps flag
+npm install --legacy-peer-deps
+
+# Second attempt - with force flag (use with caution)
+npm install --force
+```
 
 ## Learn More
 

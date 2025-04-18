@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { featuredBooks } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Menu, X, BookOpen, ScrollText, Maximize2, Volume2, VolumeX, Volume1, Plus, Minus } from "lucide-react";
@@ -98,7 +98,7 @@ const BookCover = ({ title, author, isBackCover = false }: { title: string, auth
       <div className="page-content p-6 h-full flex flex-col justify-center items-center">
         {!isBackCover ? (
           <>
-            <h1 className="text-xl md:text-2xl font-bold text-center mt-8 mb-4">{title}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-center mt-3 mb-4">{title}</h1>
             <p className="text-sm text-muted-foreground">by {author}</p>
           </>
         ) : (
@@ -230,6 +230,7 @@ const FlipBook = ({
 export default function ReadPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const id = params.id as string;
   const flipBookRef = useRef<FlipBookRef>(null);
   
@@ -382,12 +383,16 @@ export default function ReadPage() {
       <div className="container mx-auto px-4 py-12">
         <h1 className="text-2xl font-bold">Book not found</h1>
         <p className="mt-2">The book you are looking for does not exist.</p>
-        <Link href="/" className="mt-4 inline-block">
-          <Button variant="link" className="flex items-center gap-2 py-1">
+        <div className="mt-3">
+          <Button 
+            variant="link" 
+            className="flex items-center gap-2 py-1"
+            onClick={() => router.back()}
+          >
             <ChevronLeft size={16} />
-            Back to Home
+            Back
           </Button>
-        </Link>
+        </div>
       </div>
     );
   }
@@ -398,12 +403,16 @@ export default function ReadPage() {
       <div className="container mx-auto px-4 py-12">
         <h1 className="text-2xl font-bold">Chapter not found</h1>
         <p className="mt-2">This chapter does not exist.</p>
-        <Link href={`/books/${book.id}`} className="mt-4 inline-block">
-          <Button variant="link" className="flex items-center gap-2 py-1">
+        <div className="mt-3">
+          <Button 
+            variant="link" 
+            className="flex items-center gap-2 py-1"
+            onClick={() => router.back()}
+          >
             <ChevronLeft size={16} />
-            Back to Book
+            Back
           </Button>
-        </Link>
+        </div>
       </div>
     );
   }
@@ -569,7 +578,7 @@ export default function ReadPage() {
         
         {/* Chapter navigation - only show for scroll mode */}
         {readingMode === 'scroll' && (
-          <div className="flex justify-between items-center mt-12 mb-8">
+          <div className="flex justify-between items-center mt-3 mb-8">
             {chapterNumber > 1 ? (
               <Link href={`/read/${book.id}?chapter=${chapterNumber - 1}`}>
                 <Button variant="link" className="flex items-center gap-2 py-1">

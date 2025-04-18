@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { featuredBooks } from "@/lib/mock-data";
 import Image from "next/image";
@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 
 export default function BookPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   
   // Client-side state
@@ -39,12 +40,16 @@ export default function BookPage() {
       <div className="container mx-auto px-4 py-12">
         <h1 className="text-2xl font-bold">Book not found</h1>
         <p className="mt-2">The book you are looking for does not exist.</p>
-        <Link href="/" className="mt-4 inline-block">
-          <Button variant="outline" className="flex items-center gap-2">
+        <div className="mt-3">
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2"
+            onClick={() => router.back()}
+          >
             <ChevronLeft size={16} />
-            Back to Home
+            Back
           </Button>
-        </Link>
+        </div>
       </div>
     );
   }
@@ -52,12 +57,16 @@ export default function BookPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Back button */}
-      <Link href="/" className="inline-block mb-6">
-        <Button variant="link" className="flex items-center gap-2 py-1">
+      <div className="mb-3">
+        <Button 
+          variant="link" 
+          className="flex items-center gap-2 py-1 pl-0"
+          onClick={() => router.back()}
+        >
           <ChevronLeft size={16} />
-          Back to Home
+          Back
         </Button>
-      </Link>
+      </div>
       
       <div className="flex flex-col md:flex-row gap-8">
         {/* Book cover */}
@@ -122,7 +131,7 @@ export default function BookPage() {
       </div>
       
       {/* Chapters section */}
-      <div className="mt-12">
+      <div className="mt-3">
         <h2 className="text-2xl font-bold mb-4">Chapters</h2>
         <div className="grid gap-2">
           {Array.from({ length: book.chapters }, (_, index) => (

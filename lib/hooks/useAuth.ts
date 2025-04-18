@@ -8,12 +8,11 @@ import {
   updateUserPreferences,
   verifyEmail,
   resendVerificationEmail,
-  type LoginCredentials,
-  type SignupCredentials,
 } from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store';
+import { LoginCredentials, SignupCredentials } from '@/models';
 
 const USER_QUERY_KEY = 'currentUser';
 const EMAIL_VERIFICATION_KEY = 'emailVerification';

@@ -9,9 +9,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="max-h-[90vh] flex flex-col bg-background">
+    <div className="max-h-[90vh] flex flex-col bg-transparent">
       {/* Simple header with just the logo */}
-      <header className="w-full border-b border-border py-4">
+      <header className="w-full border-b border-border/50 backdrop-blur-sm py-4">
         <div className="container mx-auto px-4">
           <Link href="/" className="flex items-center cursor-pointer">
             <BookOpen className="h-6 w-6 text-primary mr-2" />

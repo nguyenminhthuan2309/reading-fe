@@ -22,11 +22,11 @@ export function SectionCarousel({ title, books, linkHref, className }: SectionCa
   const isFirstSection = title === "Recently Viewed";
   
   return (
-    <section className={cn(isFirstSection ? "pt-4 pb-8 group" : "py-8 group", className)}>
+    <section className={cn(isFirstSection ? "pt-1 pb-4 group" : "py-4 group", className)}>
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-white">{title}</h2>
-          <Link href={linkHref} className="flex items-center gap-1 text-sm text-red-500 hover:text-red-400 hover:underline">
+        <div className="flex justify-between items-center mb-1">
+          <h2 className="text-xl font-bold text-black">{title}</h2>
+          <Link href={linkHref} className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 hover:underline">
             View All <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
@@ -37,14 +37,17 @@ export function SectionCarousel({ title, books, linkHref, className }: SectionCa
             opts={{
               align: "start",
               dragFree: true,
-              containScroll: "trimSnaps",
+              containScroll: false,
               loop: false,
             }}
           >
-            <CarouselContent className="-ml-4 overflow-visible py-5 px-2">
+            <CarouselContent className="-ml-4 overflow-visible py-2 px-2">
               {books.slice(0, 10).map((book) => (
-                <CarouselItem key={book.id} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5 p-2">
-                  <div className="transition-all duration-200 transform hover:scale-105">
+                <CarouselItem 
+                  key={book.id} 
+                  className="pl-6 basis-full sm:basis-[45%] md:basis-[32%] lg:basis-[23%] xl:basis-[19%] p-2"
+                >
+                  <div className="transition-all duration-200 transform hover:scale-105 mx-1">
                     <BookCard
                       id={book.id}
                       title={book.title}
@@ -54,7 +57,7 @@ export function SectionCarousel({ title, books, linkHref, className }: SectionCa
                       rating={book.rating}
                       genre={book.genre}
                       progress={book.progress}
-                      className="border-0 shadow-none"
+                      className="border-0 bg-white shadow-none"
                     />
                   </div>
                 </CarouselItem>

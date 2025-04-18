@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { featuredBooks } from "@/lib/mock-data";
 import { BookCard } from "@/components/books/book-card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ const genreCategories: Record<string, Genre[]> = {
 const PAGE_SIZE_OPTIONS = [8, 12, 16, 24, 36];
 
 export default function BooksPage() {
+  const router = useRouter();
   const [sortBy, setSortBy] = useState("title");
   const [isLoading, setIsLoading] = useState(true);
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -182,17 +184,20 @@ export default function BooksPage() {
   
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header with back button and search */}
-      <div className="mb-6">
-        <div className="flex items-center mb-4">
-          <Link href="/" className="inline-block">
-            <Button variant="link" className="flex items-center gap-2 py-1">
-              <ChevronLeft size={16} />
-              Back to Home
-            </Button>
-          </Link>
-        </div>
-        
+      {/* Back button */}
+      <div className="mb-3">
+        <Button 
+          variant="link" 
+          className="flex items-center gap-2 py-1 pl-0"
+          onClick={() => router.back()}
+        >
+          <ChevronLeft size={16} />
+          Back
+        </Button>
+      </div>
+      
+      {/* Header with search */}
+      <div className="mb-3">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">All Books</h1>
@@ -258,7 +263,7 @@ export default function BooksPage() {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Genre Filter Sidebar */}
         <div className={`md:w-72 flex-shrink-0 ${showMobileFilters ? 'block' : 'hidden md:block'}`}>
-          <div className="bg-accent/30 rounded-lg p-4">
+          <div className="bg-white border border-secondary/40 rounded-lg p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-medium">Browse Genres</h3>
               <Button 

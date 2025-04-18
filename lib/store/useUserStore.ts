@@ -8,12 +8,12 @@ interface UserState {
   token: string | null;
   isLoggedIn: boolean;
   setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
+  setToken: (token: string | undefined | null) => void;
   logout: () => void;
 }
 
 // Helper to manage cookies alongside store
-const setCookie = (token: string | null) => {
+const setCookie = (token: string | undefined | null) => {
   if (token) {
     // Set cookie with expiration (7 days) and HTTP only for security
     Cookies.set('auth_token', token, { expires: 7, secure: process.env.NODE_ENV === 'production' });

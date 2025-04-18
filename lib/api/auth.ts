@@ -1,18 +1,8 @@
-import { SigninResponse, User } from '@/models';
-import { get, post } from '../api';
-import { ApiResponse, ApiResponseData } from '@/models/api';
+import { LoginCredentials, SigninResponse, SignupCredentials, User } from '@/models';
+import { get, post, put } from '../api';
+import { ApiResponse } from '@/models/api';
 
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface SignupCredentials {
-  name: string;
-  email: string;
-  password: string;
-}
 
 /**
  * Login a user with email and password
@@ -31,69 +21,29 @@ export async function signup(credentials: SignupCredentials): Promise<ApiRespons
 /**
  * Get the current user's profile
  */
-export async function getCurrentUser(token: string): Promise<ApiResponse<User>> {
-  return get<User>('/user/me', { token });
+export async function getCurrentUser(token: string | undefined): Promise<ApiResponse<User>> {
+  return get<User>('/user/detail', { token, isProtectedRoute: true });
+}
+
+/**
+ * Get the current user's profile
+ */
+export async function getUserById(id: string): Promise<ApiResponse<User>> {
+  return get<User>(`/user/${id}`);
 }
 
 /**
  * Update user preferences
  */
 export async function updateUserPreferences(genres: string[], token: string): Promise<ApiResponse<User>> {
-  return post<User, { genres: string[] }>('/user/preferences', { genres }, { token });
+  return post<User, { genres: string[] }>('/user/preferences', { genres }, { token, isProtectedRoute: true });
 }
 
 /**
- * Store the user's authentication data in localStorage
+ * Update user profile
  */
-export function storeAuthData(authData: SigninResponse): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('auth_token', authData.accessToken);
-    localStorage.setItem('user', JSON.stringify(authData.user));
-  }
-}
-
-/**
- * Get the user's authentication token from localStorage
- */
-export function getAuthToken(): string | null {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('auth_token');
-  }
-  return null;
-}
-
-/**
- * Get the user data from localStorage
- */
-export function getStoredUser(): User | null {
-  if (typeof window !== 'undefined') {
-    const userJson = localStorage.getItem('user');
-    if (userJson) {
-      try {
-        return JSON.parse(userJson);
-      } catch (e) {
-        return null;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Clear user authentication data from localStorage
- */
-export function clearAuthData(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-  }
-}
-
-/**
- * Check if the user is authenticated
- */
-export function isAuthenticated(): boolean {
-  return getAuthToken() !== null;
+export async function updateUserProfile(id: string, data: Partial<User>, token: string | undefined): Promise<ApiResponse<User>> {
+  return put<User>(`/user/${id}`, data, { token, isProtectedRoute: true });
 }
 
 /**
@@ -108,4 +58,4 @@ export async function resendVerificationEmail(email: string): Promise<ApiRespons
  */
 export async function verifyEmail(token: string): Promise<ApiResponse<{ success: boolean }>> {
   return get<{ success: boolean }>(`/user/verify?token=${encodeURIComponent(token)}`);
-} 
+}

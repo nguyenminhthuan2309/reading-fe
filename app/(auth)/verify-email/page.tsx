@@ -94,11 +94,13 @@ export default function VerifyEmailPage() {
                   </Button>
                   
                   <div className="text-center">
-                    <Link href="/signin">
-                      <Button variant="link" className="text-primary">
-                        Back to Sign In
-                      </Button>
-                    </Link>
+                    <Button 
+                      variant="link" 
+                      className="text-primary"
+                      onClick={() => router.back()}
+                    >
+                      Back
+                    </Button>
                   </div>
                 </div>
               )}
@@ -183,11 +185,13 @@ export default function VerifyEmailPage() {
             </Button>
             
             <div className="text-center">
-              <Link href="/signin">
-                <Button variant="link" className="text-primary">
-                  Back to Sign In
-                </Button>
-              </Link>
+              <Button 
+                variant="link" 
+                className="text-primary"
+                onClick={() => router.back()}
+              >
+                Back
+              </Button>
             </div>
           </div>
         </div>

@@ -16,7 +16,7 @@ import {
   type Chapter,
   type BookFilters
 } from '@/lib/api/books';
-import { getAuthToken } from '@/lib/api/auth';
+import { useUserStore } from '../store';
 
 // Query keys
 export const BOOKS_QUERY_KEY = 'books';
@@ -27,7 +27,7 @@ export const BOOK_DETAIL_QUERY_KEY = 'bookDetail';
  */
 export function useBooks(filters: BookFilters = {}) {
   const queryClient = useQueryClient();
-  const token = getAuthToken();
+  const { token } = useUserStore();
   
   // Fetch books list with filters
   const {
@@ -91,7 +91,7 @@ export function useBooks(filters: BookFilters = {}) {
  */
 export function useBook(bookId: string) {
   const queryClient = useQueryClient();
-  const token = getAuthToken();
+  const { token } = useUserStore();
   
   // Fetch book details
   const {

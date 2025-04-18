@@ -12,27 +12,34 @@ export default function Home() {
   );
   
   // Get recently viewed books (for demo, every other book from first 10)
-  const recentlyViewedBooks = featuredBooks.slice(0, 10).filter((_, i) => i % 2 === 0);
+  const recentlyViewedBooks = [
+    featuredBooks.find(book => book.id === "16"), // Our new book
+    ...featuredBooks.slice(0, 10).filter((_, i) => i % 2 === 0)
+  ].filter(Boolean);
   
   // Get recently updated books
   const recentlyUpdatedBooks = featuredBooks.slice(5, 15);
 
   return (
-    <div className="flex flex-col bg-gradient-to-b from-black via-black to-red-950/30 min-h-screen">
+    <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
       <BookCarousel />
       
-      {/* First Section - Positioned to be partially visible initially */}
-      <div className="bg-section-light bg-black/50 -mt-[5vh]">
+      {/* Spacer between hero and first section */}
+      <div className="h-8"></div>
+      
+      {/* Recent Read Section */}
+      <div>
         <SectionCarousel 
-          title="Recently Viewed" 
+          title="Recent Read" 
           books={recentlyViewedBooks} 
           linkHref="/books" 
           className="bg-section-light"
         />
       </div>
       
-      <div className="bg-section-dark bg-black/70">
+      {/* Recently Updated Section */}
+      <div>
         <SectionCarousel 
           title="Recently Updated" 
           books={recentlyUpdatedBooks} 
@@ -41,7 +48,8 @@ export default function Home() {
         />
       </div>
       
-      <div className="bg-section-light bg-black/50">
+      {/* Popular Books Section */}
+      <div>
         <SectionCarousel 
           title="Popular Books" 
           books={popularBooks} 
@@ -50,7 +58,8 @@ export default function Home() {
         />
       </div>
       
-      <div className="bg-section-dark bg-black/70">
+      {/* Recommended Section */}
+      <div>
         <SectionCarousel 
           title="Recommended For You" 
           books={recommendedBooks} 

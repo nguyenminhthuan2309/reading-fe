@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, User, LogOut, PlusCircle, Settings, BookIcon, Award, Heart } from "lucide-react";
+import { BookOpen, User, LogOut, PlusCircle, BookIcon, Award, Heart } from "lucide-react";
 import { SearchDialog } from "@/components/search/search-dialog";
 import {
   NavigationMenu,
@@ -15,20 +15,16 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuGroup
-} from "@/components/ui/dropdown-menu";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger
+} from "@/components/ui/hover-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
-import { useAuth } from "@/lib/hooks";
 import * as React from "react";
 import { Genre, GENRE_OPTIONS } from "@/models/genre";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Define genre categories with typed Genre arrays
 const genreColumns: Record<string, Genre[]> = {
@@ -65,17 +61,6 @@ const ListItem = React.forwardRef<
 });
 ListItem.displayName = "ListItem";
 
-// Get user initials for avatar fallback
-function getUserInitials(name: string): string {
-  if (!name) return 'U';
-  return name
-    .split(' ')
-    .map(part => part.charAt(0))
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
-}
-
 // Generate a username from email if no username exists
 function generateUsername(email: string, name: string): string {
   if (!email) return name || 'User';
@@ -92,8 +77,9 @@ function generateUsername(email: string, name: string): string {
 
 export default function Header() {
   const pathname = usePathname();
-  const { user, isLoggedIn } = useUserStore();
-  const { logout } = useAuth();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user, isLoggedIn, logout: logoutStore } = useUserStore();
   
   // Get all genre names that aren't already in the genreColumns
   const moreGenres = React.useMemo(() => {
@@ -107,9 +93,23 @@ export default function Header() {
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
-  // Get user initials for avatar fallback
-  const userInitials = user?.name ? getUserInitials(user.name) : 'U';
-  
+  // Handle logout directly in the component
+  const handleLogout = () => {
+    // Clear user from Zustand store
+    logoutStore();
+    // Clear user from React Query cache
+    queryClient.setQueryData(['currentUser'], null);
+    // Redirect to sign in page
+    router.push('/signin');
+  };
+
+  // Navigate to user profile when avatar is clicked
+  const navigateToProfile = () => {
+    if (user?.id) {
+      router.push(`/user/${user.id}`);
+    }
+  };
+
   // Generate username for display
   const username = user ? generateUsername(user.email, user.name) : '';
 
@@ -194,92 +194,74 @@ export default function Header() {
           </NavigationMenu>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4">
           <SearchDialog />
           
           {isLoggedIn && user ? (
-            <div className="flex items-center gap-3">
-              {/* Username display (on larger screens) */}
-              <span className="hidden md:block text-sm font-medium">
-                @{username}
-              </span>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full focus-visible:ring-offset-2">
-                    <Avatar className="h-9 w-9 transition-transform hover:scale-110">
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback name={user.name}>{userInitials}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64" align="end" forceMount>
-                  <div className="flex items-center gap-4 p-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback name={user.name}>{userInitials}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium line-clamp-1">{user.name}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">@{username}</p>
-                      <div className="flex items-center mt-1 text-xs">
-                        <Award className="h-3 w-3 mr-1 text-amber-500" />
-                        <span className="font-semibold">{user.points || 0} Points</span>
-                      </div>
+            <HoverCard openDelay={0} closeDelay={300}>
+              <HoverCardTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full focus-visible:ring-offset-2" onClick={navigateToProfile}>
+                  <Avatar className="h-9 w-9 transition-transform hover:scale-110">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback>
+                      <User className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-64" align="center" sideOffset={4} side="bottom">
+                <div className="flex items-center gap-4 p-3">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback>
+                      <User className="h-6 w-6" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium line-clamp-1">{user.name}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">@{username}</p>
+                    <div className="flex items-center mt-1 text-xs">
+                      <Award className="h-3 w-3 mr-1 text-amber-500" />
+                      <span className="font-semibold">{user.points || 0} Points</span>
                     </div>
                   </div>
-                  
-                  <DropdownMenuSeparator />
-                  
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem asChild>
-                      <Link href="/books/create" className="flex w-full cursor-pointer">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        <span>Create New Book</span>
-                      </Link>
-                    </DropdownMenuItem>
+                </div>
+                
+                <div className="border-t border-border my-2 pt-2">
+                  <div className="grid grid-cols-1 gap-1">
+                    <Link href="/books/create" className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      <span>Create New Book</span>
+                    </Link>
                     
-                    <DropdownMenuItem asChild>
-                      <Link href={`/user/${user.id}`} className="flex w-full cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    <Link href={`/user/${user.id}`} className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
                     
-                    <DropdownMenuItem asChild>
-                      <Link href="/books/my" className="flex w-full cursor-pointer">
-                        <BookIcon className="mr-2 h-4 w-4" />
-                        <span>My Books</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    <Link href="/books/my" className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors">
+                      <BookIcon className="mr-2 h-4 w-4" />
+                      <span>My Books</span>
+                    </Link>
                     
-                    <DropdownMenuItem asChild>
-                      <Link href="/favorites" className="flex w-full cursor-pointer">
-                        <Heart className="mr-2 h-4 w-4" />
-                        <span>Favorites</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex w-full cursor-pointer">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  
-                  <DropdownMenuSeparator />
-                  
-                  <DropdownMenuItem 
-                    className="cursor-pointer text-red-600 focus:text-red-600"
-                    onClick={() => logout()}
+                    <Link href="/favorites" className="flex items-center rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors">
+                      <Heart className="mr-2 h-4 w-4" />
+                      <span>Favorites</span>
+                    </Link>
+                  </div>
+                </div>
+                
+                <div className="border-t border-border pt-2 mt-1">
+                  <button 
+                    className="flex items-center w-full rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    onClick={handleLogout}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                  </button>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
           ) : (
             <>
               <Link href="/signin" className="text-black hover:text-black text-sm font-medium">

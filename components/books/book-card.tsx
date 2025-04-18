@@ -98,11 +98,11 @@ export function BookCard({
       {/* Content overlaid on image, aligned to bottom */}
       <div className="absolute bottom-0 left-0 right-0 z-10 p-4 md:p-5">
         <div className="mb-2">
-          <span className="text-xs px-2 py-1 rounded-full bg-red-600/50 text-white uppercase font-bold">{getGenreDisplayName()}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/50 text-white uppercase font-bold">{getGenreDisplayName()}</span>
         </div>
         
         <Link href={`/books/${id}`}>
-          <h3 className="text-xl font-extrabold uppercase mb-1 text-white leading-tight line-clamp-2 hover:underline">{title}</h3>
+          <h3 className="text-lg font-extrabold uppercase mb-1 text-white leading-tight line-clamp-2 hover:underline">{title}</h3>
         </Link>
         
         <p className="text-xs text-gray-300 mb-3">by {author}</p>
@@ -181,42 +181,30 @@ export function BookCard({
         avoidCollisions={true}
         collisionPadding={20}
       >
-        <div className="bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden border border-gray-800">
+        <div className="bg-white rounded-lg overflow-hidden border border-gray-200">
           <div className="p-4">
             <div className="flex justify-between items-start mb-3">
               <div>
                 <Link href={`/books/${id}`}>
-                  <h3 className="text-lg font-bold text-white leading-tight mb-1 hover:underline">{title}</h3>
+                  <h3 className="text-base font-bold text-black leading-tight mb-1 hover:underline">{title}</h3>
                 </Link>
-                <p className="text-xs text-gray-300">by {author}</p>
+                <p className="text-xs text-gray-600">by {author}</p>
               </div>
-              <span className="text-xs px-2 py-1 rounded-full bg-red-600/80 text-white uppercase font-bold">{getGenreDisplayName()}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{getGenreDisplayName()}</span>
             </div>
             
-            <p className="text-xs text-gray-300 mb-4 line-clamp-3">{description}</p>
+            <p className="text-xs text-gray-600 mb-4 line-clamp-3">{description}</p>
             
             <div className="flex justify-between items-center">
-              <div className="flex items-center text-xs text-gray-300">
-                <BookOpen className="h-3 w-3 text-gray-400 mr-1" />
+              <div className="flex items-center text-xs text-gray-600">
+                <BookOpen className="h-3 w-3 text-gray-500 mr-1" />
                 <span>{chapters} Ch</span>
               </div>
               
-              <div className="flex items-center text-xs text-gray-300">
-                <Clock className="h-3 w-3 text-gray-400 mr-1" />
+              <div className="flex items-center text-xs text-gray-600">
+                <Clock className="h-3 w-3 text-gray-500 mr-1" />
                 <span>~{Math.round(chapters * 8)}m</span>
               </div>
-            </div>
-            
-            <div className="mt-4">
-              <Link 
-                href={hasStartedReading 
-                  ? `/read/${id}?chapter=${Math.ceil(progress * chapters)}` 
-                  : `/read/${id}?chapter=1`}
-              >
-                <Button variant="destructive" size="sm" className="w-full text-xs">
-                  {hasStartedReading ? 'Continue Reading' : 'Read First Ch.'}
-                </Button>
-              </Link>
             </div>
           </div>
         </div>

@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Save, Upload, FileText, Sparkles, AlertCircle, Plus, Trash2, Book, ChevronDown, GripVertical, CheckCircle2, XCircle, Pencil } from "lucide-react";
+import { ChevronLeft, Save, Upload, FileText, Sparkles, AlertCircle, Plus, Trash2, Book, ChevronDown, GripVertical, CheckCircle2, XCircle, Pencil, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { featuredBooks } from "@/lib/mock-data";
 import { currentUser } from "@/lib/mock-user";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import * as yup from "yup";
 import {
   DndContext,
@@ -217,6 +217,9 @@ export default function CreateBookPage() {
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [emptyChapters, setEmptyChapters] = useState<string[]>([]);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const [isBookInfoCollapsed, setIsBookInfoCollapsed] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Dialog state for delete confirmation
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -487,7 +490,7 @@ export default function CreateBookPage() {
     // Create a new chapter with an auto-generated title
     const newChapter: Chapter = {
       id: `chapter-${Date.now()}`,
-      title: `Chapter ${chapters.length + 1}`,
+      title: newChapterTitle ? newChapterTitle : `Chapter ${chapters.length + 1}`,
       content: '',
       // Initialize appropriate fields based on book type
       images: bookType === BOOK_TYPES.PICTURE_BOOK ? [] : undefined,
@@ -500,6 +503,19 @@ export default function CreateBookPage() {
     
     // Automatically expand the new chapter
     setExpandedChapter(newChapter.id);
+
+    // Clear any chapter-related validation errors
+    if (errors.chapters) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.chapters;
+        return newErrors;
+      });
+      setEmptyChapters([]);
+    }
+
+    // Reset the chapter title input
+    setNewChapterTitle("");
   };
   
   const confirmDeleteChapter = (id: string) => {
@@ -709,22 +725,176 @@ export default function CreateBookPage() {
     setEditingChapterId(null);
   };
 
+  // Add scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      if (scrollPosition > 10) {
+        setHasScrolled(true);
+      } else {
+        setHasScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Add this new function to check for form data changes
+  const checkForChanges = () => {
+    const title = titleInputRef.current?.value || "";
+    const description = descriptionTextareaRef.current?.value || "";
+    
+    // Consider the form modified if any of these conditions are true
+    const isModified = 
+      title.trim() !== "" || 
+      description.trim() !== "" || 
+      selectedGenres.length > 0 || 
+      coverImage !== null || 
+      chapters.length > 0;
+    
+    setHasUnsavedChanges(isModified);
+  };
+
+  // Listen for input changes to detect unsaved changes
+  useEffect(() => {
+    const handleInputChange = () => checkForChanges();
+    
+    // Add event listeners to form elements
+    const form = document.getElementById('book-create-form');
+    form?.addEventListener('input', handleInputChange);
+    
+    return () => {
+      form?.removeEventListener('input', handleInputChange);
+    };
+  }, []);
+
+  // Update unsaved changes when any of these state values change
+  useEffect(() => {
+    checkForChanges();
+  }, [selectedGenres, coverImage, chapters]);
+
+  // Handle beforeunload event for browser refreshes and closes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        // Chrome requires returnValue to be set
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Handle history navigation for browser back/forward buttons
+  useEffect(() => {
+    // This handles browser's back button navigation attempts
+    const handlePopState = (e: PopStateEvent) => {
+      if (hasUnsavedChanges) {
+        // Save the current URL
+        const currentUrl = window.location.href;
+        
+        // Prevent the default navigation
+        window.history.pushState(null, '', currentUrl);
+        
+        // Ask for confirmation
+        const confirmation = window.confirm(
+          "You have unsaved changes that will be lost if you leave. Are you sure you want to continue?"
+        );
+        
+        // If confirmed, allow navigation
+        if (confirmation) {
+          window.history.back();
+        }
+      }
+    };
+
+    // Add a dummy history entry to make the back button trigger our handler
+    window.history.pushState(null, '', window.location.href);
+    
+    // Listen for popstate events (back/forward buttons)
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [hasUnsavedChanges]);
+
+  // Handle navigation within the Next.js app
+  useEffect(() => {
+    const handleWindowClose = (e: any) => {
+      if (!hasUnsavedChanges) return;
+      
+      // Display confirmation dialog
+      const confirmation = window.confirm(
+        "You have unsaved changes that will be lost if you leave. Are you sure you want to continue?"
+      );
+      
+      // If the user doesn't confirm, prevent navigation
+      if (!confirmation) {
+        e.preventDefault();
+      }
+    };
+
+    // Custom handler for link clicks
+    const handleLinkClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a');
+      
+      if (link && !link.getAttribute('href')?.startsWith('#') && hasUnsavedChanges) {
+        e.preventDefault();
+        
+        const confirmation = window.confirm(
+          "You have unsaved changes that will be lost if you leave. Are you sure you want to continue?"
+        );
+        
+        if (confirmation) {
+          router.push(link.getAttribute('href') || '/');
+        }
+      }
+    };
+
+    document.addEventListener('click', handleLinkClick);
+    return () => document.removeEventListener('click', handleLinkClick);
+  }, [hasUnsavedChanges, router]);
+
+  // Override back button to prompt the user before going back
+  const handleBack = () => {
+    if (hasUnsavedChanges) {
+      const confirmation = window.confirm(
+        "You have unsaved changes that will be lost if you leave. Are you sure you want to continue?"
+      );
+      
+      if (confirmation) {
+        router.back();
+      }
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 pb-8 pt-2">
-      {/* Header with back button and action buttons */}
-      <div className="sticky top-0 z-10 bg-background pt-2 pb-4 mb-6 border-b">
+      {/* Back button */}
+      <div className="mb-3">
+        <Button 
+          variant="link" 
+          className="flex items-center gap-2 py-1 pl-0"
+          onClick={handleBack}
+        >
+          <ChevronLeft size={16} />
+          Back
+        </Button>
+      </div>
+
+      {/* Header with action buttons */}
+      <div className={`sticky top-6 z-10 pt-2 pb-4 mb-3 transition-all duration-200 ${
+        hasScrolled ? 'bg-white rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)]' : ''
+      }`}>
         <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row gap-2 mb-2">
-            <div className="flex items-center">
-              <Link href="/books">
-                <Button variant="link" className="flex items-center gap-2 py-1">
-                  <ChevronLeft size={16} />
-                  Back to Books
-                </Button>
-              </Link>
-            </div>
-          </div>
-          
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h1 className="text-3xl font-bold pl-6">Create New Book</h1>
             
@@ -760,681 +930,764 @@ export default function CreateBookPage() {
       {errors.form && <ErrorMessage message={errors.form} />}
       
       {/* Book creation form */}
-      <form id="book-create-form" onSubmit={handleSubmit} className="space-y-6" noValidate>
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Left column - All form fields - Sticky (30% width) */}
-          <div className="w-full md:w-[30%] md:sticky md:top-4 md:self-start overflow-visible">
-            <div className="px-6 py-0">
-              <h3 className="text-lg font-medium">Book Info</h3>
-            </div>
-            <div className="p-6 pt-4 md:h-[calc(100vh-10rem)] md:overflow-y-auto space-y-4">
-              {/* Cover Image */}
-              <div className="space-y-2">
-                <Label htmlFor="cover-upload" className="flex items-center">
-                  Cover Image
-                  <span className="text-destructive ml-1">*</span>
-                </Label>
-                <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${errors.coverImage ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
-                  {coverImagePreview ? (
-                    <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden mb-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={coverImagePreview} 
-                        alt="Book cover preview" 
-                        className="object-cover w-full h-full"
+      <form id="book-create-form" onSubmit={handleSubmit} className="space-y-6 mb-3" noValidate>
+        {/* Main container box with both sections */}
+        <div className="bg-white border border-secondary/90 rounded-lg shadow-sm overflow-hidden pb-6">
+          <div className="flex flex-col md:flex-row">
+            {/* Left column - Book Info */}
+            <div className={`w-full md:w-[30%] relative transition-all duration-300 ${isBookInfoCollapsed ? 'md:w-[48px]' : ''}`}>
+              <div className={`px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between ${isBookInfoCollapsed ? 'md:px-0' : ''}`}>
+                <h3 className={`text-lg font-medium ${isBookInfoCollapsed ? 'md:hidden' : ''}`}>Book Info</h3>
+                <div className={`flex items-center space-x-1 ${isBookInfoCollapsed ? 'mx-auto' : ''}`}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => setIsBookInfoCollapsed(!isBookInfoCollapsed)}
+                    title={isBookInfoCollapsed ? "Expand" : "Collapse"}
+                  >
+                    {isBookInfoCollapsed ? (
+                      <PanelLeftOpen size={18} />
+                    ) : (
+                      <PanelLeftClose size={18} />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {!isBookInfoCollapsed && (
+                <div className="p-6 space-y-4">
+                  {/* Cover Image */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cover-upload" className="flex items-center">
+                      Cover Image
+                      <span className="text-destructive ml-1">*</span>
+                    </Label>
+                    <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${errors.coverImage ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
+                      {coverImagePreview ? (
+                        <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden mb-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            src={coverImagePreview} 
+                            alt="Book cover preview" 
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      ) : (
+                        <div className="py-10 flex flex-col items-center">
+                          <Upload size={48} className={`mb-2 ${errors.coverImage ? 'text-destructive' : 'text-muted-foreground'}`} />
+                          <p className={`text-sm ${errors.coverImage ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            Click or drag to upload cover image
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JPG, JPEG, PNG or WebP, max 1MB
+                          </p>
+                        </div>
+                      )}
+                      <Input
+                        id="cover-upload"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onChange={(e) => handleImageUpload(e, "cover-image")}
                       />
                     </div>
-                  ) : (
-                    <div className="py-10 flex flex-col items-center">
-                      <Upload size={48} className={`mb-2 ${errors.coverImage ? 'text-destructive' : 'text-muted-foreground'}`} />
-                      <p className={`text-sm ${errors.coverImage ? 'text-destructive' : 'text-muted-foreground'}`}>
-                        Click or drag to upload cover image
-                      </p>
+                    {errors.coverImage ? (
+                      <ErrorMessage message={errors.coverImage} />
+                    ) : (
                       <p className="text-xs text-muted-foreground mt-1">
-                        JPG, JPEG, PNG or WebP, max 1MB
+                        Upload a cover image for your book
                       </p>
-                    </div>
-                  )}
-                  <Input
-                    id="cover-upload"
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={(e) => handleImageUpload(e, "cover-image")}
-                  />
-                </div>
-                {errors.coverImage ? (
-                  <ErrorMessage message={errors.coverImage} />
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Upload a cover image for your book
-                  </p>
-                )}
-              </div>
+                    )}
+                  </div>
 
-              {/* Book Type Dropdown - Replaced with Radio Buttons */}
-              <div className="space-y-2">
-                <Label className="flex items-center">
-                  Book Type
-                  <span className="text-destructive ml-1">*</span>
-                </Label>
-                <RadioGroup
-                  value={bookType}
-                  onValueChange={(value: string) => {
-                    setBookType(value);
-                    if (errors.bookType) {
-                      setErrors(prev => ({...prev, bookType: ""}));
-                    }
-                  }}
-                  className={`space-y-3 ${errors.bookType ? 'border-destructive' : ''}`}
+                  {/* Book Type Dropdown - Replaced with Radio Buttons */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center">
+                      Book Type
+                      <span className="text-destructive ml-1">*</span>
+                    </Label>
+                    <RadioGroup
+                      value={bookType}
+                      onValueChange={(value: string) => {
+                        setBookType(value);
+                        if (errors.bookType) {
+                          setErrors(prev => ({...prev, bookType: ""}));
+                        }
+                      }}
+                      className={`space-y-3 ${errors.bookType ? 'border-destructive' : ''}`}
+                    >
+                      <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
+                        bookType === BOOK_TYPES.WORD_BOOK 
+                          ? 'border-primary bg-primary/5 shadow-sm' 
+                          : 'border-border hover:border-muted-foreground/20'
+                      }`}>
+                        <RadioGroupItem value={BOOK_TYPES.WORD_BOOK} id="word-book" />
+                        <Label htmlFor="word-book" className="font-normal cursor-pointer">
+                          <div className="flex flex-col">
+                            <span className="font-medium">Word Book</span>
+                            <span className="text-xs text-muted-foreground">Text-based book with written content</span>
+                          </div>
+                        </Label>
+                      </div>
+                      
+                      <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
+                        bookType === BOOK_TYPES.PICTURE_BOOK 
+                          ? 'border-primary bg-primary/5 shadow-sm' 
+                          : 'border-border hover:border-muted-foreground/20'
+                      }`}>
+                        <RadioGroupItem value={BOOK_TYPES.PICTURE_BOOK} id="picture-book" />
+                        <Label htmlFor="picture-book" className="font-normal cursor-pointer">
+                          <div className="flex flex-col">
+                            <span className="font-medium">Picture Book</span>
+                            <span className="text-xs text-muted-foreground">Image-based book with illustration uploads and captions</span>
+                          </div>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    {errors.bookType ? (
+                      <ErrorMessage message={errors.bookType} />
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Select whether this is primarily a word-based or picture-based book
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="flex items-center">
+                      Title
+                      <span className="text-destructive ml-1">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="title"
+                        name="title"
+                        ref={titleInputRef}
+                        placeholder="Enter book title"
+                        className={`pr-12 ${errors.title ? 'border-destructive' : ''}`}
+                        maxLength={100}
+                        onChange={() => {
+                          if (errors.title) {
+                            setErrors(prev => ({...prev, title: ""}));
+                          }
+                        }}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-full rounded-l-none rounded-r-md text-xs flex items-center justify-center w-10 text-primary"
+                          onClick={enhanceTitle}
+                          disabled={isEnhancingTitle}
+                          title="AI Enhance"
+                        >
+                          {isEnhancingTitle ? 
+                            <div className="animate-pulse">
+                              <Sparkles size={16} />
+                            </div> : 
+                            <Sparkles size={16} />
+                          }
+                        </Button>
+                      </div>
+                    </div>
+                    {errors.title ? (
+                      <ErrorMessage message={errors.title} />
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Maximum 100 characters
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Genres */}
+                  <div className="space-y-2">
+                    <Label htmlFor="genres" className="flex items-center">
+                      Genres
+                      <span className="text-destructive ml-1">*</span>
+                    </Label>
+                    <MultiSelect
+                      options={genreOptions}
+                      selected={selectedGenres}
+                      onChange={(selected) => {
+                        setSelectedGenres(selected);
+                        if (errors.genres) {
+                          setErrors(prev => ({...prev, genres: ""}));
+                        }
+                      }}
+                      placeholder="Select genres (multiple)"
+                      className={`w-full ${errors.genres ? 'border-destructive' : ''}`}
+                    />
+                    {errors.genres ? (
+                      <ErrorMessage message={errors.genres} />
+                    ) : (
+                      selectedGenres.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">Please select at least one genre</p>
+                      )
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description" className="flex items-center">
+                      Description
+                      <span className="text-destructive ml-1">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Textarea
+                        id="description"
+                        name="description"
+                        ref={descriptionTextareaRef}
+                        placeholder="Enter book description"
+                        rows={6}
+                        className={`resize-none pr-12 ${errors.description ? 'border-destructive' : ''}`}
+                        maxLength={1000}
+                        onChange={() => {
+                          if (errors.description) {
+                            setErrors(prev => ({...prev, description: ""}));
+                          }
+                        }}
+                      />
+                      <div className="absolute right-2 top-2">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 flex items-center justify-center rounded-full bg-background/70 hover:bg-background"
+                          onClick={enhanceDescription}
+                          disabled={isEnhancingDescription}
+                          title="AI Enhance"
+                        >
+                          {isEnhancingDescription ? 
+                            <div className="animate-pulse">
+                              <Sparkles size={16} />
+                            </div> : 
+                            <Sparkles size={16} />
+                          }
+                        </Button>
+                      </div>
+                      {errors.description ? (
+                        <ErrorMessage message={errors.description} />
+                      ) : (
+                        <div className="flex justify-between">
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Describe your book's plot and themes
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Maximum 1000 characters
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {isBookInfoCollapsed && (
+                <div 
+                  className={`h-full flex items-center justify-center cursor-pointer hover:bg-secondary/30 transition-colors ${
+                    (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType) 
+                      ? 'bg-destructive/10 border-r border-destructive' 
+                      : ''
+                  }`}
+                  onClick={() => setIsBookInfoCollapsed(false)}
+                  title={
+                    (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType)
+                      ? "Book Info has errors" 
+                      : "Expand Book Info"
+                  }
                 >
-                  <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
-                    bookType === BOOK_TYPES.WORD_BOOK 
-                      ? 'border-primary bg-primary/5 shadow-sm' 
-                      : 'border-border hover:border-muted-foreground/20'
-                  }`}>
-                    <RadioGroupItem value={BOOK_TYPES.WORD_BOOK} id="word-book" />
-                    <Label htmlFor="word-book" className="font-normal cursor-pointer">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Word Book</span>
-                        <span className="text-xs text-muted-foreground">Text-based book with written content</span>
-                      </div>
-                    </Label>
-                  </div>
-                  
-                  <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
-                    bookType === BOOK_TYPES.PICTURE_BOOK 
-                      ? 'border-primary bg-primary/5 shadow-sm' 
-                      : 'border-border hover:border-muted-foreground/20'
-                  }`}>
-                    <RadioGroupItem value={BOOK_TYPES.PICTURE_BOOK} id="picture-book" />
-                    <Label htmlFor="picture-book" className="font-normal cursor-pointer">
-                      <div className="flex flex-col">
-                        <span className="font-medium">Picture Book</span>
-                        <span className="text-xs text-muted-foreground">Image-based book with illustration uploads and captions</span>
-                      </div>
-                    </Label>
-                  </div>
-                </RadioGroup>
-                {errors.bookType ? (
-                  <ErrorMessage message={errors.bookType} />
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Select whether this is primarily a word-based or picture-based book
-                  </p>
-                )}
-              </div>
-
-              {/* Title */}
-              <div className="space-y-2">
-                <Label htmlFor="title" className="flex items-center">
-                  Title
-                  <span className="text-destructive ml-1">*</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="title"
-                    name="title"
-                    ref={titleInputRef}
-                    placeholder="Enter book title"
-                    className={`pr-12 ${errors.title ? 'border-destructive' : ''}`}
-                    maxLength={100}
-                    onChange={() => {
-                      if (errors.title) {
-                        setErrors(prev => ({...prev, title: ""}));
-                      }
+                  <span 
+                    className={`py-6 font-medium tracking-wide ${
+                      (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType)
+                        ? 'text-destructive'
+                        : 'text-muted-foreground'
+                    }`}
+                    style={{
+                      writingMode: 'vertical-rl',
+                      transform: 'rotate(180deg)'
                     }}
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-full rounded-l-none rounded-r-md text-xs flex items-center justify-center w-10 text-primary"
-                      onClick={enhanceTitle}
-                      disabled={isEnhancingTitle}
-                      title="AI Enhance"
-                    >
-                      {isEnhancingTitle ? 
-                        <div className="animate-pulse">
-                          <Sparkles size={16} />
-                        </div> : 
-                        <Sparkles size={16} />
-                      }
-                    </Button>
-                  </div>
-                </div>
-                {errors.title ? (
-                  <ErrorMessage message={errors.title} />
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Maximum 100 characters
-                  </p>
-                )}
-              </div>
-
-              {/* Genres */}
-              <div className="space-y-2">
-                <Label htmlFor="genres" className="flex items-center">
-                  Genres
-                  <span className="text-destructive ml-1">*</span>
-                </Label>
-                <MultiSelect
-                  options={genreOptions}
-                  selected={selectedGenres}
-                  onChange={(selected) => {
-                    setSelectedGenres(selected);
-                    if (errors.genres) {
-                      setErrors(prev => ({...prev, genres: ""}));
-                    }
-                  }}
-                  placeholder="Select genres (multiple)"
-                  className={`w-full ${errors.genres ? 'border-destructive' : ''}`}
-                />
-                {errors.genres ? (
-                  <ErrorMessage message={errors.genres} />
-                ) : (
-                  selectedGenres.length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">Please select at least one genre</p>
-                  )
-                )}
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description" className="flex items-center">
-                  Description
-                  <span className="text-destructive ml-1">*</span>
-                </Label>
-                <div className="relative">
-                  <Textarea
-                    id="description"
-                    name="description"
-                    ref={descriptionTextareaRef}
-                    placeholder="Enter book description"
-                    rows={6}
-                    className={`resize-none pr-12 ${errors.description ? 'border-destructive' : ''}`}
-                    maxLength={1000}
-                    onChange={() => {
-                      if (errors.description) {
-                        setErrors(prev => ({...prev, description: ""}));
-                      }
-                    }}
-                  />
-                  <div className="absolute right-2 top-2">
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 flex items-center justify-center rounded-full bg-background/70 hover:bg-background"
-                      onClick={enhanceDescription}
-                      disabled={isEnhancingDescription}
-                      title="AI Enhance"
-                    >
-                      {isEnhancingDescription ? 
-                        <div className="animate-pulse">
-                          <Sparkles size={16} />
-                        </div> : 
-                        <Sparkles size={16} />
-                      }
-                    </Button>
-                  </div>
-                  {errors.description ? (
-                    <ErrorMessage message={errors.description} />
-                  ) : (
-                    <div className="flex justify-between">
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Describe your book's plot and themes
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Maximum 1000 characters
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right column - Chapters only (70% width) */}
-          <div className="w-full md:w-[70%] md:h-[calc(100vh-8rem)] md:overflow-y-auto">
-            <div className="px-6 py-0">
-              <h3 className="text-lg font-medium flex items-center gap-3">
-                Chapters
-                {chapters.length > 0 && (
-                  <span className="text-sm bg-secondary text-secondary-foreground rounded-full px-3 py-1 font-medium">
-                    {chapters.length}
+                  >
+                    Book Info
                   </span>
-                )}
-              </h3>
-              {errors.chapters && (
-                <div className="mt-2 p-2 bg-destructive/10 border border-destructive rounded-md">
-                  <p className="flex items-center text-destructive text-sm">
-                    <AlertCircle size={16} className="mr-2" />
-                    {errors.chapters}
-                  </p>
                 </div>
               )}
             </div>
             
-            <div className="p-6 pt-4">
-              {chapters.length > 0 ? (
-                <div className="pr-2 mb-6">
-                  <Accordion 
-                    type="single" 
-                    collapsible 
-                    value={expandedChapter || undefined}
-                    className="space-y-3"
-                  >
-                    {chapters.map((chapter, index) => (
-                      <AccordionItem 
-                        key={chapter.id} 
-                        value={chapter.id}
-                        className={`border rounded-md overflow-hidden ${
-                          emptyChapters.includes(chapter.id) ? 'border-destructive' : ''
-                        }`}
-                      >
-                        <div className="flex items-center justify-between pr-2">
-                          <div 
-                            className="flex items-center flex-1 px-4 py-3 cursor-pointer hover:bg-muted/50"
-                            onClick={() => toggleChapter(chapter.id)}
-                          >
-                            <ChevronDown 
-                              className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 mr-2 ${
-                                expandedChapter === chapter.id ? 'transform rotate-180' : ''
-                              }`}
-                            />
-                            
-                            {editingChapterId === chapter.id ? (
-                              // Editing mode
-                              <div 
-                                className="flex-1"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Input
-                                  ref={editableInputRef}
-                                  defaultValue={chapter.title}
-                                  autoFocus
-                                  className="h-7 px-2 py-1 font-medium"
-                                  onBlur={(e) => handleChapterTitleUpdate(chapter.id, e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      handleChapterTitleUpdate(chapter.id, e.currentTarget.value);
-                                    } else if (e.key === 'Escape') {
-                                      setEditingChapterId(null);
-                                    }
-                                  }}
-                                />
-                              </div>
-                            ) : (
-                              // Display mode
-                              <span className="font-medium truncate max-w-[400px] text-left flex items-center">
-                                <span>
-                                  {chapter.title || `Chapter ${index + 1}`}
-                                  {emptyChapters.includes(chapter.id) && (
-                                    <span className="text-xs text-destructive ml-2">(empty)</span>
-                                  )}
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5 ml-2 text-muted-foreground hover:text-primary"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingChapterId(chapter.id);
-                                    // Focus will be set by autoFocus on the input
-                                  }}
+            {/* Vertical separator */}
+            <div className="hidden md:block w-px bg-secondary/60"></div>
+            
+            {/* Right column - Chapters */}
+            <div className={`w-full md:w-[70%] relative transition-all duration-300 ${isBookInfoCollapsed ? 'md:w-[calc(100%-48px)]' : ''}`}>
+              <div className="px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between">
+                <h3 className="text-lg font-medium flex items-center gap-3">
+                  Chapters
+                  {chapters.length > 0 && (
+                    <span className="text-sm bg-secondary text-secondary-foreground rounded-full px-3 py-1 font-medium">
+                      {chapters.length}
+                    </span>
+                  )}
+                </h3>
+                {errors.chapters && (
+                  <div className="text-xs p-1.5 bg-destructive/10 border border-destructive rounded-md flex-shrink-0">
+                    <p className="flex items-center text-destructive">
+                      <AlertCircle size={12} className="mr-1.5 flex-shrink-0" />
+                      <span className="line-clamp-1">{errors.chapters}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-6">
+                {chapters.length > 0 ? (
+                  <div className="pr-2 mb-3">
+                    <Accordion 
+                      type="single" 
+                      collapsible 
+                      value={expandedChapter || undefined}
+                      className="space-y-3"
+                    >
+                      {chapters.map((chapter, index) => (
+                        <AccordionItem 
+                          key={chapter.id} 
+                          value={chapter.id}
+                          className={`border rounded-md overflow-hidden ${
+                            emptyChapters.includes(chapter.id) ? 'border-destructive' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between pr-2">
+                            <div 
+                              className="flex items-center flex-1 px-4 py-3 cursor-pointer hover:bg-muted/50"
+                              onClick={() => toggleChapter(chapter.id)}
+                            >
+                              <ChevronDown 
+                                className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 mr-2 ${
+                                  expandedChapter === chapter.id ? 'transform rotate-180' : ''
+                                }`}
+                              />
+                              
+                              {editingChapterId === chapter.id ? (
+                                // Editing mode
+                                <div 
+                                  className="flex-1"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  <Pencil size={12} />
-                                </Button>
-                              </span>
-                            )}
+                                  <Input
+                                    ref={editableInputRef}
+                                    defaultValue={chapter.title}
+                                    autoFocus
+                                    className="h-7 px-2 py-1 font-medium"
+                                    onBlur={(e) => handleChapterTitleUpdate(chapter.id, e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleChapterTitleUpdate(chapter.id, e.currentTarget.value);
+                                      } else if (e.key === 'Escape') {
+                                        setEditingChapterId(null);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                // Display mode
+                                <span className="font-medium truncate max-w-[400px] text-left flex items-center">
+                                  <span>
+                                    {chapter.title || `Chapter ${index + 1}`}
+                                    {emptyChapters.includes(chapter.id) && (
+                                      <span className="text-xs text-destructive ml-2">(empty)</span>
+                                    )}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 ml-2 text-muted-foreground hover:text-primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingChapterId(chapter.id);
+                                      // Focus will be set by autoFocus on the input
+                                    }}
+                                  >
+                                    <Pencil size={12} />
+                                  </Button>
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Content status indicator */}
+                            <div className="flex items-center mr-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    {emptyChapters.includes(chapter.id) || chapter.content.trim() === '' ? (
+                                      <CheckCircle2 size={16} className="text-gray-400" aria-label="No content added" />
+                                    ) : (
+                                      <CheckCircle2 size={16} className="text-green-500" aria-label="Content added" />
+                                    )}
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>
+                                      {emptyChapters.includes(chapter.id) || chapter.content.trim() === '' 
+                                        ? "No content added yet" 
+                                        : "Content has been added"}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10 mr-2"
+                              onClick={() => confirmDeleteChapter(chapter.id)}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
                           </div>
-                          
-                          {/* Content status indicator */}
-                          <div className="flex items-center mr-2">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  {emptyChapters.includes(chapter.id) || chapter.content.trim() === '' ? (
-                                    <CheckCircle2 size={16} className="text-gray-400" aria-label="No content added" />
-                                  ) : (
-                                    <CheckCircle2 size={16} className="text-green-500" aria-label="Content added" />
-                                  )}
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>
-                                    {emptyChapters.includes(chapter.id) || chapter.content.trim() === '' 
-                                      ? "No content added yet" 
-                                      : "Content has been added"}
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                          
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10 mr-2"
-                            onClick={() => confirmDeleteChapter(chapter.id)}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                        {expandedChapter === chapter.id && (
-                          <div className="px-4 py-3 border-t">
-                            <div className="space-y-4">
-                              <div className="space-y-2">
-                                <Label htmlFor={`chapter-content-${chapter.id}`}>Chapter Content</Label>
-                                {bookType === BOOK_TYPES.WORD_BOOK ? (
-                                  <div className="space-y-4">
-                                    <div className="flex flex-col gap-2">
-                                      <div className="inline-flex w-full border-b">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const updatedChapters = chapters.map(ch => 
-                                              ch.id === chapter.id ? {...ch, documentUrl: undefined} : ch
-                                            );
-                                            setChapters(updatedChapters);
-                                          }}
-                                          className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
-                                            !chapter.documentUrl 
-                                              ? 'border-primary text-primary' 
-                                              : 'border-transparent text-muted-foreground hover:text-foreground'
-                                          }`}
-                                        >
-                                          Write Content
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            // If there's already content, we should preserve it rather than overwrite
-                                            if (!chapter.documentUrl && !chapter.wordContent) {
+                          {expandedChapter === chapter.id && (
+                            <div className="px-4 py-3 border-t">
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`chapter-content-${chapter.id}`}>Chapter Content</Label>
+                                  {bookType === BOOK_TYPES.WORD_BOOK ? (
+                                    <div className="space-y-4">
+                                      <div className="flex flex-col gap-2">
+                                        <div className="inline-flex w-full border-b">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
                                               const updatedChapters = chapters.map(ch => 
-                                                ch.id === chapter.id ? {...ch, documentUrl: 'pending'} : ch
+                                                ch.id === chapter.id ? {...ch, documentUrl: undefined} : ch
                                               );
                                               setChapters(updatedChapters);
-                                            }
-                                          }}
-                                          className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
-                                            chapter.documentUrl 
-                                              ? 'border-primary text-primary' 
-                                              : 'border-transparent text-muted-foreground hover:text-foreground'
-                                          }`}
-                                        >
-                                          Upload Document
-                                        </button>
-                                      </div>
-                                      
-                                      {/* Option 1: Write content directly */}
-                                      {!chapter.documentUrl && (
-                                        <div className="border rounded-md p-4">
-                                          <Textarea 
-                                            id={`chapter-content-${chapter.id}`}
-                                            value={chapter.wordContent || ''}
-                                            onChange={(e) => {
-                                              const updatedChapters = chapters.map(ch => 
-                                                ch.id === chapter.id ? {...ch, wordContent: e.target.value, content: e.target.value} : ch
-                                              );
-                                              setChapters(updatedChapters);
-                                              
-                                              // Remove from empty chapters list if content is added
-                                              if (e.target.value.trim() !== "" && emptyChapters.includes(chapter.id)) {
-                                                setEmptyChapters(prev => prev.filter(id => id !== chapter.id));
+                                            }}
+                                            className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
+                                              !chapter.documentUrl 
+                                                ? 'border-primary text-primary' 
+                                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                            }`}
+                                          >
+                                            Write Content
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              // If there's already content, we should preserve it rather than overwrite
+                                              if (!chapter.documentUrl && !chapter.wordContent) {
+                                                const updatedChapters = chapters.map(ch => 
+                                                  ch.id === chapter.id ? {...ch, documentUrl: 'pending'} : ch
+                                                );
+                                                setChapters(updatedChapters);
                                               }
                                             }}
-                                            placeholder="Write your chapter content here..."
-                                            className={`min-h-[200px] ${emptyChapters.includes(chapter.id) ? 'border-destructive' : ''}`}
-                                          />
+                                            className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
+                                              chapter.documentUrl 
+                                                ? 'border-primary text-primary' 
+                                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                            }`}
+                                          >
+                                            Upload Document
+                                          </button>
                                         </div>
-                                      )}
-                                      
-                                      {/* Option 2: Upload document */}
-                                      {chapter.documentUrl && (
-                                        <div className="border rounded-md p-4">
-                                          <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${emptyChapters.includes(chapter.id) && chapter.documentUrl === 'pending' ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
-                                            {chapter.documentUrl && chapter.documentUrl !== 'pending' ? (
-                                              <div className="flex items-center gap-2 text-sm">
-                                                <FileText size={16} className="text-primary" />
-                                                <span className="font-medium">Document uploaded</span>
-                                                <Button 
-                                                  type="button" 
-                                                  variant="ghost" 
-                                                  size="sm" 
-                                                  className="ml-auto h-8"
-                                                  onClick={() => {
-                                                    const updatedChapters = chapters.map(ch => 
-                                                      ch.id === chapter.id ? {...ch, documentUrl: undefined, content: ''} : ch
-                                                    );
-                                                    setChapters(updatedChapters);
-                                                  }}
-                                                >
-                                                  Remove
-                                                </Button>
-                                              </div>
-                                            ) : (
-                                              <>
-                                                <div className="py-4 flex flex-col items-center">
-                                                  <Upload size={24} className="mb-2 text-muted-foreground" />
-                                                  <p className="text-sm text-muted-foreground">
-                                                    Click or drag to upload document
-                                                  </p>
-                                                  <p className="text-xs text-muted-foreground mt-1">
-                                                    Word or PDF documents
-                                                  </p>
-                                                </div>
-                                                <Input
-                                                  id={`chapter-document-${chapter.id}`}
-                                                  type="file"
-                                                  accept=".doc,.docx,.pdf"
-                                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                  onChange={(e) => {
-                                                    if (e.target.files && e.target.files[0]) {
-                                                      // In a real app, you would upload this file to storage
-                                                      // Here we'll just simulate it with a fake URL
-                                                      const fileName = e.target.files[0].name;
-                                                      const fakeUrl = `uploaded:/${fileName}`;
-                                                      
+                                        
+                                        {/* Option 1: Write content directly */}
+                                        {!chapter.documentUrl && (
+                                          <div className="border rounded-md p-4">
+                                            <Textarea 
+                                              id={`chapter-content-${chapter.id}`}
+                                              value={chapter.wordContent || ''}
+                                              onChange={(e) => {
+                                                const updatedChapters = chapters.map(ch => 
+                                                  ch.id === chapter.id ? {...ch, wordContent: e.target.value, content: e.target.value} : ch
+                                                );
+                                                setChapters(updatedChapters);
+                                                
+                                                // Remove from empty chapters list if content is added
+                                                if (e.target.value.trim() !== "" && emptyChapters.includes(chapter.id)) {
+                                                  setEmptyChapters(prev => prev.filter(id => id !== chapter.id));
+                                                }
+                                              }}
+                                              placeholder="Write your chapter content here..."
+                                              className={`min-h-[200px] ${emptyChapters.includes(chapter.id) ? 'border-destructive' : ''}`}
+                                            />
+                                          </div>
+                                        )}
+                                        
+                                        {/* Option 2: Upload document */}
+                                        {chapter.documentUrl && (
+                                          <div className="border rounded-md p-4">
+                                            <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${emptyChapters.includes(chapter.id) && chapter.documentUrl === 'pending' ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
+                                              {chapter.documentUrl && chapter.documentUrl !== 'pending' ? (
+                                                <div className="flex items-center gap-2 text-sm">
+                                                  <FileText size={16} className="text-primary" />
+                                                  <span className="font-medium">Document uploaded</span>
+                                                  <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="ml-auto h-8"
+                                                    onClick={() => {
                                                       const updatedChapters = chapters.map(ch => 
-                                                        ch.id === chapter.id ? {...ch, documentUrl: fakeUrl, content: 'Document content: ' + fileName} : ch
+                                                        ch.id === chapter.id ? {...ch, documentUrl: undefined, content: ''} : ch
                                                       );
                                                       setChapters(updatedChapters);
-                                                      
-                                                      // Remove from empty chapters list if document is uploaded
-                                                      if (emptyChapters.includes(chapter.id)) {
-                                                        setEmptyChapters(prev => prev.filter(id => id !== chapter.id));
+                                                    }}
+                                                  >
+                                                    Remove
+                                                  </Button>
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <div className="py-4 flex flex-col items-center">
+                                                    <Upload size={24} className="mb-2 text-muted-foreground" />
+                                                    <p className="text-sm text-muted-foreground">
+                                                      Click or drag to upload document
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                      Word or PDF documents
+                                                    </p>
+                                                  </div>
+                                                  <Input
+                                                    id={`chapter-document-${chapter.id}`}
+                                                    type="file"
+                                                    accept=".doc,.docx,.pdf"
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                    onChange={(e) => {
+                                                      if (e.target.files && e.target.files[0]) {
+                                                        // In a real app, you would upload this file to storage
+                                                        // Here we'll just simulate it with a fake URL
+                                                        const fileName = e.target.files[0].name;
+                                                        const fakeUrl = `uploaded:/${fileName}`;
+                                                        
+                                                        const updatedChapters = chapters.map(ch => 
+                                                          ch.id === chapter.id ? {...ch, documentUrl: fakeUrl, content: 'Document content: ' + fileName} : ch
+                                                        );
+                                                        setChapters(updatedChapters);
+                                                        
+                                                        // Remove from empty chapters list if document is uploaded
+                                                        if (emptyChapters.includes(chapter.id)) {
+                                                          setEmptyChapters(prev => prev.filter(id => id !== chapter.id));
+                                                        }
                                                       }
-                                                    }
-                                                  }}
-                                                />
-                                              </>
-                                            )}
+                                                    }}
+                                                  />
+                                                </>
+                                              )}
+                                            </div>
                                           </div>
-                                        </div>
-                                      )}
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  /* Picture Book UI */
-                                  <div className="space-y-4">
-                                    <div className="border rounded-md p-4">
-                                      <h4 className="text-sm font-medium mb-4 flex justify-between items-center">
-                                        <span>Chapter Images</span>
-                                        <span className="text-xs text-muted-foreground">{chapter.images?.length || 0} images</span>
-                                      </h4>
-                                      
-                                      {/* Image gallery with drag-and-drop */}
-                                      {chapter.images?.length ? (
-                                        <div className="space-y-2 mb-4">
-                                          <DndContext
-                                            sensors={sensors}
-                                            collisionDetection={closestCenter}
-                                            onDragEnd={(event: DragEndEvent) => {
-                                              const { active, over } = event;
-                                              
-                                              if (over && active.id !== over.id) {
-                                                // Extract indices from IDs
-                                                const activeId = active.id.toString();
-                                                const overId = over.id.toString();
+                                  ) : (
+                                    /* Picture Book UI */
+                                    <div className="space-y-4">
+                                      <div className="border rounded-md p-4">
+                                        <h4 className="text-sm font-medium mb-4 flex justify-between items-center">
+                                          <span>Chapter Images</span>
+                                          <span className="text-xs text-muted-foreground">{chapter.images?.length || 0} images</span>
+                                        </h4>
+                                        
+                                        {/* Image gallery with drag-and-drop */}
+                                        {chapter.images?.length ? (
+                                          <div className="space-y-2 mb-4">
+                                            <DndContext
+                                              sensors={sensors}
+                                              collisionDetection={closestCenter}
+                                              onDragEnd={(event: DragEndEvent) => {
+                                                const { active, over } = event;
                                                 
-                                                const activeMatch = activeId.match(/-(\d+)$/);
-                                                const overMatch = overId.match(/-(\d+)$/);
-                                                
-                                                if (activeMatch && overMatch) {
-                                                  const activeIndex = parseInt(activeMatch[1]);
-                                                  const overIndex = parseInt(overMatch[1]);
+                                                if (over && active.id !== over.id) {
+                                                  // Extract indices from IDs
+                                                  const activeId = active.id.toString();
+                                                  const overId = over.id.toString();
                                                   
-                                                  reorderImages(
-                                                    chapter.id,
-                                                    activeIndex,
-                                                    overIndex
-                                                  );
+                                                  const activeMatch = activeId.match(/-(\d+)$/);
+                                                  const overMatch = overId.match(/-(\d+)$/);
+                                                  
+                                                  if (activeMatch && overMatch) {
+                                                    const activeIndex = parseInt(activeMatch[1]);
+                                                    const overIndex = parseInt(overMatch[1]);
+                                                    
+                                                    reorderImages(
+                                                      chapter.id,
+                                                      activeIndex,
+                                                      overIndex
+                                                    );
+                                                  }
+                                                }
+                                              }}
+                                            >
+                                              <SortableContext
+                                                items={chapter.images?.map((_, index) => `image-${chapter.id}-${index}`) || []}
+                                                strategy={verticalListSortingStrategy}
+                                              >
+                                                {chapter.images?.map((img, imgIndex) => (
+                                                  <SortableImageItem
+                                                    key={`image-${chapter.id}-${imgIndex}`}
+                                                    chapter={chapter}
+                                                    imgUrl={img}
+                                                    imgIndex={imgIndex}
+                                                    onRemoveImage={(index) => {
+                                                      const updatedImages = [...(chapter.images || [])];
+                                                      updatedImages.splice(index, 1);
+                                                      
+                                                      const updatedChapters = chapters.map(ch => 
+                                                        ch.id === chapter.id ? {
+                                                          ...ch, 
+                                                          images: updatedImages,
+                                                          content: updatedImages.length > 0 ? `Picture book with ${updatedImages.length} images` : ''
+                                                        } : ch
+                                                      );
+                                                      setChapters(updatedChapters as Chapter[]);
+                                                      
+                                                      // Add to empty chapters list if no images
+                                                      if (updatedImages.length === 0 && !emptyChapters.includes(chapter.id)) {
+                                                        setEmptyChapters(prev => [...prev, chapter.id]);
+                                                      }
+                                                    }}
+                                                  />
+                                                ))}
+                                              </SortableContext>
+                                            </DndContext>
+                                          </div>
+                                        ) : (
+                                          <div className="text-center mb-4 text-sm text-muted-foreground py-4">
+                                            No images added yet
+                                          </div>
+                                        )}
+                                        
+                                        {/* Upload image button */}
+                                        <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${emptyChapters.includes(chapter.id) ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
+                                          <div className="py-2 flex flex-col items-center">
+                                            <Upload size={24} className="mb-2 text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground">
+                                              Click or drag to upload images
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              JPG, JPEG, PNG or WebP, max 1MB each
+                                            </p>
+                                          </div>
+                                          <Input
+                                            id={`chapter-images-${chapter.id}`}
+                                            type="file"
+                                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            multiple
+                                            onChange={(e) => {
+                                              if (e.target.files && e.target.files.length > 0) {
+                                                // In a real app, you would upload these files to storage
+                                                // Here we'll just simulate it with fake URLs
+                                                const newImages = Array.from(e.target.files).map(file => {
+                                                  // Create object URLs for preview and store the original filename
+                                                  return {
+                                                    url: URL.createObjectURL(file),
+                                                    fileName: file.name
+                                                  };
+                                                });
+                                                
+                                                const updatedImages = [...(chapter.images || []), ...newImages];
+                                                
+                                                const updatedChapters = chapters.map(ch => 
+                                                  ch.id === chapter.id ? {
+                                                    ...ch, 
+                                                    images: updatedImages,
+                                                    content: `Picture book with ${updatedImages.length} images`
+                                                  } : ch
+                                                );
+                                                setChapters(updatedChapters as Chapter[]);
+                                                
+                                                // Remove from empty chapters list if images are added
+                                                if (emptyChapters.includes(chapter.id)) {
+                                                  setEmptyChapters(prev => prev.filter(id => id !== chapter.id));
                                                 }
                                               }
                                             }}
-                                          >
-                                            <SortableContext
-                                              items={chapter.images?.map((_, index) => `image-${chapter.id}-${index}`) || []}
-                                              strategy={verticalListSortingStrategy}
-                                            >
-                                              {chapter.images?.map((img, imgIndex) => (
-                                                <SortableImageItem
-                                                  key={`image-${chapter.id}-${imgIndex}`}
-                                                  chapter={chapter}
-                                                  imgUrl={img}
-                                                  imgIndex={imgIndex}
-                                                  onRemoveImage={(index) => {
-                                                    const updatedImages = [...(chapter.images || [])];
-                                                    updatedImages.splice(index, 1);
-                                                    
-                                                    const updatedChapters = chapters.map(ch => 
-                                                      ch.id === chapter.id ? {
-                                                        ...ch, 
-                                                        images: updatedImages,
-                                                        content: updatedImages.length > 0 ? `Picture book with ${updatedImages.length} images` : ''
-                                                      } : ch
-                                                    );
-                                                    setChapters(updatedChapters as Chapter[]);
-                                                    
-                                                    // Add to empty chapters list if no images
-                                                    if (updatedImages.length === 0 && !emptyChapters.includes(chapter.id)) {
-                                                      setEmptyChapters(prev => [...prev, chapter.id]);
-                                                    }
-                                                  }}
-                                                />
-                                              ))}
-                                            </SortableContext>
-                                          </DndContext>
+                                          />
                                         </div>
-                                      ) : (
-                                        <div className="text-center mb-4 text-sm text-muted-foreground py-4">
-                                          No images added yet
-                                        </div>
-                                      )}
-                                      
-                                      {/* Upload image button */}
-                                      <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${emptyChapters.includes(chapter.id) ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
-                                        <div className="py-2 flex flex-col items-center">
-                                          <Upload size={24} className="mb-2 text-muted-foreground" />
-                                          <p className="text-sm text-muted-foreground">
-                                            Click or drag to upload images
-                                          </p>
-                                          <p className="text-xs text-muted-foreground mt-1">
-                                            JPG, JPEG, PNG or WebP, max 1MB each
-                                          </p>
-                                        </div>
-                                        <Input
-                                          id={`chapter-images-${chapter.id}`}
-                                          type="file"
-                                          accept="image/jpeg,image/jpg,image/png,image/webp"
-                                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                          multiple
-                                          onChange={(e) => {
-                                            if (e.target.files && e.target.files.length > 0) {
-                                              // In a real app, you would upload these files to storage
-                                              // Here we'll just simulate it with fake URLs
-                                              const newImages = Array.from(e.target.files).map(file => {
-                                                // Create object URLs for preview and store the original filename
-                                                return {
-                                                  url: URL.createObjectURL(file),
-                                                  fileName: file.name
-                                                };
-                                              });
-                                              
-                                              const updatedImages = [...(chapter.images || []), ...newImages];
-                                              
-                                              const updatedChapters = chapters.map(ch => 
-                                                ch.id === chapter.id ? {
-                                                  ...ch, 
-                                                  images: updatedImages,
-                                                  content: `Picture book with ${updatedImages.length} images`
-                                                } : ch
-                                              );
-                                              setChapters(updatedChapters as Chapter[]);
-                                              
-                                              // Remove from empty chapters list if images are added
-                                              if (emptyChapters.includes(chapter.id)) {
-                                                setEmptyChapters(prev => prev.filter(id => id !== chapter.id));
-                                              }
-                                            }
-                                          }}
-                                        />
                                       </div>
                                     </div>
-                                  </div>
-                                )}
-                                
-                                {emptyChapters.includes(chapter.id) && (
-                                  <div className="flex items-center text-destructive text-xs mt-1">
-                                    <AlertCircle size={12} className="mr-1" />
-                                    <span>
-                                      {bookType === BOOK_TYPES.WORD_BOOK ? 
-                                        "Please add content or upload a document" : 
-                                        "Please upload at least one image"
-                                      }
-                                    </span>
-                                  </div>
-                                )}
+                                  )}
+                                  
+                                  {emptyChapters.includes(chapter.id) && (
+                                    <div className="flex items-center text-destructive text-xs mt-1">
+                                      <AlertCircle size={12} className="mr-1" />
+                                      <span>
+                                        {bookType === BOOK_TYPES.WORD_BOOK ? 
+                                          "Please add content or upload a document" : 
+                                          "Please upload at least one image"
+                                        }
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col justify-center items-center text-center text-muted-foreground mb-6">
-                  <div className="flex justify-center mb-4">
-                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                      <Book size={32} className="text-muted-foreground" />
+                          )}
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Book size={48} className="mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-muted-foreground mb-4">No chapters added yet</p>
+                    <div className="bg-white border border-dashed border-secondary/90 p-6 rounded-lg hover:border-secondary/80 transition-colors">
+                      <p className="text-sm mb-3 text-muted-foreground">Start by creating your first chapter</p>
+                      
+                      <div className="flex gap-2 max-w-md mx-auto">
+                        <Input
+                          placeholder="Chapter title"
+                          value={newChapterTitle}
+                          onChange={(e) => setNewChapterTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault(); // Prevent form submission
+                              handleAddChapter();
+                            }
+                          }}
+                          ref={newChapterInputRef}
+                        />
+                        <Button 
+                          type="button" 
+                          onClick={handleAddChapter} 
+                          className="flex-shrink-0"
+                        >
+                          <Plus size={16} className="mr-2" />
+                          Add
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <h4 className="text-lg font-medium mb-2">No chapters added yet</h4>
-                  <p className="max-w-md">
-                    Click the button below to add chapters to your book.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    You can also create your book without chapters and add them later.
-                  </p>
-                </div>
-              )}
-              
-              {/* Add chapter button - centered */}
-              <div className="flex justify-center">
-                <Button 
-                  type="button" 
-                  onClick={handleAddChapter}
-                  size="lg"
-                  className="gap-2 px-6"
-                >
-                  <Plus size={20} />
-                  Add Chapter
-                </Button>
+                )}
+                
+                {chapters.length > 0 && (
+                  <div className="bg-white border border-dashed border-secondary/90 p-4 rounded-lg mt-4 hover:border-secondary/80 transition-colors">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="New chapter title"
+                        value={newChapterTitle}
+                        onChange={(e) => setNewChapterTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault(); // Prevent form submission
+                            handleAddChapter();
+                          }
+                        }}
+                        ref={newChapterInputRef}
+                      />
+                      <Button 
+                        type="button" 
+                        onClick={handleAddChapter} 
+                        className="flex-shrink-0"
+                      >
+                        <Plus size={16} className="mr-2" />
+                        Add Chapter
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -46,7 +46,16 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${oswald.variable} antialiased min-h-full flex flex-col`}
+        className={`${oswald.variable} antialiased min-h-full flex flex-col bg-white`}
+        style={{
+          backgroundImage: 'url("/images/manga-background.png")',
+          backgroundSize: '800px',
+          backgroundRepeat: 'repeat',
+          backgroundAttachment: 'fixed',
+          backgroundPosition: 'center',
+          backgroundBlendMode: 'overlay',
+          backgroundColor: 'rgba(248, 248, 248, 0.78)',
+        }}
       >
         <QueryProvider>
           <AuthProvider>
