@@ -183,7 +183,7 @@ export default function BooksPage() {
   };
   
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-4">
       {/* Back button */}
       <div className="mb-3">
         <Button 

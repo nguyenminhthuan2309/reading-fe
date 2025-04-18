@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
-
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 // Define a set of pleasant background colors for avatars
@@ -32,10 +32,11 @@ export function getNameColor(name: string): string {
   return AVATAR_COLORS[colorIndex];
 }
 
+
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> & { gender?: string }
+>(({ className, gender, ...props }, ref) => (
   <AvatarPrimitive.Root
     ref={ref}
     className={cn(
@@ -61,17 +62,23 @@ AvatarImage.displayName = AvatarPrimitive.Image.displayName
 
 const AvatarFallback = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Fallback
-    ref={ref}
-    className={cn(
-      "flex h-full w-full items-center justify-center rounded-full bg-muted",
-      className
-    )}
-    {...props}
-  />
-))
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback> & { gender?: string }
+>(({ className, gender, ...props }, ref) => {
+  
+  
+  return (
+    <AvatarPrimitive.Fallback
+      ref={ref}
+      className={cn(
+        "flex h-full w-full items-center justify-center rounded-full bg-muted",
+        className
+      )}
+      {...props}
+    >
+      <Image src="/images/male.png" alt="Male Avatar" width={24} height={24} />
+    </AvatarPrimitive.Fallback>
+  );
+})
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
 
 export { Avatar, AvatarImage, AvatarFallback } 

@@ -177,4 +177,195 @@ export const featuredBooks = [
     genre: "Mystery" as Genre,
     progress: 0.82 // 82% read
   }
-]; 
+];
+
+// Mock comments data
+export const bookComments = {
+  "1": [
+    {
+      id: "c1",
+      userId: "user1",
+      username: "bookworm42",
+      userAvatar: "/images/avatar.png",
+      content: "This book kept me on the edge of my seat the entire time! Detective Sarah Chen is an incredibly well-written character.",
+      rating: 5,
+      timestamp: "2023-10-15T14:30:00Z"
+    },
+    {
+      id: "c2",
+      userId: "user2",
+      username: "mystery_lover",
+      userAvatar: "/images/avatar.png",
+      content: "The setting of Maplewood was so vivid, I felt like I was there. Great atmosphere!",
+      rating: 4,
+      timestamp: "2023-10-12T09:15:00Z"
+    },
+    {
+      id: "c3",
+      userId: "user3",
+      username: "late_night_reader",
+      userAvatar: "/images/avatar.png",
+      content: "The twist in chapter 15 completely caught me off guard. Brilliant storytelling.",
+      rating: 5,
+      timestamp: "2023-10-10T22:45:00Z"
+    },
+    {
+      id: "c13",
+      userId: "user13",
+      username: "thriller_fan",
+      userAvatar: "/images/avatar.png",
+      content: "The tension in this book builds so perfectly. I love how the author slowly unravels the mystery and keeps you guessing until the very end.",
+      rating: 5,
+      timestamp: "2023-10-09T15:45:00Z"
+    },
+    {
+      id: "c14",
+      userId: "user14",
+      username: "book_nerd99",
+      userAvatar: "/images/avatar.png",
+      content: "I found the pacing a bit slow in the middle, but the ending more than made up for it. Great character development!",
+      rating: 4,
+      timestamp: "2023-10-08T11:30:00Z"
+    },
+    {
+      id: "c15",
+      userId: "user15",
+      username: "crime_fiction_lover",
+      userAvatar: "/images/avatar.png",
+      content: "As a long-time reader of crime novels, I found this one particularly refreshing. The attention to forensic details is impressive.",
+      rating: 5,
+      timestamp: "2023-10-07T17:22:00Z"
+    },
+    {
+      id: "c16",
+      userId: "user16",
+      username: "book_critic",
+      userAvatar: "/images/avatar.png",
+      content: "While the plot was engaging, I felt some of the side characters weren't developed enough. Still enjoyed it overall.",
+      rating: 3,
+      timestamp: "2023-10-06T09:15:00Z"
+    },
+    {
+      id: "c17",
+      userId: "user17",
+      username: "avid_reader",
+      userAvatar: "/images/avatar.png",
+      content: "I finished this in one sitting! The way the author connects seemingly unrelated events is masterful. Can't wait for the sequel!",
+      rating: 5,
+      timestamp: "2023-10-05T20:40:00Z"
+    }
+  ],
+  "2": [
+    {
+      id: "c4",
+      userId: "user4",
+      username: "sci_fi_fanatic",
+      userAvatar: "/images/avatar.png",
+      content: "The world-building in this book is absolutely phenomenal. The descriptions of alien civilizations are so creative!",
+      rating: 5,
+      timestamp: "2023-10-14T16:20:00Z"
+    },
+    {
+      id: "c5",
+      userId: "user5",
+      username: "space_explorer",
+      userAvatar: "/images/avatar.png",
+      content: "Captain Mira is one of the most compelling protagonists I've encountered in sci-fi lately.",
+      rating: 4,
+      timestamp: "2023-10-11T11:05:00Z"
+    }
+  ],
+  "3": [
+    {
+      id: "c6",
+      userId: "user6",
+      username: "romance_addict",
+      userAvatar: "/images/avatar.png",
+      content: "The chemistry between Emma and Thomas is electric! I couldn't put this book down.",
+      rating: 5,
+      timestamp: "2023-10-13T20:10:00Z"
+    }
+  ],
+  "4": [
+    {
+      id: "c7",
+      userId: "user7",
+      username: "fantasy_dreamer",
+      userAvatar: "/images/avatar.png",
+      content: "The worldbuilding in this book is absolutely incredible. I was transported to the lost kingdom from the very first page.",
+      rating: 5,
+      timestamp: "2023-10-15T19:45:00Z"
+    },
+    {
+      id: "c8",
+      userId: "user8",
+      username: "bookish_wanderer",
+      userAvatar: "/images/avatar.png",
+      content: "The protagonist's journey from orphan to hero was so well developed. You can really feel her growth throughout the story.",
+      rating: 4,
+      timestamp: "2023-10-14T13:20:00Z"
+    }
+  ],
+  "9": [
+    {
+      id: "c9",
+      userId: "user9",
+      username: "neural_navigator",
+      userAvatar: "/images/avatar.png",
+      content: "As someone who works in neuroscience, I found the dream technology fascinating and surprisingly plausible. Great research by the author.",
+      rating: 5,
+      timestamp: "2023-10-16T11:30:00Z"
+    }
+  ],
+  "16": [
+    {
+      id: "c10",
+      userId: "user10",
+      username: "wind_whisperer",
+      userAvatar: "/images/avatar.png",
+      content: "This book gave me chills! The atmosphere is so eerie and the main character's ability to hear the whispers is described in such a visceral way.",
+      rating: 5,
+      timestamp: "2023-10-12T22:15:00Z"
+    },
+    {
+      id: "c11",
+      userId: "user11",
+      username: "mystery_maven",
+      userAvatar: "/images/avatar.png",
+      content: "I thought I had figured out the twist halfway through, but I was completely wrong. The ending floored me!",
+      rating: 5,
+      timestamp: "2023-10-10T18:40:00Z"
+    },
+    {
+      id: "c12",
+      userId: "user12",
+      username: "page_turner",
+      userAvatar: "/images/avatar.png",
+      content: "I literally stayed up all night to finish this book. The pacing is perfect and the characters feel so real.",
+      rating: 4,
+      timestamp: "2023-10-08T09:55:00Z"
+    }
+  ]
+};
+
+// Function to get related books based on genre
+export function getRelatedBooks(bookId: string, limit: number = 4) {
+  const book = featuredBooks.find(b => b.id === bookId);
+  if (!book) return [];
+  
+  // Get books with the same genre, excluding the current book
+  const sameGenreBooks = featuredBooks
+    .filter(b => b.genre === book.genre && b.id !== book.id);
+  
+  // If we don't have enough books of the same genre, add some other popular books
+  if (sameGenreBooks.length < limit) {
+    const otherPopularBooks = featuredBooks
+      .filter(b => b.genre !== book.genre && b.id !== book.id)
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, limit - sameGenreBooks.length);
+    
+    return [...sameGenreBooks, ...otherPopularBooks].slice(0, limit);
+  }
+  
+  return sameGenreBooks.slice(0, limit);
+} 

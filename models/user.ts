@@ -17,6 +17,7 @@ export type User = {
   bio: string;
   location: string;
   birthday?: string; // ISO date string
+  gender?: string; // Added gender field
   readingStats: {
     booksRead: number;
     chaptersRead: number;
@@ -81,4 +82,5 @@ export interface SignupCredentials {
   name: string;
   email: string;
   password: string;
+  gender?: string; // Added gender field
 }

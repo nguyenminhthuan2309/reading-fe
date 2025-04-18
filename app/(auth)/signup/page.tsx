@@ -8,6 +8,9 @@ import * as yup from "yup";
 import { FormInput } from "@/components/ui/form-input";
 import { useAuth } from "@/lib/hooks";
 import { toast } from "sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 // Define validation schema with Yup
 const signupSchema = yup.object({
@@ -31,6 +34,7 @@ type SignupFormData = yup.InferType<typeof signupSchema>;
 
 export default function SignUp() {
   const { signup, isSigningUp } = useAuth();
+  const [gender, setGender] = useState<string>("male");
   
   const {
     register,
@@ -45,7 +49,8 @@ export default function SignUp() {
       await signup({ 
         name: data.name, 
         email: data.email, 
-        password: data.password 
+        password: data.password,
+        gender: gender
       });
     } catch (error) {
       console.error("Error creating account:", error);
@@ -81,6 +86,36 @@ export default function SignUp() {
               required
               placeholder="Enter your email"
             />
+            
+            <div className="space-y-2">
+              <Label className="flex items-center">
+                Gender
+              </Label>
+              <RadioGroup
+                value={gender}
+                onValueChange={setGender}
+                className="flex space-x-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="male" id="male" />
+                  <Label htmlFor="male" className="font-normal cursor-pointer">
+                    Male
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="female" id="female" />
+                  <Label htmlFor="female" className="font-normal cursor-pointer">
+                    Female
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="other" id="other" />
+                  <Label htmlFor="other" className="font-normal cursor-pointer">
+                    Other
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
             
             <FormInput
               label="Password"

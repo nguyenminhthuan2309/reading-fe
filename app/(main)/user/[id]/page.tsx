@@ -61,6 +61,7 @@ import { useUserStore } from "@/lib/store";
 import { User, UserPreferences } from "@/models";
 import { Genre } from "@/models/genre";
 import { BookCard } from "@/components/books/book-card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 // Create a complete initial user data with proper types
 const defaultPreferences: Required<UserPreferences> = {
@@ -474,33 +475,27 @@ export default function UserProfilePage() {
         <div className="md:w-1/4 h-fit self-start">
           <div className="space-y-0.5 pr-2 md:pr-4 max-h-[calc(100vh-120px)] overflow-y-auto">
             <div className="flex flex-col items-center mb-5 p-4 bg-white rounded-lg">
-              <div className="relative w-20 h-20 rounded-full overflow-hidden border border-primary/20 shadow-sm mb-3 ring-2 ring-secondary/10 group">
-          {/* Fallback avatar if no image exists */}
-                <div className="absolute inset-0 bg-gray-50 flex items-center justify-center">
-                  <UserIcon className="w-10 h-10 text-gray-400" />
-          </div>
-          {/* Will display if image exists */}
-          {userData.avatar && (
-            <Image
-              src={userData.avatar}
-              alt={userData.name}
-              fill
-              className="object-cover"
-              priority
-            />
-          )}
+              <div className="relative mb-3">
+                <Avatar className="w-20 h-20 mx-auto" gender={userData.gender}>
+                  {userData.avatar && (
+                    <AvatarImage src={userData.avatar} alt={userData.name} />
+                  )}
+                  <AvatarFallback gender={userData.gender}>
+                  </AvatarFallback>
+                </Avatar>
                 
                 {/* Edit avatar overlay - only visible for the profile owner */}
                 {isMyProfile && (
                   <>
                     <label 
                       htmlFor="avatar-upload"
-                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer rounded-full"
+                      style={{ top: 0, left: 'calc(50% - 40px)', width: '80px', height: '80px' }}
                     >
                       <div className="flex flex-col items-center text-white">
                         <Camera size={18} className="mb-1" />
                         <span className="text-xs font-medium">Change Photo</span>
-        </div>
+                      </div>
                     </label>
                     <input 
                       id="avatar-upload" 

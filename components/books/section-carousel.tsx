@@ -22,12 +22,17 @@ export function SectionCarousel({ title, books, linkHref, className }: SectionCa
   const isFirstSection = title === "Recently Viewed";
   
   return (
-    <section className={cn(isFirstSection ? "pt-1 pb-4 group" : "py-4 group", className)}>
+    <section className={cn(isFirstSection ? "pt-1 pb-4 group" : "py-6 group", className)}>
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-1">
-          <h2 className="text-xl font-bold text-black">{title}</h2>
-          <Link href={linkHref} className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 hover:underline">
-            View All <ChevronRight className="h-4 w-4" />
+          {/* Header with pill shape */}
+          <div className="flex items-center">
+            <div className="h-8 w-3 bg-gradient-to-b from-red-500 to-red-600 rounded-full mr-3 shadow-sm"></div>
+            <h2 className="text-xl font-bold text-black">{title}</h2>
+          </div>
+          
+          <Link href={linkHref} className="flex items-center gap-1 text-sm font-medium text-red-500 hover:text-red-600 hover:underline group">
+            View All <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
         
@@ -47,7 +52,7 @@ export function SectionCarousel({ title, books, linkHref, className }: SectionCa
                   key={book.id} 
                   className="pl-6 basis-full sm:basis-[45%] md:basis-[32%] lg:basis-[23%] xl:basis-[19%] p-2"
                 >
-                  <div className="transition-all duration-200 transform hover:scale-105 mx-1">
+                  <div className="transition-all duration-200 transform hover:scale-[1.02] mx-1 rounded-xl overflow-hidden hover:shadow-md">
                     <BookCard
                       id={book.id}
                       title={book.title}
@@ -57,7 +62,7 @@ export function SectionCarousel({ title, books, linkHref, className }: SectionCa
                       rating={book.rating}
                       genre={book.genre}
                       progress={book.progress}
-                      className="border-0 bg-white shadow-none"
+                      className="shadow-none"
                     />
                   </div>
                 </CarouselItem>

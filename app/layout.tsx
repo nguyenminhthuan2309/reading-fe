@@ -1,6 +1,8 @@
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { AuthProvider } from '@/lib/providers/AuthProvider';
+import { LanguageProvider } from '@/lib/providers/LanguageProvider';
 import { Toaster } from '@/components/Toaster';
+import { ThemeProvider } from 'next-themes';
 import type { Metadata } from "next";
 import { Oswald } from "next/font/google";
 import "./globals.css";
@@ -39,14 +41,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${oswald.variable} antialiased min-h-full flex flex-col bg-white`}
+        className={`${oswald.variable} antialiased min-h-full flex flex-col bg-white dark:bg-gray-950 dark:text-white`}
         style={{
           backgroundImage: 'url("/images/manga-background.png")',
           backgroundSize: '800px',
@@ -57,12 +59,16 @@ export default function RootLayout({
           backgroundColor: 'rgba(248, 248, 248, 0.78)',
         }}
       >
-        <QueryProvider>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </QueryProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          <LanguageProvider>
+            <QueryProvider>
+              <AuthProvider>
+                {children}
+                <Toaster />
+              </AuthProvider>
+            </QueryProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

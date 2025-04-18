@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BookOpen, Star, Clock, Bookmark } from "lucide-react";
@@ -44,10 +44,20 @@ export function BookCard({
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize state on client only
   useEffect(() => {
     setIsLoaded(true);
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   // Get genre display name 
@@ -56,97 +66,118 @@ export function BookCard({
     return option?.label || genre;
   };
   
+  // Hover handlers with delay for better UX
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsOpen(true);
+  };
+  
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      // Check if cursor is over the popover or the card
+      const isOverPopover = popoverRef.current && 
+        popoverRef.current.matches(':hover');
+      
+      if (!isOverPopover) {
+        setIsOpen(false);
+      }
+    }, 300); // 300ms delay gives time to move to popover
+  };
+  
   // Card content that's used in both cases
   const CardContent = () => (
     <div 
       className={cn(
-        "relative h-[360px] rounded-xl overflow-hidden transition-transform duration-300 hover:scale-105 cursor-pointer", 
+        "flex flex-col rounded-xl overflow-hidden transition-transform duration-300 cursor-pointer border border-gray-200 bg-white", 
         className
       )}
     >
-      {/* Cover image as background */}
-      <div className="absolute inset-0 w-full h-full">
-        <Image
-          src="/images/book-cover.jpeg"
-          alt={title}
-          fill
-          className="object-cover"
-          priority
-        />
-        {/* Gradient overlay for better text visibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+      {/* Cover image container with padding */}
+      <div className="p-3 pt-4">
+        <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden shadow-sm">
+          {/* Cover image */}
+          <Image
+            src="/images/book-cover.jpeg"
+            alt={title}
+            fill
+            className="object-cover"
+            priority
+          />
+          
+          {/* Genre badge */}
+          <div className="absolute top-3 left-3 z-10">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{getGenreDisplayName()}</span>
+          </div>
+        </div>
       </div>
       
-      {/* Bookmark icon in top right corner */}
-      {isLoaded && (
-        <button 
-          className="absolute top-3 right-3 z-20 p-1.5 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsBookmarked(!isBookmarked);
-          }}
-        >
-          <Bookmark 
-            className={cn(
-              "h-5 w-5 transition-colors", 
-              isBookmarked ? "text-red-500 fill-red-500" : "text-white"
-            )} 
-          />
-        </button>
-      )}
-      
-      {/* Content overlaid on image, aligned to bottom */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 p-4 md:p-5">
-        <div className="mb-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/50 text-white uppercase font-bold">{getGenreDisplayName()}</span>
-        </div>
-        
+      {/* Basic info below the cover */}
+      <div className="px-4 pb-4">
         <Link href={`/books/${id}`}>
-          <h3 className="text-lg font-extrabold uppercase mb-1 text-white leading-tight line-clamp-2 hover:underline">{title}</h3>
+          <h3 className="font-medium text-gray-900 leading-tight line-clamp-1 hover:text-red-600 transition-colors">{title}</h3>
         </Link>
-        
-        <p className="text-xs text-gray-300 mb-3">by {author}</p>
-        
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center gap-2">
+        <p className="text-xs text-gray-600 mt-1">by {author}</p>
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center space-x-2">
             <div className="flex items-center">
-              <BookOpen className="h-3 w-3 text-gray-300 mr-1" />
-              <span className="text-xs text-gray-300">{chapters} Ch</span>
+              <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+              <span className="text-xs ml-1 text-gray-700">{rating.toFixed(1)}</span>
             </div>
-            
-            {progress > 0 && (
-              <div className="flex items-center">
-                <div className="relative h-1.5 w-12 bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className="absolute top-0 left-0 h-full bg-red-600 rounded-full" 
-                    style={{ width: `${progress * 100}%` }}
-                  />
-                </div>
-                <span className="text-[9px] text-gray-300 ml-1">{Math.round(progress * 100)}%</span>
-              </div>
-            )}
+            <span className="text-gray-400 text-xs">•</span>
+            <div className="flex items-center">
+              <BookOpen className="h-3.5 w-3.5 text-gray-500" />
+              <span className="text-xs ml-1 text-gray-700">{chapters} Ch</span>
+            </div>
           </div>
           
-          <div className="flex items-center">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star 
-                key={star} 
-                className={`h-3 w-3 ${star <= Math.round(rating) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-600'} mr-0.5`}
-              />
-            ))}
-          </div>
+          {progress > 0 && (
+            <div className="flex items-center">
+              <div className="relative h-1.5 w-12 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="absolute top-0 left-0 h-full bg-red-600 rounded-full" 
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-gray-600 ml-1">{Math.round(progress * 100)}%</span>
+            </div>
+          )}
         </div>
         
-        <Link 
-          href={hasStartedReading 
-            ? `/read/${id}?chapter=${Math.ceil(progress * chapters)}` 
-            : `/read/${id}?chapter=1`} 
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button variant="destructive" size="sm" className="cursor-pointer w-full text-xs">
-            {hasStartedReading ? 'Continue Reading' : 'Read First Ch.'}
+        {/* Action buttons */}
+        <div className="flex gap-2 mt-3">
+          <Link 
+            href={hasStartedReading 
+              ? `/read/${id}?chapter=${Math.ceil(progress * chapters)}` 
+              : `/read/${id}?chapter=1`} 
+            className="flex-1"
+          >
+            <Button variant="destructive" size="sm" className="w-full text-xs h-8 rounded-lg">
+              {hasStartedReading ? 'Continue' : 'Read'}
+            </Button>
+          </Link>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={cn(
+              "h-8 px-2 rounded-lg border", 
+              isBookmarked 
+                ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:text-red-700" 
+                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+            )}
+            onClick={() => setIsBookmarked(!isBookmarked)}
+          >
+            <Bookmark 
+              className={cn(
+                "h-4 w-4 transition-colors", 
+                isBookmarked ? "text-red-500 fill-red-500" : "text-gray-500"
+              )} 
+            />
           </Button>
-        </Link>
+        </div>
       </div>
     </div>
   );
@@ -166,20 +197,24 @@ export function BookCard({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div 
-          onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={() => setIsOpen(false)}
+          ref={triggerRef}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           <CardContent />
         </div>
       </PopoverTrigger>
       <PopoverContent 
+        ref={popoverRef}
         className="w-[320px] p-0 border-none rounded-lg shadow-xl transition-opacity duration-300 z-50" 
-        sideOffset={20}
+        sideOffset={5}
         align="center"
         alignOffset={0}
         side="right"
         avoidCollisions={true}
-        collisionPadding={20}
+        collisionPadding={10}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         <div className="bg-white rounded-lg overflow-hidden border border-gray-200">
           <div className="p-4">
