@@ -1,4 +1,5 @@
-import { get, post, put, del, uploadFile, ApiResponse } from '../api';
+import { get, post, put, del, uploadFile } from '../api';
+import { ApiResponse } from '@/models/api';
 import { Genre } from '@/models/genre';
 
 // Types
@@ -59,55 +60,55 @@ export async function getBookById(bookId: string): Promise<ApiResponse<Book>> {
 /**
  * Create a new book
  */
-export async function createBook(bookData: Partial<Book>, token: string): Promise<ApiResponse<Book>> {
-  return post<Book>('/books', bookData, { token });
+export async function createBook(bookData: Partial<Book>): Promise<ApiResponse<Book>> {
+  return post<Book>('/books', bookData, { isProtectedRoute: true });
 }
 
 /**
  * Update an existing book
  */
-export async function updateBook(bookId: string, bookData: Partial<Book>, token: string): Promise<ApiResponse<Book>> {
-  return put<Book>(`/books/${bookId}`, bookData, { token });
+export async function updateBook(bookId: string, bookData: Partial<Book>): Promise<ApiResponse<Book>> {
+  return put<Book>(`/books/${bookId}`, bookData, { isProtectedRoute: true });
 }
 
 /**
  * Delete a book
  */
-export async function deleteBook(bookId: string, token: string): Promise<ApiResponse<{ success: boolean }>> {
-  return del<{ success: boolean }>(`/books/${bookId}`, { token });
+export async function deleteBook(bookId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return del<{ success: boolean }>(`/books/${bookId}`, { isProtectedRoute: true });
 }
 
 /**
  * Add a chapter to a book
  */
-export async function addChapter(bookId: string, chapterData: Partial<Chapter>, token: string): Promise<ApiResponse<Chapter>> {
-  return post<Chapter>(`/books/${bookId}/chapters`, chapterData, { token });
+export async function addChapter(bookId: string, chapterData: Partial<Chapter>): Promise<ApiResponse<Chapter>> {
+  return post<Chapter>(`/books/${bookId}/chapters`, chapterData, { isProtectedRoute: true });
 }
 
 /**
  * Update a chapter
  */
-export async function updateChapter(bookId: string, chapterId: string, chapterData: Partial<Chapter>, token: string): Promise<ApiResponse<Chapter>> {
-  return put<Chapter>(`/books/${bookId}/chapters/${chapterId}`, chapterData, { token });
+export async function updateChapter(bookId: string, chapterId: string, chapterData: Partial<Chapter>): Promise<ApiResponse<Chapter>> {
+  return put<Chapter>(`/books/${bookId}/chapters/${chapterId}`, chapterData, { isProtectedRoute: true });
 }
 
 /**
  * Delete a chapter
  */
-export async function deleteChapter(bookId: string, chapterId: string, token: string): Promise<ApiResponse<{ success: boolean }>> {
-  return del<{ success: boolean }>(`/books/${bookId}/chapters/${chapterId}`, { token });
+export async function deleteChapter(bookId: string, chapterId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return del<{ success: boolean }>(`/books/${bookId}/chapters/${chapterId}`, { isProtectedRoute: true });
 }
 
 /**
  * Upload a book cover image
  */
-export async function uploadCoverImage(bookId: string, file: File, token: string): Promise<ApiResponse<{ url: string }>> {
-  return uploadFile<{ url: string }>(`/books/${bookId}/cover`, file, { token });
+export async function uploadCoverImage(bookId: string, file: File): Promise<ApiResponse<{ url: string }>> {
+  return uploadFile<{ url: string }>(`/books/${bookId}/cover`, file, { isProtectedRoute: true });
 }
 
 /**
  * Upload a chapter image
  */
-export async function uploadChapterImage(bookId: string, chapterId: string, file: File, token: string): Promise<ApiResponse<{ url: string }>> {
-  return uploadFile<{ url: string }>(`/books/${bookId}/chapters/${chapterId}/image`, file, { token });
+export async function uploadChapterImage(bookId: string, chapterId: string, file: File): Promise<ApiResponse<{ url: string }>> {
+  return uploadFile<{ url: string }>(`/books/${bookId}/chapters/${chapterId}/image`, file, { isProtectedRoute: true });
 } 

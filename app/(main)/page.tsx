@@ -148,7 +148,7 @@ export default function Home() {
                 </div>
                 
                 <div className="text-center">
-                  <Link href="/create">
+                  <Link href="/books/create">
                     <Button size="lg" className="bg-red-700 hover:bg-red-800 text-white rounded-full px-8 font-semibold text-base">
                       Start Creating
                     </Button>

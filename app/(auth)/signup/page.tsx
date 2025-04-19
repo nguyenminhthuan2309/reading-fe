@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 // Define validation schema with Yup
 const signupSchema = yup.object({
@@ -35,6 +36,8 @@ type SignupFormData = yup.InferType<typeof signupSchema>;
 export default function SignUp() {
   const { signup, isSigningUp } = useAuth();
   const [gender, setGender] = useState<string>("male");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const {
     register,
@@ -56,6 +59,14 @@ export default function SignUp() {
       console.error("Error creating account:", error);
       toast.error(error instanceof Error ? error.message : "Failed to create account");
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
   };
 
   return (
@@ -117,25 +128,53 @@ export default function SignUp() {
               </RadioGroup>
             </div>
             
-            <FormInput
-              label="Password"
-              name="password"
-              type="password"
-              register={register}
-              error={errors.password}
-              required
-              placeholder="Create a password"
-            />
+            <div className="relative">
+              <FormInput
+                label="Password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                register={register}
+                error={errors.password}
+                required
+                placeholder="Create a password"
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-[38px] text-muted-foreground hover:text-foreground p-1"
+                onClick={togglePasswordVisibility}
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             
-            <FormInput
-              label="Confirm Password"
-              name="confirmPassword"
-              type="password"
-              register={register}
-              error={errors.confirmPassword}
-              required
-              placeholder="Confirm your password"
-            />
+            <div className="relative">
+              <FormInput
+                label="Confirm Password"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                register={register}
+                error={errors.confirmPassword}
+                required
+                placeholder="Confirm your password"
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-[38px] text-muted-foreground hover:text-foreground p-1"
+                onClick={toggleConfirmPasswordVisibility}
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             
             <Button type="submit" className="w-full" disabled={isSigningUp}>
               {isSigningUp ? "Creating Account..." : "Sign Up"}

@@ -17,7 +17,7 @@ const apiClient: AxiosInstance = axios.create({
 // API request options
 interface RequestOptions {
   headers?: Record<string, string>;
-  token?: string;
+  token?: string; // Now optional in all cases as we will get from store if not provided
   isProtectedRoute?: boolean; // Flag to identify protected routes
 }
 
@@ -41,10 +41,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       handle401Error();
     }
-    
-    // Log error for debugging
-    console.error('API Error:', error.message, error.response?.data);
-    
+
     // Continue to throw the error so we can handle it in the caller
     return Promise.reject(error);
   }
@@ -60,8 +57,19 @@ const configureRequest = (options: RequestOptions = {}): AxiosRequestConfig => {
     },
   };
   
-  // Add auth token if provided
-  if (options.token) {
+  // For protected routes, get token from store if not provided
+  if (options.isProtectedRoute) {
+    const token = options.token || useUserStore.getState().token;
+    
+    if (token) {
+      config.headers = {
+        ...config.headers,
+        'Authorization': `Bearer ${token}`,
+      };
+    }
+  } 
+  // For non-protected routes, only add token if explicitly provided
+  else if (options.token) {
     config.headers = {
       ...config.headers,
       'Authorization': `Bearer ${options.token}`,
@@ -89,27 +97,17 @@ const transformResponse = <T>(response: AxiosResponse): ApiResponse<T> => {
  */
 const handleApiError = <T>(error: any): ApiResponse<T> => {
   // If we have a response from the server with an error status
-  if (error.response) {
-    return {
-      data: {
-        code: error.response.status,
-        data: null as T,
-        msg: error.response.data.message || 'An error occurred',
-        status: false,
-      },
-      status: error.response.status as ApiResponseStatus,
-    };
-  }
+  if (error.response) return error.response;
   
   // For network errors or other issues
   return {
     data: {
-      code: 500,
+      code: error.response.status,
       data: null as T,
       msg: error.message || 'Unknown error occurred',
       status: false,
     },
-    status: 500 as ApiResponseStatus,
+    status: error.response.status as ApiResponseStatus,
   };
 };
 
@@ -155,6 +153,18 @@ export async function put<T, D = any>(endpoint: string, body: D, options: Reques
 export async function del<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
   try {
     const response = await apiClient.delete<T>(endpoint, configureRequest(options));
+    return transformResponse<T>(response);
+  } catch (error) {
+    return handleApiError<T>(error);
+  }
+}
+
+/**
+ * Make a PATCH request to the API
+ */
+export async function patch<T, D = any>(endpoint: string, body: D, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+  try {
+    const response = await apiClient.patch<T>(endpoint, body, configureRequest(options));
     return transformResponse<T>(response);
   } catch (error) {
     return handleApiError<T>(error);

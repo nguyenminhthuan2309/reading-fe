@@ -15,37 +15,46 @@ export default function VerifyEmailPage() {
   
   const { 
     verifyEmail, 
-    isVerifyingEmail, 
+    isVerifyingEmail,
+    isVerificationSuccessful,
+    isVerificationFailed,
+    verificationError,
+    verificationData,
     resendVerification, 
     isResendingVerification 
   } = useAuth();
   
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [verificationMessage, setVerificationMessage] = useState('');
 
   // Verify email with token when page loads
   useEffect(() => {
     if (!token) return;
     
-    setVerificationStatus('loading');
-    
     // Use the verifyEmail mutation from the auth hook
-    verifyEmail(token, {
-      onSuccess: (data) => {
-        setVerificationStatus('success');
-        setVerificationMessage(data.message);
-        
-        // Redirect to sign in page after 3 seconds
-        setTimeout(() => {
-          router.push('/signin');
-        }, 3000);
-      },
-      onError: (error) => {
-        setVerificationStatus('error');
-        setVerificationMessage(error instanceof Error ? error.message : 'Verification failed');
-      }
-    });
-  }, [token, verifyEmail, router]);
+    verifyEmail(token);
+  }, [token, verifyEmail]);
+  
+  // Handle verification success/failure
+  useEffect(() => {
+    if (isVerificationSuccessful) {
+      setVerificationMessage(verificationData?.message || 'Your email has been successfully verified. You can now sign in.');
+      
+      // Redirect to sign in page after 3 seconds
+      const redirectTimer = setTimeout(() => {
+        router.push('/signin');
+      }, 3000);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+    
+    if (isVerificationFailed) {
+      setVerificationMessage(
+        verificationError instanceof Error 
+          ? verificationError.message 
+          : 'Verification failed'
+      );
+    }
+  }, [isVerificationSuccessful, isVerificationFailed, verificationData, verificationError, router]);
 
   const handleResendVerification = () => {
     if (!email) return;
@@ -55,25 +64,25 @@ export default function VerifyEmailPage() {
   };
 
   // Show verification result if we have a token
-  if (token && (verificationStatus === 'success' || verificationStatus === 'error')) {
+  if (token && (isVerificationSuccessful || isVerificationFailed)) {
     return (
       <div className="flex flex-col bg-background">
         <div className="flex-1 flex items-center justify-center px-4 py-12">
           <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
             <div className="text-center">
               <div className="flex justify-center mb-4">
-                {verificationStatus === 'success' ? (
+                {isVerificationSuccessful ? (
                   <CheckCircle className="h-16 w-16 text-green-500" />
                 ) : (
                   <XCircle className="h-16 w-16 text-red-500" />
                 )}
               </div>
               <h1 className="text-3xl font-bold mb-4">
-                {verificationStatus === 'success' ? 'Email Verified' : 'Verification Failed'}
+                {isVerificationSuccessful ? 'Email Verified' : 'Verification Failed'}
               </h1>
               <p className="text-muted-foreground mb-6">{verificationMessage}</p>
               
-              {verificationStatus === 'success' ? (
+              {isVerificationSuccessful ? (
                 <p className="text-sm text-muted-foreground">Redirecting to sign in page...</p>
               ) : (
                 <div className="space-y-4">
@@ -112,7 +121,7 @@ export default function VerifyEmailPage() {
   }
 
   // Loading state
-  if (token && (verificationStatus === 'loading' || isVerifyingEmail)) {
+  if (token && isVerifyingEmail) {
     return (
       <div className="flex flex-col bg-background">
         <div className="flex-1 flex items-center justify-center px-4 py-12">

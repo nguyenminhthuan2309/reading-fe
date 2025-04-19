@@ -16,7 +16,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initAuth = async () => {
       // Check for cookie token
-      const cookieToken = Cookies.get('auth_token') || undefined;
+      const cookieToken = Cookies.get('auth_token');
       
       // If no token in cookie, user is a guest - render immediately
       if (!cookieToken && !token) {
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Try to get the user data with the token if we don't have user data yet
       if (!user) {
         try {
-          const response = await getCurrentUser(cookieToken);
+          const response = await getCurrentUser();
           if (response.data?.data) {
             setUser(response.data.data);
           }

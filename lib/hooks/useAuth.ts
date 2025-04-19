@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store';
 import { LoginCredentials, SignupCredentials } from '@/models';
 
-const USER_QUERY_KEY = 'currentUser';
+const USER_QUERY_KEY = 'me';
 const EMAIL_VERIFICATION_KEY = 'emailVerification';
 
 export function useAuth() {
@@ -36,7 +36,7 @@ export function useAuth() {
     queryKey: [USER_QUERY_KEY],
     queryFn: async () => {
       if (!token) return null;
-      const response = await getCurrentUser(token);
+      const response = await getCurrentUser();
       if (response.data?.data) {
         setUser(response.data.data);
         return response.data.data;
@@ -44,31 +44,6 @@ export function useAuth() {
       return null;
     },
     enabled: !!token && !user,
-  });
-
-  // Login mutation
-  const { mutate: loginMutation, isPending: isLoggingIn } = useMutation({
-    mutationFn: async (credentials: LoginCredentials) => {
-      const response = await login(credentials);
-      
-      if (response.status !== 201) {
-        toast.error(response.data.msg);
-        throw new Error(response.data.msg);
-      }
-      
-      if (response.data) {
-        // Update Zustand store instead of localStorage
-        setUser(response.data.data.user);
-        setToken(response.data.data.accessToken);
-        return response.data.data.user;
-      }
-      
-      throw new Error('Login failed');
-    },
-    onSuccess: (userData) => {
-      queryClient.setQueryData([USER_QUERY_KEY], userData);
-      router.push('/');
-    },
   });
 
   // Signup mutation
@@ -98,7 +73,7 @@ export function useAuth() {
     mutationFn: async (genres: string[]) => {
       if (!token) throw new Error('Not authenticated');
       
-      const response = await updateUserPreferences(genres, token);
+      const response = await updateUserPreferences(genres);
       
       if (response.status !== 200) {
         throw new Error(response.data.msg);
@@ -120,7 +95,10 @@ export function useAuth() {
   const { 
     mutate: verifyEmailMutation, 
     isPending: isVerifyingEmail,
-    data: verificationData
+    data: verificationData,
+    isSuccess: isVerificationSuccessful,
+    isError: isVerificationFailed,
+    error: verificationError
   } = useMutation({
     mutationKey: [EMAIL_VERIFICATION_KEY],
     mutationFn: async (verificationToken: string) => {
@@ -174,8 +152,6 @@ export function useAuth() {
     user,
     isLoadingUser,
     isLoggedIn,
-    login: loginMutation,
-    isLoggingIn,
     signup: signupMutation,
     isSigningUp,
     updatePreferences: updatePreferencesMutation,
@@ -183,6 +159,9 @@ export function useAuth() {
     verifyEmail: verifyEmailMutation,
     isVerifyingEmail,
     verificationData,
+    isVerificationSuccessful,
+    isVerificationFailed,
+    verificationError,
     resendVerification: resendVerificationMutation,
     isResendingVerification,
     logout,

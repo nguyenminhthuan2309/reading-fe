@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
@@ -52,16 +50,22 @@ import {
   EyeOff,
   Lock,
   Camera,
-  Upload
+  Upload,
+  RefreshCw
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCurrentUser, getUserById, updateUserProfile } from "@/lib/api";
+import { updatePassword } from "@/lib/api/auth";
+import { uploadAvatar, FileSizeError, MAX_AVATAR_SIZE } from "@/lib/api/user";
 import { useUserStore } from "@/lib/store";
 import { User, UserPreferences } from "@/models";
 import { Genre } from "@/models/genre";
 import { BookCard } from "@/components/books/book-card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/lib/hooks";
+import { toast } from "sonner";
+import * as yup from "yup";
 
 // Create a complete initial user data with proper types
 const defaultPreferences: Required<UserPreferences> = {
@@ -112,6 +116,62 @@ export default function UserProfilePage() {
   const queryClient = useQueryClient();
   const userId = params.id as string;
   const { user, token } = useUserStore();
+  const { logout } = useAuth();
+  
+  // Create updatePassword mutation
+  const updatePasswordMutation = useMutation({
+    mutationFn: async ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) => {
+      const response = await updatePassword(oldPassword, newPassword);
+      
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error(response.data.msg || 'Failed to update password');
+      }
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      toast.success('Password updated successfully');
+      
+      // Reset form and close it
+      setIsChangingPassword(false);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    },
+    onError: (error: Error) => {
+      console.log('API Error:', error);
+      
+      // Set error message to current password field by default
+      setPasswordErrors(prev => ({
+        ...prev,
+        currentPassword: error.message
+      }));
+      
+      // If the error message indicates invalid old password
+      if (error.message.toLowerCase().includes('old password') || 
+          error.message.toLowerCase().includes('current password') ||
+          error.message.toLowerCase().includes('incorrect password')) {
+        setPasswordErrors(prev => ({
+          ...prev,
+          currentPassword: error.message
+        }));
+      } 
+      // If there's an issue with the new password
+      else if (error.message.toLowerCase().includes('new password')) {
+        setPasswordErrors(prev => ({
+          ...prev,
+          newPassword: error.message
+        }));
+      }
+      // For other errors
+      else {
+        toast.error(error.message || 'Failed to update password');
+      }
+    }
+  });
+  
   // Initialize with the default user data (non-null)
   const [userData, setUserData] = useState<User>(structuredClone(INITIAL_USER_DATA));
   
@@ -196,11 +256,34 @@ export default function UserProfilePage() {
   // Add state for the active book filter
   const [activeBookFilter, setActiveBookFilter] = useState<string>("all");
   
+  // Add state for password validation errors
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
+  // Password validation schema
+  const passwordSchema = yup.object({
+    currentPassword: yup.string().required("Current password is required"),
+    newPassword: yup.string()
+      .required("New password is required")
+      .min(6, "New password must be at least 6 characters"),
+    confirmPassword: yup.string()
+      .required("Please confirm your password")
+      .oneOf([yup.ref('newPassword')], "Passwords must match")
+  });
+  
   const userQuery = useQuery({
     queryKey: ['user', userId],
     queryFn: async () => {
         
-        const response = await getCurrentUser(token || '');
+        const response = await getUserById(userId);
+        
+        // Check if user doesn't exist (404 status)
+        if (response.status === 404) {
+          return null;
+        }
         
         if (response.data?.data) {
           const fetchedUser = response.data.data;
@@ -234,7 +317,7 @@ export default function UserProfilePage() {
   
   const updateUserMutation = useMutation({
     mutationFn: async (updatedData: Partial<User>) => {
-      return await updateUserProfile(userId, updatedData, token || undefined);
+      return await updateUserProfile(userId, updatedData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
@@ -254,10 +337,55 @@ export default function UserProfilePage() {
     }
   }, [userData]);
   
+  // Add a avatarUpload mutation
+  const avatarUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      return await uploadAvatar(file);
+    },
+    onSuccess: (response) => {
+      // Check if the API response is successful
+      if (response.data.status) {
+        const avatarUrl = response.data.data.data;
+        
+        // Update the user profile with the new avatar URL
+        handleProfileUpdate({ avatar: avatarUrl });
+        
+        toast.success('Avatar uploaded successfully');
+      } else {
+        toast.error(response.data.msg || 'Failed to upload avatar');
+      }
+    },
+    onError: (error) => {
+      if (error instanceof FileSizeError) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to upload avatar. Please try again later.');
+        console.error('Avatar upload error:', error);
+      }
+    }
+  });
+  
   if (userQuery.isLoading) {
     return (
       <div className="container mx-auto px-4 py-12 flex items-center justify-center">
         <p>Loading...</p>
+      </div>
+    );
+  }
+  
+  // Show user not found message if user doesn't exist
+  if (userQuery.data === null) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[70vh]">
+        <h1 className="text-4xl font-bold text-red-600 mb-4">User Not Found</h1>
+        <p className="text-lg mb-8">The user you're looking for doesn't exist or has been removed.</p>
+        <Link
+          href="/"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+        >
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          Back to Homepage
+        </Link>
       </div>
     );
   }
@@ -374,6 +502,11 @@ export default function UserProfilePage() {
       newPassword: '',
       confirmPassword: ''
     });
+    setPasswordErrors({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
     setIsChangingPassword(true);
   };
   
@@ -381,6 +514,11 @@ export default function UserProfilePage() {
   const cancelPasswordChange = () => {
     setIsChangingPassword(false);
     setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setPasswordErrors({
       currentPassword: '',
       newPassword: '',
       confirmPassword: ''
@@ -393,70 +531,82 @@ export default function UserProfilePage() {
       ...prev,
       [field]: value
     }));
+    
+    // Clear error for the field when user types
+    if (passwordErrors[field as keyof typeof passwordErrors]) {
+      setPasswordErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
   };
   
   // Save password changes
-  const savePasswordChange = () => {
-    // Validate passwords
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      // Handle password mismatch
-      alert("New passwords don't match");
-      return;
-    }
-    
-    if (!passwordData.currentPassword || !passwordData.newPassword) {
-      // Handle empty fields
-      alert("Please fill all password fields");
-      return;
-    }
-    
-    // Create a separate API call for password update
-    // This is a mock - would need to be implemented on backend
-    const passwordUpdateData = {
-      password: passwordData.newPassword,
-      currentPassword: passwordData.currentPassword,
-      userId: userId
-    };
-    
-    // Example of how you might call a specific password update API
-    // updateUserPassword(passwordUpdateData)
-    //   .then(() => {
-    //     setIsChangingPassword(false);
-    //     setPasswordData({...});
-    //   });
-    
-    // For now, just pretend it was successful
-    alert("Password would be updated in a real implementation");
-    setIsChangingPassword(false);
-    setPasswordData({
+  const savePasswordChange = async () => {
+    // Reset all error messages
+    setPasswordErrors({
       currentPassword: '',
       newPassword: '',
       confirmPassword: ''
     });
+    
+    try {
+      // Validate the form using Yup
+      await passwordSchema.validate(passwordData, { abortEarly: false });
+      
+      // If validation passes, call the API with mutation
+      updatePasswordMutation.mutate({ 
+        oldPassword: passwordData.currentPassword, 
+        newPassword: passwordData.newPassword
+      });
+      
+      // Form will be closed in the onSuccess callback
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        // Map Yup validation errors to form fields
+        const fieldErrors = {
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        };
+        
+        error.inner.forEach(err => {
+          if (err.path && err.path in fieldErrors) {
+            fieldErrors[err.path as keyof typeof fieldErrors] = err.message;
+          }
+        });
+        
+        setPasswordErrors(fieldErrors);
+      }
+      // API errors are handled in the mutation's onError callback
+    }
   };
   
   // Function to handle avatar upload
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files && files.length > 0) {
-      setAvatarFile(files[0]);
-      
-      // Here you would typically upload the file to your server
-      // For now, we'll just simulate it by showing a preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target && e.target.result) {
-          // In a real app, you would upload this to your server
-          // and update the userData with the new avatar URL
-          console.log("Avatar file read:", e.target.result);
-          
-          // Simulate updating the avatar (in real app, this would be done via API)
-          // handleProfileUpdate({ avatar: e.target.result as string });
-          alert("In a real app, the avatar would be uploaded to the server");
-        }
-      };
-      reader.readAsDataURL(files[0]);
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
     }
+    
+    // File size validation is handled in the uploadAvatar function
+    // but we can also provide a nicer UX by checking here
+    if (file.size > MAX_AVATAR_SIZE) {
+      toast.error(`Avatar image size must be less than ${MAX_AVATAR_SIZE / (1024 * 1024)}MB`);
+      return;
+    }
+    
+    // Save the file for preview
+    setAvatarFile(file);
+    
+    // Upload the file using our mutation
+    avatarUploadMutation.mutate(file);
   };
   
   // Function to handle book filter changes
@@ -480,6 +630,9 @@ export default function UserProfilePage() {
                   {userData.avatar && (
                     <AvatarImage src={userData.avatar} alt={userData.name} />
                   )}
+                  {!userData.avatar && avatarFile && (
+                    <AvatarImage src={URL.createObjectURL(avatarFile)} alt={userData.name} />
+                  )}
                   <AvatarFallback gender={userData.gender}>
                   </AvatarFallback>
                 </Avatar>
@@ -489,12 +642,23 @@ export default function UserProfilePage() {
                   <>
                     <label 
                       htmlFor="avatar-upload"
-                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer rounded-full"
+                      className={`absolute inset-0 bg-black/40 flex items-center justify-center ${avatarUploadMutation.isPending ? 'opacity-100' : 'opacity-0 hover:opacity-100'} transition-opacity cursor-pointer rounded-full`}
                       style={{ top: 0, left: 'calc(50% - 40px)', width: '80px', height: '80px' }}
                     >
                       <div className="flex flex-col items-center text-white">
-                        <Camera size={18} className="mb-1" />
-                        <span className="text-xs font-medium">Change Photo</span>
+                        {avatarUploadMutation.isPending ? (
+                          <>
+                            <div className="animate-spin">
+                              <RefreshCw size={18} className="mb-1" />
+                            </div>
+                            <span className="text-xs font-medium">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Camera size={18} className="mb-1" />
+                            <span className="text-xs font-medium">Change Photo</span>
+                          </>
+                        )}
                       </div>
                     </label>
                     <input 
@@ -503,6 +667,7 @@ export default function UserProfilePage() {
                       accept="image/*"
                       className="hidden"
                       onChange={handleAvatarUpload}
+                      disabled={avatarUploadMutation.isPending}
                     />
                   </>
                 )}
@@ -657,9 +822,9 @@ export default function UserProfilePage() {
                           >
                             Save
                           </Button>
-            </div>
+                        </div>
                       )}
-            </div>
+                    </div>
                     <div className="p-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -673,7 +838,7 @@ export default function UserProfilePage() {
                           ) : (
                             <p className="text-sm font-medium">{userData.name || "-"}</p>
                           )}
-            </div>
+                        </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Username</p>
                           {isEditing ? (
@@ -683,7 +848,7 @@ export default function UserProfilePage() {
                                 value={editFormData.username}
                                 onChange={(e) => handleInputChange('username', e.target.value)}
                               />
-            </div>
+                            </div>
                           ) : (
                             <p className="text-sm font-medium">@{displayUsername}</p>
                           )}
@@ -691,8 +856,8 @@ export default function UserProfilePage() {
                         <div>
                           <p className="text-xs text-muted-foreground">Email</p>
                           <p className="text-sm font-medium">{userData.email || "-"}</p>
-          </div>
-          
+                        </div>
+                        
                         <div>
                           <p className="text-xs text-muted-foreground">Birthday</p>
                           {isEditing ? (
@@ -725,138 +890,12 @@ export default function UserProfilePage() {
                           ) : (
                             <p className="text-sm font-medium">
                               {userData.birthday ? new Date(userData.birthday).toLocaleDateString('en-US', {
-                month: 'long',
+                                month: 'long',
                                 day: 'numeric',
                                 year: 'numeric'
                               }) : "-"}
-            </p>
+                            </p>
                           )}
-          </div>
-        </div>
-        
-                      <div className="mt-6 pt-6 border-t border-secondary/90">
-                        <div className="flex flex-col md:flex-row gap-6">
-                          {/* Bio Section - Left Half */}
-                          <div className="w-full md:w-1/2">
-                            <p className="text-xs text-muted-foreground mb-2">Bio</p>
-                            {isEditing ? (
-                              <Textarea
-                                value={editFormData.bio}
-                                onChange={(e) => handleInputChange('bio', e.target.value)}
-                                placeholder="Tell us about yourself..."
-                                rows={4}
-                                className="w-full"
-                              />
-                            ) : (
-                              userData.bio ? (
-                                <p className="text-sm">{userData.bio}</p>
-                              ) : (
-                                <div className="py-2">
-                                  <p className="text-sm text-muted-foreground">No bio provided</p>
-                                  {isMyProfile && (
-                                    <p className="text-xs text-muted-foreground mt-1">Click Edit to add your bio</p>
-                                  )}
-                                </div>
-                              )
-                            )}
-                          </div>
-                          
-                          {/* Social Links Section - Right Half */}
-                          <div className="w-full md:w-1/2">
-                            <p className="text-xs text-muted-foreground mb-2">Social Links</p>
-                            {isEditing ? (
-                              <div className="space-y-3">
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Facebook size={16} className="text-blue-600" />
-                                    <p className="text-xs text-muted-foreground">Facebook</p>
-                                  </div>
-                                  <Input
-                                    value={editFormData.socialLinks.facebook}
-                                    onChange={(e) => handleSocialLinkChange('facebook', e.target.value)}
-                                    placeholder="https://facebook.com/username"
-                                    className="text-sm"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Twitter size={16} className="text-blue-400" />
-                                    <p className="text-xs text-muted-foreground">Twitter</p>
-                                  </div>
-                                  <Input
-                                    value={editFormData.socialLinks.twitter}
-                                    onChange={(e) => handleSocialLinkChange('twitter', e.target.value)}
-                                    placeholder="https://twitter.com/username"
-                                    className="text-sm"
-                                  />
-                                </div>
-                                
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Instagram size={16} className="text-pink-600" />
-                                    <p className="text-xs text-muted-foreground">Instagram</p>
-                                  </div>
-                                  <Input
-                                    value={editFormData.socialLinks.instagram}
-                                    onChange={(e) => handleSocialLinkChange('instagram', e.target.value)}
-                                    placeholder="https://instagram.com/username"
-                                    className="text-sm"
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              userData.socialLinks && Object.entries(userData.socialLinks).some(([key, value]) => value && (key === 'facebook' || key === 'twitter' || key === 'instagram')) ? (
-                                <div className="space-y-2">
-                                  {userData.socialLinks.facebook && (
-                                    <a 
-                                      href={userData.socialLinks.facebook} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                                    >
-                                      <Facebook size={18} className="text-blue-600" />
-                                      <span>Facebook</span>
-                                    </a>
-                                  )}
-                                  
-                                  {userData.socialLinks.twitter && (
-                                    <a 
-                                      href={userData.socialLinks.twitter} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                                    >
-                                      <Twitter size={18} className="text-blue-400" />
-                                      <span>Twitter</span>
-                                    </a>
-                                  )}
-                                  
-                                  {userData.socialLinks.instagram && (
-                                    <a 
-                                      href={userData.socialLinks.instagram} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                                    >
-                                      <Instagram size={18} className="text-pink-600" />
-                                      <span>Instagram</span>
-                                    </a>
-                                  )}
-                                </div>
-                              ) : (
-                                <div>
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <LinkIcon size={16} />
-                                    <p className="text-sm">No social links added</p>
-                                  </div>
-                                  {isMyProfile && (
-                                    <p className="text-xs text-muted-foreground mt-1">Click Edit to add your social profiles</p>
-                                  )}
-                                </div>
-                              )
-                            )}
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -881,9 +920,9 @@ export default function UserProfilePage() {
                               <PenSquare size={14} />
                               <span>Change Password</span>
                             </div>
-                </Button>
+                          </Button>
                         )}
-            </div>
+                      </div>
                       <div className="p-6">
                         {isChangingPassword ? (
                           <div className="space-y-3">
@@ -895,7 +934,7 @@ export default function UserProfilePage() {
                                   value={passwordData.currentPassword}
                                   onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
                                   placeholder="Enter current password"
-                                  className="pr-10"
+                                  className={`pr-10 ${passwordErrors.currentPassword ? "border-red-500" : ""}`}
                                 />
                                 <button
                                   type="button"
@@ -908,9 +947,12 @@ export default function UserProfilePage() {
                                     <Eye size={16} className="text-muted-foreground" />
                                   )}
                                 </button>
-        </div>
-      </div>
-      
+                              </div>
+                              {passwordErrors.currentPassword && (
+                                <p className="text-xs text-red-500 mt-1">{passwordErrors.currentPassword}</p>
+                              )}
+                            </div>
+                            
                             <div className="relative">
                               <p className="text-xs text-muted-foreground mb-1">New Password</p>
                               <div className="flex items-center">
@@ -919,7 +961,7 @@ export default function UserProfilePage() {
                                   value={passwordData.newPassword}
                                   onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                                   placeholder="Enter new password"
-                                  className="pr-10"
+                                  className={`pr-10 ${passwordErrors.newPassword ? "border-red-500" : ""}`}
                                 />
                                 <button
                                   type="button"
@@ -932,7 +974,10 @@ export default function UserProfilePage() {
                                     <Eye size={16} className="text-muted-foreground" />
                                   )}
                                 </button>
-                </div>
+                              </div>
+                              {passwordErrors.newPassword && (
+                                <p className="text-xs text-red-500 mt-1">{passwordErrors.newPassword}</p>
+                              )}
                             </div>
                             
                             <div className="relative">
@@ -943,7 +988,7 @@ export default function UserProfilePage() {
                                   value={passwordData.confirmPassword}
                                   onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
                                   placeholder="Confirm new password"
-                                  className="pr-10"
+                                  className={`pr-10 ${passwordErrors.confirmPassword ? "border-red-500" : ""}`}
                                 />
                                 <button
                                   type="button"
@@ -956,9 +1001,12 @@ export default function UserProfilePage() {
                                     <Eye size={16} className="text-muted-foreground" />
                                   )}
                                 </button>
-        </div>
-      </div>
-      
+                              </div>
+                              {passwordErrors.confirmPassword && (
+                                <p className="text-xs text-red-500 mt-1">{passwordErrors.confirmPassword}</p>
+                              )}
+                            </div>
+                            
                             <div className="flex justify-end gap-2 mt-3">
                               <Button 
                                 variant="destructive" 
@@ -973,8 +1021,9 @@ export default function UserProfilePage() {
                                 size="sm"
                                 className="h-8"
                                 onClick={savePasswordChange}
+                                disabled={updatePasswordMutation.isPending}
                               >
-                                Save
+                                {updatePasswordMutation.isPending ? "Updating..." : "Save"}
                               </Button>
                             </div>
                           </div>
@@ -1011,13 +1060,13 @@ export default function UserProfilePage() {
                           <ArrowUpCircle size={16} className="text-green-500" />
                           <span className="hidden sm:inline">Deposit Haru</span>
                           <span className="sm:hidden">Deposit</span>
-                </Button>
-              </Link>
+                        </Button>
+                      </Link>
                     </>
-          )}
-        </div>
-      </div>
-      
+                  )}
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Haru Balance Card */}
                 <div className="lg:col-span-2 bg-secondary/20 rounded-lg border border-secondary/90 shadow-sm overflow-hidden">
@@ -1026,7 +1075,7 @@ export default function UserProfilePage() {
                       <Star size={16} className="text-primary" />
                       Haru Balance
                     </h3>
-                </div>
+                  </div>
                   <div className="p-6">
                     {/* Improved Current Balance Layout with Actions */}
                     <div className="flex flex-col sm:flex-row items-center justify-between mb-6 pb-6 border-b border-secondary/90">
@@ -1052,7 +1101,7 @@ export default function UserProfilePage() {
                               <span>Deposit</span>
                             </div>
                           </Button>
-              </Link>
+                        </Link>
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -1071,9 +1120,9 @@ export default function UserProfilePage() {
                             <span>Withdraw</span>
                           </div>
                         </Button>
-        </div>
-      </div>
-      
+                      </div>
+                    </div>
+                    
                     {/* Summary Statistics */}
                     <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 mb-6">
                       <div className="bg-secondary/30 p-4 rounded-lg border border-secondary/90">
@@ -1202,15 +1251,15 @@ export default function UserProfilePage() {
                   {isMyProfile && (
                     <Link href="/books">
                       <Button variant="outline" className="flex items-center gap-2">
-            <BookOpen size={16} />
+                        <BookOpen size={16} />
                         <span className="hidden sm:inline">Browse Books</span>
                         <span className="sm:hidden">Browse</span>
                       </Button>
                     </Link>
-          )}
-        </div>
-      </div>
-      
+                  )}
+                </div>
+              </div>
+              
               {/* Reading Stats */}
               <div className="bg-white rounded-lg p-6 mb-6 border border-secondary/90 shadow-sm">
                 <h3 className="text-sm font-medium mb-4">Reading Activity</h3>
@@ -1375,15 +1424,15 @@ export default function UserProfilePage() {
                 </div>
               </div>
               
-          <div className="text-center py-10">
+              <div className="text-center py-10">
                 <div className="flex justify-center mb-4">
                   <Clock size={48} className="text-muted-foreground/50" />
                 </div>
                 <p className="text-muted-foreground">No recently read books.</p>
-            <Link href="/books">
-              <Button className="mt-4">Browse Books</Button>
-            </Link>
-          </div>
+                <Link href="/books">
+                  <Button className="mt-4">Browse Books</Button>
+                </Link>
+              </div>
             </div>
           )}
           
@@ -1405,15 +1454,15 @@ export default function UserProfilePage() {
                 </div>
               </div>
               
-          <div className="text-center py-10">
+              <div className="text-center py-10">
                 <div className="flex justify-center mb-4">
                   <Bookmark size={48} className="text-muted-foreground/50" />
                 </div>
-            <p className="text-muted-foreground">No bookmarked books yet.</p>
-            <Link href="/books">
-              <Button className="mt-4">Browse Books</Button>
-            </Link>
-          </div>
+                <p className="text-muted-foreground">No bookmarked books yet.</p>
+                <Link href="/books">
+                  <Button className="mt-4">Browse Books</Button>
+                </Link>
+              </div>
             </div>
           )}
           
@@ -1430,9 +1479,9 @@ export default function UserProfilePage() {
                         <span className="hidden sm:inline">Create Book</span>
                         <span className="sm:hidden">Create</span>
                       </Button>
-            </Link>
+                    </Link>
                   )}
-          </div>
+                </div>
               </div>
               
               <div className="flex gap-4 mb-6 overflow-x-auto pb-4">
@@ -1464,7 +1513,7 @@ export default function UserProfilePage() {
                 >
                   Completed
                 </Button>
-          </div>
+              </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Show books based on active filter */}

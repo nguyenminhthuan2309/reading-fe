@@ -9,6 +9,11 @@ import { useState } from "react";
 import { FormInput } from "@/components/ui/form-input";
 import { useAuth } from "@/lib/hooks";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { login } from "@/lib/api";
+import { useUserStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 // Define validation schema with Yup
 const signinSchema = yup.object({
@@ -25,25 +30,53 @@ const signinSchema = yup.object({
 type SigninFormData = yup.InferType<typeof signinSchema>;
 
 export default function SignIn() {
-  const { login, isLoggingIn } = useAuth();
-  
+  const router = useRouter();
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<SigninFormData>({
     resolver: yupResolver(signinSchema),
   });
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const { setUser, setToken } = useUserStore();
+  const queryClient = useQueryClient();
+
+  const {mutate: loginMutation, isPending: isLoggingIn} = useMutation({
+    mutationFn: async (data: SigninFormData) => {
+      const res = await login(data)
+      if (res.status === 201) {
+        // Update Zustand store instead of localStorage
+        setUser(res.data.data.user);
+        setToken(res.data.data.accessToken);
+        return res.data.data.user;
+      } else {
+
+        if (res.data.msg.includes('Mật khẩu')) {
+          setError('password', { message: res.data.msg });
+        } else {
+          setError('email', { message: res.data.msg });
+        }
+
+        throw new Error(res.data.msg);
+      }
+    },
+    onSuccess: (userData) => {
+      queryClient.setQueryData(['me'], userData);
+      router.push('/');
+    }
+  });
 
   const onSubmit = async (data: SigninFormData) => {
-    try {
-      await login(data);
-    } catch (error) {
-      console.error("Error signing in:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to sign in");
-    }
+    loginMutation(data)
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+  
   return (
     <div className="w-full max-w-md">
       <div className="p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
@@ -62,26 +95,39 @@ export default function SignIn() {
               error={errors.email}
               required
               placeholder="Enter your email"
-            />
-            
+            />            
             <div className="space-y-2">
               <div className="flex justify-between">
                 <label htmlFor="password" className="block text-sm font-medium">
                   Password <span className="text-destructive">*</span>
                 </label>
-                <Link href="#" className="text-sm text-primary hover:underline">
+                <Link href="/forgot-password" className="text-sm text-primary hover:underline">
                   Forgot password?
                 </Link>
               </div>
-              <FormInput
-                name="password"
-                type="password"
-                register={register}
-                error={errors.password}
-                required
-                placeholder="Enter your password"
-                label=""
-              />
+              <div className="relative">
+                <FormInput
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  register={register}
+                  error={errors.password}
+                  required
+                  placeholder="Enter your password"
+                  label=""
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                  onClick={togglePasswordVisibility}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
             
             <Button type="submit" className="w-full" disabled={isLoggingIn}>
