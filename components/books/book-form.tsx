@@ -60,6 +60,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [successBookId, setSuccessBookId] = useState<number | null>(null);
   const [chapterUploadFailed, setChapterUploadFailed] = useState(false);
+  const [chaptersToDelete, setChaptersToDelete] = useState<number[]>([]);
   
   // Use our custom hook to warn users when navigating away with unsaved changes
   useNavigationGuard({ when: hasUnsavedChanges });
@@ -584,10 +585,32 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
 
   // Handle chapter updates for existing book
   const handleExistingBookChapters = async (bookId: number) => {
-    if (chapters.length === 0) return true;
+    if (chapters.length === 0 && chaptersToDelete.length === 0) return true;
     
     try {
-      // Separate chapters into new and existing
+      // Process deletion queue first
+      if (chaptersToDelete.length > 0) {
+        setIsSubmitting(true);
+        
+        // Process each chapter for deletion
+        for (const chapterId of chaptersToDelete) {
+          try {
+            // Delete the chapter
+            const deleteResponse = await deleteChapter(chapterId);
+            if (!(deleteResponse.status >= 200 && deleteResponse.status < 300)) {
+              throw new Error(deleteResponse.msg || 'Failed to delete chapter');
+            }
+          } catch (deleteError) {
+            console.error(`Error deleting chapter ${chapterId}:`, deleteError);
+            throw new Error(`Failed to delete chapter ${chapterId}: ${(deleteError as Error).message}`);
+          }
+        }
+        
+        // Clear the deletion queue after processing
+        setChaptersToDelete([]);
+      }
+      
+      // Continue with normal processing (separating chapters into new and existing)
       const existingChapters = chapters.filter(ch => !ch.id.startsWith('chapter-'));
       const newChapters = chapters.filter(ch => ch.id.startsWith('chapter-'));
       
@@ -677,13 +700,15 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             
           const titleChanged = chapter.title !== originalChapter.title;
           const isLockedChanged = chapter.isLocked !== originalChapter.isLocked;
+          const chapterNumberChanged = chapter.chapter !== originalChapter.chapter;
           
           // Only update if something changed
-          if (contentChanged || titleChanged || isLockedChanged) {
+          if (contentChanged || titleChanged || isLockedChanged || chapterNumberChanged) {
             const chapterData = {
               title: chapter.title,
               content: chapter.content,
-              isLocked: chapter.isLocked
+              isLocked: chapter.isLocked,
+              chapter: chapter.chapter
             };
             
             // Use mutation to update the chapter
@@ -1133,7 +1158,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
 
   // Function to be passed to ChapterCreator for handling deletion
   const onDeleteChapter = async (chapterId: string, chapterNumber: number) => {
-    setIsSubmitting(true);
     try {
       // Get all chapters for reordering
       const updatedChapters = [...chapters];
@@ -1156,9 +1180,10 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         toast.success("Chapter deleted and numbering updated");
       } 
       // Case 2: Existing chapters (saved to server)
-      else if (isEditing && initialData?.id) {
-        // Call the API to delete the chapter
-        await handleChapterDeletion(initialData.id, parseInt(chapterId), chapterNumber);
+      else if (isEditing) {
+        // Add chapter to the deletion queue
+        const chapterIdNumber = parseInt(chapterId);
+        setChaptersToDelete(prev => [...prev, chapterIdNumber]);
         
         // Remove the deleted chapter from local state
         const filteredChapters = updatedChapters.filter(ch => ch.id !== chapterId);
@@ -1173,12 +1198,14 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         });
         
         setChapters(reorderedChapters);
+        toast.success("Chapter marked for deletion. Changes will be applied when you update the book.");
+        // Signal that we have unsaved changes
+        setHasUnsavedChanges(true);
+        setHasChanges(true);
       }
     } catch (error) {
       console.error("Error handling chapter deletion:", error);
-      toast.error("Failed to delete chapter. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      toast.error("Failed to prepare chapter deletion. Please try again.");
     }
   };
 
@@ -1226,8 +1253,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleSaveAsDraft}
-                  disabled={isSavingDraft || isSubmitting}
+                  // onClick={handleSaveAsDraft}
+                  // disabled={isSavingDraft || isSubmitting}
+                  disabled={true}
                   className="gap-2"
                 >
                   {isSavingDraft ? (

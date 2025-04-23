@@ -137,7 +137,7 @@ export async function getMostActiveUsers(): Promise<ApiResponse<any>> {
  * @param genres User preferences to update
  * @returns ApiResponse with the updated user preferences
  */
-export async function updateUserFavorites(body: {userId: number, categories: number[]}): Promise<ApiResponse<Category>> {
+export async function updateUserFavorites(body: {userId?: number, categories: number[]}): Promise<ApiResponse<Category>> {
   return await post(
     '/user/favorite/categories',
     body

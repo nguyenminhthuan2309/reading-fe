@@ -28,7 +28,7 @@ export default function OnboardingPage() {
   // Update preferences mutation
   const { mutate: updateUserFavoritesGenres, isPending: isUpdatingPreferences } = useMutation({
     mutationFn: async (genres: number[]) => {
-      const response = await updateUserFavorites({userId: user?.id || '', categories: genres});
+      const response = await updateUserFavorites({userId: user?.id, categories: genres});
       return response.data;
     }
   });
