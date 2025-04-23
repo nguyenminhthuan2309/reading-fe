@@ -1,24 +1,13 @@
 import { ApiResponse, ApiResponseStatus } from '@/models/api';
-import axios from 'axios';
-import { useUserStore } from '@/lib/store';
-
-// API base URL from environment variables
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+import { updateImage } from '@/lib/api/base';
+import { post, get } from '@/lib/api/base';
+import { Category, UserPreferences } from '@/models';
 
 /**
  * Maximum allowed file size for avatar upload (1MB)
  */
 export const MAX_AVATAR_SIZE = 1 * 1024 * 1024; // 1MB in bytes
 
-/**
- * Error thrown when file size exceeds the limit
- */
-export class FileSizeError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'FileSizeError';
-  }
-}
 
 /**
  * Upload user avatar
@@ -26,62 +15,131 @@ export class FileSizeError extends Error {
  * @returns ApiResponse with the uploaded file URL
  * @throws FileSizeError if file size exceeds the limit
  */
-export async function uploadAvatar(file: File): Promise<ApiResponse<{data: string}>> {
-  // Check file size before uploading
-  if (file.size > MAX_AVATAR_SIZE) {
-    throw new FileSizeError('Avatar image size must be less than 1MB');
-  }
+export async function uploadAvatar(file: File): Promise<ApiResponse<string>> {
+  // Use the updateImage function with protected route option
+  return await updateImage<string>(
+    '/upload/image', 
+    file
+  );
+}
 
-  // Create FormData to send the file
-  const formData = new FormData();
-  formData.append('file', file);
+/**
+ * Create a new manager user
+ * @param email Manager's email address
+ * @param password Manager's password
+ * @param name Manager's name
+ * @returns ApiResponse with the created user data
+ */
+export async function createManager(
+  email: string,
+  password: string,
+  name: string
+): Promise<ApiResponse<any>> {
+  return await post(
+    '/user/create-manager',
+    { email, password, name }
+  );
+}
 
-  // Get token from the store
-  const token = useUserStore.getState().token;
+/**
+ * Get the current user's notifications
+ */
+export async function getUserNotifications(): Promise<ApiResponse<any>> {
+  return await get(
+    '/user/notifications'
+  );
+}
 
-  try {
-    // Make direct POST request to the upload endpoint
-    const response = await axios.post(`${API_BASE_URL}/upload/image`, formData, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        // Don't set Content-Type here - let the browser set it with the correct boundary
-      }
-    });
+/**
+ * Mark a notification as read
+ */
+export async function markNotificationAsRead(notificationId: string): Promise<ApiResponse<any>> {
+  return await post(
+    `/user/notifications/${notificationId}/read`,
+    {}
+  );
+}
 
-    // Transform the Axios response to our ApiResponse format
-    return {
-      data: {
-        code: response.status,
-        data: response.data,
-        msg: 'Avatar uploaded successfully',
-        status: true
-      },
-      status: response.status as ApiResponseStatus
-    };
-  } catch (error) {
-    // Handle errors
-    if (axios.isAxiosError(error) && error.response) {
-      // Transform Axios error response to our ApiResponse format
-      return {
-        data: {
-          code: error.response.status,
-          data: { data: '' }, // Provide default empty url to match the expected type
-          msg: error.response.data?.message || 'Upload failed',
-          status: false
-        },
-        status: error.response.status as ApiResponseStatus
-      };
-    }
+/**
+ * Get the current user status
+ * @returns ApiResponse with the user status data
+ */
+export async function getUserStatus(): Promise<ApiResponse<any>> {
+  return await get(
+    '/user/status'
+  );
+}
 
-    // For network errors or other issues
-    return {
-      data: {
-        code: 500,
-        data: { data: '' }, // Provide default empty url to match the expected type
-        msg: error instanceof Error ? error.message : 'Unknown error occurred',
-        status: false,
-      },
-      status: 500 as ApiResponseStatus
-    };
-  }
-} 
+/**
+ * Get the user's favorite categories
+ * @returns ApiResponse with the user's favorite categories
+ */
+export async function getUserFavoriteCategories(): Promise<ApiResponse<any>> {
+  return await get(
+    '/user/favorite/categories'
+  );
+}
+
+/**
+ * Get the user's settings
+ * @returns ApiResponse with the user's settings data
+ */
+export async function getUserSettings(): Promise<ApiResponse<any>> {
+  return await get(
+    '/user/settings'
+  );
+}
+
+/**
+ * Update user notification settings
+ */
+export async function updateNotificationSettings(settings: any): Promise<ApiResponse<any>> {
+  return await post(
+    '/user/notification-settings',
+    settings
+  );
+}
+
+/**
+ * Update the user's settings
+ * @returns ApiResponse with the updated user settings
+ */
+export async function updateUserSettings(settings: any): Promise<ApiResponse<any>> {
+  return await post(
+    '/user/settings',
+    settings
+  );
+}
+
+/**
+ * Get user information by ID
+ * @param id User ID to retrieve
+ * @returns ApiResponse with the user data
+ */
+export async function getUserById(id: string): Promise<ApiResponse<any>> {
+  return await get(
+    `/user/${id}`
+  );
+}
+
+/**
+ * Get the most active users (for leaderboards, etc.)
+ * @returns ApiResponse with the most active users data
+ */
+export async function getMostActiveUsers(): Promise<ApiResponse<any>> {
+  return await get(
+    '/user/most-active'
+  );
+}
+
+/**
+ * Update user favorite genres
+ * @param genres User preferences to update
+ * @returns ApiResponse with the updated user preferences
+ */
+export async function updateUserFavorites(body: {userId: number, categories: number[]}): Promise<ApiResponse<Category>> {
+  return await post(
+    '/user/favorite/categories',
+    body
+  );
+}

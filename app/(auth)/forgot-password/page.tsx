@@ -7,7 +7,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { forgotPassword, verifyResetPassword } from "@/lib/api";
+import { forgotPassword, verifyResetPassword } from "@/lib/api/auth";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, ArrowLeft } from "lucide-react";
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
         // Move to OTP verification step
         setResetStep('otp');
       } else {
-        setEmailError(response.data.msg || "Failed to send reset email");
+        setEmailError(response.msg || "Failed to send reset email");
       }
     } catch (error) {
       setEmailError("An error occurred. Please try again.");
@@ -194,7 +194,7 @@ export default function ForgotPasswordPage() {
         // Redirect to signin page after successful verification
         router.push('/signin');
       } else {
-        setOtpError(response.data.msg || "Invalid OTP code. Please try again.");
+        setOtpError(response.msg || "Invalid OTP code. Please try again.");
       }
     } catch (error) {
       setOtpError("Failed to verify OTP. Please try again.");
@@ -217,7 +217,7 @@ export default function ForgotPasswordPage() {
         setOtpValues(Array(6).fill(''));
         toast.success("New OTP code has been sent to your email");
       } else {
-        setOtpError(response.data.msg || "Failed to resend OTP");
+        setOtpError(response.msg || "Failed to resend OTP");
       }
     } catch (error) {
       setOtpError("Failed to resend OTP. Please try again.");

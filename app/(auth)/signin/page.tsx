@@ -7,10 +7,8 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useState } from "react";
 import { FormInput } from "@/components/ui/form-input";
-import { useAuth } from "@/lib/hooks";
-import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { login } from "@/lib/api";
+import { login } from "@/lib/api/auth";
 import { useUserStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
@@ -49,18 +47,18 @@ export default function SignIn() {
       const res = await login(data)
       if (res.status === 201) {
         // Update Zustand store instead of localStorage
-        setUser(res.data.data.user);
-        setToken(res.data.data.accessToken);
-        return res.data.data.user;
+        setUser(res.data.user);
+        setToken(res.data.accessToken);
+        return res.data.user;
       } else {
 
-        if (res.data.msg.includes('Mật khẩu')) {
-          setError('password', { message: res.data.msg });
+        if (res.msg.includes('Mật khẩu')) {
+          setError('password', { message: res.msg });
         } else {
-          setError('email', { message: res.data.msg });
+          setError('email', { message: res.msg });
         }
 
-        throw new Error(res.data.msg);
+        throw new Error(res.msg);
       }
     },
     onSuccess: (userData) => {

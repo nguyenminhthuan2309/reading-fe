@@ -1,114 +1,334 @@
-import { get, post, put, del, uploadFile } from '../api';
-import { ApiResponse } from '@/models/api';
-import { Genre } from '@/models/genre';
-
-// Types
-export interface Book {
-  id: string;
-  title: string;
-  description: string;
-  coverImage: string;
-  author: string;
-  genres: Genre[];
-  chapters: Chapter[];
-  wordCount?: number;
-  pageCount?: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Chapter {
-  id: string;
-  title: string;
-  content: string;
-  images?: string[];
-  orderIndex: number;
-}
-
-export interface BookFilters {
-  genre?: Genre;
-  search?: string;
-  page?: number;
-  limit?: number;
-  sortBy?: 'latest' | 'popular' | 'title';
-}
+import { get, post, put, del, delWithBody, uploadFile } from '../api';
+import { ApiResponse, PaginatedData } from '@/models/api';
+import { Book, Chapter, BookFilters,  ReadingHistoryItem, ReadingHistoryFilters, BookUpdatePayload, BookCreatePayload, BookReview, BookReviewFilters, Category, ChaptersBatchPayload } from '@/models/book';
 
 /**
  * Get a list of books with optional filters
  */
-export async function getBooks(filters: BookFilters = {}): Promise<ApiResponse<{ books: Book[], total: number }>> {
+export async function getBooks(filters: BookFilters): Promise<ApiResponse<PaginatedData<Book>>> {
   const queryParams = new URLSearchParams();
   
-  if (filters.genre) queryParams.append('genre', filters.genre);
+  // Required parameters
+  queryParams.append('page', filters.page.toString());
+  queryParams.append('limit', filters.limit.toString());
+  
+  // Optional parameters
+  if (filters.categoryId) {
+    // Handle both single categoryId and array of categoryIds
+    if (Array.isArray(filters.categoryId)) {
+      filters.categoryId.forEach(id => queryParams.append('categoryId', id.toString()));
+    } else {
+      queryParams.append('categoryId', filters.categoryId.toString());
+    }
+  }
   if (filters.search) queryParams.append('search', filters.search);
-  if (filters.page) queryParams.append('page', filters.page.toString());
-  if (filters.limit) queryParams.append('limit', filters.limit.toString());
   if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
+  if (filters.userId) queryParams.append('userId', filters.userId.toString());
+  if (filters.bookTypeId) queryParams.append('bookTypeId', filters.bookTypeId.toString());
+  if (filters.progressStatusId) queryParams.append('progressStatusId', filters.progressStatusId.toString());
+  if (filters.accessStatusId) queryParams.append('accessStatusId', filters.accessStatusId.toString());
+  if (filters.hasChapter !== undefined) queryParams.append('hasChapter', filters.hasChapter.toString());
+  if (filters.sortDirection) queryParams.append('sortDirection', filters.sortDirection);
+  if (filters.ageRating) queryParams.append('ageRating', filters.ageRating.toString());
   
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
   
-  return get<{ books: Book[], total: number }>(`/books${queryString}`);
+  return get<PaginatedData<Book>>(`/book${queryString}`);
+}
+
+/**
+ * Get user's reading history
+ */
+export async function getUserReadingHistory(filters: ReadingHistoryFilters): Promise<ApiResponse<PaginatedData<ReadingHistoryItem>>> {
+  const queryParams = new URLSearchParams();
+  
+  // Required parameters
+  queryParams.append('page', filters.page.toString());
+  queryParams.append('limit', filters.limit.toString());
+  
+  // Optional parameters
+  if (filters.userId) queryParams.append('userId', filters.userId);
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<PaginatedData<ReadingHistoryItem>>(`book/reading-history${queryString}`);
 }
 
 /**
  * Get a book by its ID
  */
-export async function getBookById(bookId: string): Promise<ApiResponse<Book>> {
-  return get<Book>(`/books/${bookId}`);
+export async function getBookById(bookId: number): Promise<ApiResponse<PaginatedData<Book>>> {
+  return get<PaginatedData<Book>>(`/book/${bookId}`);
 }
+
 
 /**
  * Create a new book
  */
-export async function createBook(bookData: Partial<Book>): Promise<ApiResponse<Book>> {
-  return post<Book>('/books', bookData, { isProtectedRoute: true });
+export async function createBook(bookData: BookCreatePayload): Promise<ApiResponse<number>> {
+  return post<number>('/book', bookData);
 }
+
 
 /**
  * Update an existing book
  */
-export async function updateBook(bookId: string, bookData: Partial<Book>): Promise<ApiResponse<Book>> {
-  return put<Book>(`/books/${bookId}`, bookData, { isProtectedRoute: true });
+export async function updateBook(bookId: number, bookData: BookUpdatePayload): Promise<ApiResponse<Book>> {
+  return put<Book>(`/book/${bookId}`, bookData);
 }
 
 /**
  * Delete a book
  */
-export async function deleteBook(bookId: string): Promise<ApiResponse<{ success: boolean }>> {
-  return del<{ success: boolean }>(`/books/${bookId}`, { isProtectedRoute: true });
+export async function deleteBook(bookId: number): Promise<ApiResponse<{ success: boolean }>> {
+  return del<{ success: boolean }>(`/book/${bookId}`);
 }
 
 /**
  * Add a chapter to a book
  */
-export async function addChapter(bookId: string, chapterData: Partial<Chapter>): Promise<ApiResponse<Chapter>> {
-  return post<Chapter>(`/books/${bookId}/chapters`, chapterData, { isProtectedRoute: true });
+export async function addChapter(bookId: number, chapterData: Partial<Chapter>): Promise<ApiResponse<Chapter>> {
+  return post<Chapter>(`/book/${bookId}/chapters`, chapterData);
 }
 
 /**
  * Update a chapter
  */
-export async function updateChapter(bookId: string, chapterId: string, chapterData: Partial<Chapter>): Promise<ApiResponse<Chapter>> {
-  return put<Chapter>(`/books/${bookId}/chapters/${chapterId}`, chapterData, { isProtectedRoute: true });
+export async function updateChapter(chapterId: number, chapterData: Partial<Chapter>): Promise<ApiResponse<Chapter>> {
+  return put<Chapter>(`/book/chapter/${chapterId}`, chapterData);
 }
 
 /**
  * Delete a chapter
  */
-export async function deleteChapter(bookId: string, chapterId: string): Promise<ApiResponse<{ success: boolean }>> {
-  return del<{ success: boolean }>(`/books/${bookId}/chapters/${chapterId}`, { isProtectedRoute: true });
+export async function deleteChapter(chapterId: number): Promise<ApiResponse<{ success: boolean }>> {
+  return delWithBody<{ success: boolean }>(`/book/chapter/${chapterId}`, {chapterId});
 }
 
 /**
  * Upload a book cover image
  */
-export async function uploadCoverImage(bookId: string, file: File): Promise<ApiResponse<{ url: string }>> {
-  return uploadFile<{ url: string }>(`/books/${bookId}/cover`, file, { isProtectedRoute: true });
+export async function uploadCoverImage(bookId: number, file: File): Promise<ApiResponse<{ url: string }>> {
+  return uploadFile<{ url: string }>(`/book/${bookId}/cover`, file);
 }
 
 /**
  * Upload a chapter image
  */
-export async function uploadChapterImage(bookId: string, chapterId: string, file: File): Promise<ApiResponse<{ url: string }>> {
-  return uploadFile<{ url: string }>(`/books/${bookId}/chapters/${chapterId}/image`, file, { isProtectedRoute: true });
+export async function uploadChapterImage(bookId: number, chapterId: number, file: File): Promise<ApiResponse<{ url: string }>> {
+  return uploadFile<{ url: string }>(`/book/${bookId}/chapters/${chapterId}/image`, file);
+}
+
+/**
+ * Get trending books
+ */
+export async function getTrendingBooks(params: { page: number; limit: number }): Promise<ApiResponse<PaginatedData<Book>>> {
+  const queryParams = new URLSearchParams();
+  
+  // Required parameters
+  queryParams.append('page', params.page.toString());
+  queryParams.append('limit', params.limit.toString());
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<PaginatedData<Book>>(`/book/trending${queryString}`);
+}
+
+/**
+ * Get recommended books for the current user
+ */
+export async function getRecommendedBooks(params: { limit: number  }): Promise<ApiResponse<Book[]>> {
+  const queryParams = new URLSearchParams();
+  
+  // Required parameters
+  queryParams.append('limit', params.limit.toString() || '10');
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<Book[]>(`/book/recommend${queryString}`);
+}
+
+/**
+ * Get reviews/comments for a book with pagination
+ */
+export async function getBookReviews(params: BookReviewFilters): Promise<ApiResponse<PaginatedData<BookReview>>> {
+  const { bookId, page, limit } = params;
+  
+  const queryParams = new URLSearchParams();
+  queryParams.append('bookId', bookId.toString());
+  queryParams.append('page', page.toString());
+  queryParams.append('limit', limit.toString());
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<PaginatedData<BookReview>>(`/book/book-review${queryString}`);
+}
+
+/**
+ * Post a new review for a book
+ */
+export async function postBookReview(bookId: number, data: { comment: string; rating: number }): Promise<ApiResponse<BookReview>> {
+  return post<BookReview>(`/book/book-review/${bookId}`, data);
+}
+
+/**
+ * Get related books for a specific book with pagination
+ */
+export async function getRelatedBooks({ 
+  bookId, 
+  page = 1, 
+  limit = 5 
+}: { 
+  bookId: number; 
+  page?: number; 
+  limit?: number; 
+}): Promise<ApiResponse<PaginatedData<Book>>> {
+  const params = new URLSearchParams();
+  params.append('page', page.toString());
+  params.append('limit', limit.toString());
+  
+  return get<PaginatedData<Book>>(`/book/related/${bookId}?${params.toString()}`);
+}
+
+/**
+ * Get all available book categories/genres
+ */
+export async function getGenres(): Promise<ApiResponse<Category[]>> {
+  return get<Category[]>('/book/category');
+}
+
+export async function createChapters(bookId: number, chaptersData: ChaptersBatchPayload): Promise<ApiResponse<Chapter[]>> {
+  return post<Chapter[]>(`/book/chapter/${bookId}`, chaptersData);
+}
+
+/**
+ * Get user's followed/bookmarked books
+ */
+export async function getFollowedBooks(params: { page: number; limit: number }): Promise<ApiResponse<PaginatedData<Book>>> {
+  const { page, limit } = params;
+  
+  const queryParams = new URLSearchParams();
+  queryParams.append('page', page.toString());
+  queryParams.append('limit', limit.toString());
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<PaginatedData<Book>>(`/book/follow${queryString}`);
+}
+
+/**
+ * Follow/bookmark a book
+ */
+export async function followBook(bookId: number): Promise<ApiResponse<{ success: boolean }>> {
+  return post<{ success: boolean }>('/book/follow', { bookId });
+}
+
+/**
+ * Unfollow/remove bookmark for a book
+ */
+export async function unfollowBook(bookId: number): Promise<ApiResponse<{ success: boolean }>> {
+  return delWithBody<{ success: boolean }, { bookId: number }>(
+    '/book/follow',
+    { bookId }
+  );
+}
+
+/**
+ * Get all chapters for a book
+ */
+export async function getChaptersByBookId(bookId: number): Promise<ApiResponse<Chapter[]>> {
+  return get<Chapter[]>(`/book/${bookId}/chapters`);
+}
+
+/**
+ * Get a specific chapter by ID
+ */
+export async function getChapterById(bookId: number, chapterId: number): Promise<ApiResponse<Chapter>> {
+  return get<Chapter>(`/book/${bookId}/chapters/${chapterId}`);
+}
+
+/**
+ * Get chapter detail by chapter ID
+ */
+export async function getChapterDetail(chapterId: number): Promise<ApiResponse<Chapter>> {
+  return get<Chapter>(`/book/chapter/${chapterId}`);
+}
+
+/**
+ * Get comments for a specific chapter with pagination
+ */
+export async function getChapterComments({
+  chapterId,
+  page = 1,
+  limit = 10,
+  commentId
+}: {
+  chapterId: number;
+  page?: number;
+  limit?: number;
+  commentId?: number;
+}): Promise<ApiResponse<PaginatedData<any>>> {
+  const queryParams = new URLSearchParams();
+  queryParams.append('chapterId', chapterId.toString());
+  queryParams.append('page', page.toString());
+  queryParams.append('limit', limit.toString());
+  
+  if (commentId) {
+    queryParams.append('commentId', commentId.toString());
+  }
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<PaginatedData<any>>(`/book/chapter-comment${queryString}`);
+}
+
+/**
+ * Add a comment to a chapter
+ */
+export async function addChapterComment(
+  chapterId: number,
+  comment: string,
+  parentId?: number
+): Promise<ApiResponse<any>> {
+  return post<any>(
+    `/book/chapter-comment/${chapterId}`,
+    {  comment, chapterId,parentId }
+  );
+}
+
+/**
+ * Update an existing comment
+ */
+export async function updateChapterComment(
+  commentId: number,
+  comment: string
+): Promise<ApiResponse<any>> {
+  return put<any>(
+    `/book/chapter-comment/${commentId}`,
+    {  comment, commentId }
+  );
+}
+
+/**
+ * Delete a comment
+ */
+export async function deleteChapterComment(
+  commentId: number
+): Promise<ApiResponse<any>> {
+  return del<any>(
+    `/book/chapter-comment/${commentId}`
+  );
+}
+
+/**
+ * Update reading history when a user reads a chapter
+ * @param bookId The ID of the book being read
+ * @param chapterId The ID of the chapter being read
+ * @returns ApiResponse with success status
+ */
+export async function updateReadingHistory(bookId: number, chapterId: number): Promise<ApiResponse<{ success: boolean }>> {
+  return post<{ success: boolean }>(
+    `/book/reading-history`,
+    { bookId, chapterId }
+  );
 } 

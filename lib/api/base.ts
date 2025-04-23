@@ -1,4 +1,4 @@
-import { ApiResponse, ApiResponseData, ApiResponseStatus } from "@/models/api";
+import { ApiResponse, ApiResponseStatus } from "@/models/api";
 import { useUserStore } from '@/lib/store';
 import { toast } from 'sonner';
 import axios, { AxiosInstance, AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
@@ -9,16 +9,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:30
 // Create an Axios instance with default configuration
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // We'll handle Content-Type in configureRequest instead
 });
 
 // API request options
 interface RequestOptions {
   headers?: Record<string, string>;
   token?: string; // Now optional in all cases as we will get from store if not provided
-  isProtectedRoute?: boolean; // Flag to identify protected routes
+  skipContentType?: boolean; // Flag to skip setting default Content-Type
 }
 
 // Handle 401 unauthorized responses
@@ -53,21 +51,25 @@ apiClient.interceptors.response.use(
 const configureRequest = (options: RequestOptions = {}): AxiosRequestConfig => {
   const config: AxiosRequestConfig = {
     headers: {
+      // Only set Content-Type if not explicitly skipped
+      ...(!options.skipContentType && { 'Content-Type': 'application/json' }),
       ...options.headers,
     },
   };
   
   // For protected routes, get token from store if not provided
-  if (options.isProtectedRoute) {
+  
     const token = options.token || useUserStore.getState().token;
+
+
     
-    if (token) {
-      config.headers = {
-        ...config.headers,
-        'Authorization': `Bearer ${token}`,
-      };
-    }
-  } 
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      'Authorization': `Bearer ${token}`,
+    };
+  }
+  
   // For non-protected routes, only add token if explicitly provided
   else if (options.token) {
     config.headers = {
@@ -75,9 +77,6 @@ const configureRequest = (options: RequestOptions = {}): AxiosRequestConfig => {
       'Authorization': `Bearer ${options.token}`,
     };
   }
-  
-  // Pass the protected route flag to be used in interceptors
-  (config as any).isProtectedRoute = options.isProtectedRoute;
   
   return config;
 };
@@ -87,7 +86,7 @@ const configureRequest = (options: RequestOptions = {}): AxiosRequestConfig => {
  */
 const transformResponse = <T>(response: AxiosResponse): ApiResponse<T> => {
   return {
-    data: response.data,
+    ...response.data,
     status: response.status as ApiResponseStatus,
   };
 };
@@ -97,17 +96,14 @@ const transformResponse = <T>(response: AxiosResponse): ApiResponse<T> => {
  */
 const handleApiError = <T>(error: any): ApiResponse<T> => {
   // If we have a response from the server with an error status
-  if (error.response) return error.response;
+  if (error.response?.data) return { ...error.response.data, status: error.response.status as ApiResponseStatus};
   
   // For network errors or other issues
   return {
-    data: {
-      code: error.response.status,
+      code: 500,
       data: null as T,
       msg: error.message || 'Unknown error occurred',
-      status: false,
-    },
-    status: error.response.status as ApiResponseStatus,
+      status: 500,
   };
 };
 
@@ -116,7 +112,7 @@ const handleApiError = <T>(error: any): ApiResponse<T> => {
  */
 export async function get<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
   try {
-    const response = await apiClient.get<T>(endpoint, configureRequest(options));
+    const response: AxiosResponse<T> = await apiClient.get<T>(endpoint, configureRequest(options));
     return transformResponse<T>(response);
   } catch (error) {
     return handleApiError<T>(error);
@@ -160,6 +156,22 @@ export async function del<T>(endpoint: string, options: RequestOptions = {}): Pr
 }
 
 /**
+ * Make a DELETE request to the API with a request body
+ */
+export async function delWithBody<T, D = any>(endpoint: string, body: D, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+  try {
+    const config = {
+      ...configureRequest(options),
+      data: body // This is how axios expects the body for delete requests
+    };
+    const response = await apiClient.delete<T>(endpoint, config);
+    return transformResponse<T>(response);
+  } catch (error) {
+    return handleApiError<T>(error);
+  }
+}
+
+/**
  * Make a PATCH request to the API
  */
 export async function patch<T, D = any>(endpoint: string, body: D, options: RequestOptions = {}): Promise<ApiResponse<T>> {
@@ -179,12 +191,41 @@ export async function uploadFile<T>(endpoint: string, file: File, options: Reque
     const formData = new FormData();
     formData.append('file', file);
     
-    // Configure the request with proper content type for form data
-    const config = configureRequest(options);
+    // Configure the request with skipContentType for FormData
+    const config = configureRequest({ 
+      ...options, 
+      skipContentType: true 
+    });
     
-    // Remove Content-Type header to let the browser set it with boundary
-    delete config.headers?.['Content-Type'];
+    const response = await apiClient.post<T>(endpoint, formData, config);
+    return transformResponse<T>(response);
+  } catch (error) {
+    return handleApiError<T>(error);
+  }
+}
+
+/**
+ * Update an existing image with a new file
+ * @param endpoint The API endpoint
+ * @param file The new image file to upload
+ * @param options Request options
+ */
+export async function updateImage<T>(
+  endpoint: string, 
+  file: File, 
+  options: RequestOptions = {}
+): Promise<ApiResponse<T>> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
     
+    // Configure the request with skipContentType for FormData
+    const config = configureRequest({ 
+      ...options, 
+      skipContentType: true 
+    });
+    
+    // Use POST method for updating image
     const response = await apiClient.post<T>(endpoint, formData, config);
     return transformResponse<T>(response);
   } catch (error) {

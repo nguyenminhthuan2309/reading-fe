@@ -1,0 +1,65 @@
+/**
+ * Query Keys for React Query
+ * 
+ * This file centralizes all the query keys used throughout the application
+ * to ensure consistency and avoid typos.
+ */
+
+// Auth related query keys
+export const AUTH_KEYS = {
+  ME: ['me'] as const,
+} as const;
+
+// User related query keys
+export const USER_KEYS = {
+  DETAIL: (userId: string | number) => ['user', userId] as const,
+} as const;
+
+// Book related query keys
+export const BOOK_KEYS = {
+  ALL: ['books'] as const,
+  LIST: (filters: any) => ['books', 'list', filters] as const,
+  DETAIL: (bookId: string | number) => ['books', 'detail', bookId] as const,
+  EDIT: (bookId: string | number) => ['books', 'edit', bookId] as const,
+  NEW_RELEASES: ['books', 'newReleases'] as const,
+  RECENTLY_UPDATED: ['books', 'recentlyUpdated'] as const,
+  RECENTLY_READ: ['books', 'recentlyRead'] as const,
+  TRENDING: ['books', 'trending'] as const,
+  RECOMMENDED: ['books', 'recommend'] as const,
+  RELATED: (bookId: string | number, page?: number, limit?: number) => 
+    ['books', 'related', bookId, page, limit] as const,
+  FOLLOWED: (page?: number, limit?: number) => 
+    ['books', 'followed', page, limit] as const,
+  USER_BOOKS: (userId: string | number, page?: number, limit?: number, filter?: string) => 
+    ['books', 'user', userId, page, limit, filter] as const,
+} as const;
+
+// Chapter related query keys
+export const CHAPTER_KEYS = {
+  LIST: (bookId: string | number) => ['chapters', 'list', bookId] as const,
+  DETAIL: (chapterId: string | number, chapterNumber?: number) => 
+    ['chapters', 'detail', chapterId, chapterNumber] as const,
+  BOOK_CHAPTERS: (bookId: string | number) => [ 'chapters', bookId] as const,
+} as const;
+
+// Comment related query keys
+export const COMMENT_KEYS = {
+  CHAPTER_COMMENTS: (chapterId: string | number, limit?: number) => 
+    ['comments', 'chapter', chapterId, limit] as const,
+  COMMENT_REPLIES: (commentId: string | number) => 
+    ['comments', 'replies', commentId] as const,
+  BOOK_REVIEWS: (bookId: string | number, page?: number, limit?: number) => 
+    ['reviews', bookId, page, limit] as const,
+} as const;
+
+// Category/Genre related query keys
+export const CATEGORY_KEYS = {
+  ALL: ['genres'] as const,
+  CATEGORIES: ['categories'] as const,
+} as const;
+
+// Payment related query keys
+export const PAYMENT_KEYS = {
+  TRANSACTION: (orderId: string | number, requestId: string | number) => 
+    ['payment', 'transaction', orderId, requestId] as const,
+} as const; 

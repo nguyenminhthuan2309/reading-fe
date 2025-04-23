@@ -10,16 +10,21 @@ import {
 } from "@/components/ui/carousel";
 import { BookCard } from "./book-card";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useUserStore } from "@/lib/store";
+import { Book } from "@/models";
 
 interface SectionCarouselProps {
   title: string;
-  books: any[];
+  books: Book[];
   linkHref: string;
   className?: string;
+  isLoading?: boolean;
 }
 
-export function SectionCarousel({ title, books, linkHref, className }: SectionCarouselProps) {
+export function SectionCarousel({ title, books, linkHref, className, isLoading = false }: SectionCarouselProps) {
   const isFirstSection = title === "Recently Viewed";
+  const { user } = useUserStore();
   
   return (
     <section className={cn(isFirstSection ? "pt-1 pb-4 group" : "py-6 group", className)}>
@@ -47,26 +52,57 @@ export function SectionCarousel({ title, books, linkHref, className }: SectionCa
             }}
           >
             <CarouselContent className="-ml-4 overflow-visible py-2 px-2">
-              {books.slice(0, 10).map((book) => (
-                <CarouselItem 
-                  key={book.id} 
-                  className="pl-6 basis-full sm:basis-[45%] md:basis-[32%] lg:basis-[23%] xl:basis-[19%] p-2"
-                >
-                  <div className="transition-all duration-200 transform hover:scale-[1.02] mx-1 rounded-xl overflow-hidden hover:shadow-md">
-                    <BookCard
-                      id={book.id}
-                      title={book.title}
-                      author={book.author}
-                      description={book.description}
-                      chapters={book.chapters}
-                      rating={book.rating}
-                      genre={book.genre}
-                      progress={book.progress}
-                      className="shadow-none"
-                    />
-                  </div>
-                </CarouselItem>
-              ))}
+              {isLoading ? (
+                // Loading skeleton placeholders
+                Array(5).fill(0).map((_, index) => (
+                  <CarouselItem 
+                    key={`skeleton-${index}`} 
+                    className="pl-6 basis-full sm:basis-[45%] md:basis-[32%] lg:basis-[23%] xl:basis-[19%] p-2"
+                  >
+                    <div className="mx-1 rounded-xl overflow-hidden">
+                      <div className="space-y-2">
+                        <Skeleton className="h-40 w-full rounded-t-xl" />
+                        <div className="p-3 space-y-2">
+                          <Skeleton className="h-5 w-3/4" />
+                          <Skeleton className="h-4 w-1/2" />
+                          <div className="pt-2 flex gap-2">
+                            <Skeleton className="h-4 w-12 rounded-full" />
+                            <Skeleton className="h-4 w-12 rounded-full" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))
+              ) : (
+                // Render actual book items
+                books?.map((book) => (
+                  <CarouselItem 
+                    key={book.id} 
+                    className="pl-6 basis-full sm:basis-[45%] md:basis-[32%] lg:basis-[23%] xl:basis-[19%] p-2"
+                  >
+                    <div className="transition-all duration-200 transform hover:scale-[1.02] mx-1 rounded-xl overflow-hidden hover:shadow-md h-full">
+                      <BookCard
+                        id={book.id}
+                        title={book.title}
+                        coverImage={book.cover}
+                        author={book.author || "Unknown author"}
+                        description={book.description}
+                        chapters={book.totalChapters}
+                        rating={book.rating || 0}
+                        genres={book.categories}
+                        // progress={book.progress || 0}
+                        className="shadow-none h-full w-full"
+                        // lastReadChapterTitle={book.lastReadChapterTitle}
+                        // currentChapter={book.currentChapter}
+                        // lastReadAt={book.lastReadAt}
+                        isCreator={user?.id === book.author?.id }
+                        isFollowed={book.isFollowed}
+                      />
+                    </div>
+                  </CarouselItem>
+                ))
+              )}
             </CarouselContent>
           </Carousel>
         </div>

@@ -18,6 +18,7 @@ export function PictureBookReader({ images, captions = [] }: PictureBookReaderPr
             alt={`Page ${index + 1}`}
             caption={captions[index] || ``}
             className="max-w-full md:max-w-[85%] lg:max-w-[70%] mx-auto"
+            showPopoverOnHover={false}
           />
           {!captions[index] && (
             <p className="text-center text-muted-foreground text-sm mt-2">

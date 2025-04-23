@@ -1,95 +1,200 @@
+"use client";
+
 import { BookCarousel } from "@/components/books/book-carousel";
 import { SectionCarousel } from "@/components/books/section-carousel";
-import { featuredBooks } from "@/lib/mock-data";
 import Link from "next/link";
 import { PenLine, Trophy, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
+import { getUserReadingHistory, getBooks, getTrendingBooks, getRecommendedBooks } from "@/lib/api/books";
+import { ReadingHistoryItem, SortDirectionEnum, AccessStatusEnum, Book } from "@/models/book";
+import { useQuery } from "@tanstack/react-query";
+import { BOOK_KEYS } from "@/lib/query-keys";
 export default function Home() {
-  // Sort books for popular section (keeping the data in case it's needed elsewhere)
-  const popularBooks = [...featuredBooks].sort((a, b) => b.rating - a.rating);
+  // Fetch reading history using React Query
+  const { data: readingHistoryData, isLoading } = useQuery({
+    queryKey: BOOK_KEYS.RECENTLY_READ,
+    queryFn: async () => {
+      const response = await getUserReadingHistory({
+        page: 1,
+        limit: 10
+      });
+      
+      if (response.status === 200) {
+        return response.data.data;
+      }
+      throw new Error(response.msg || 'Failed to fetch reading history');
+    },
+    // On error, don't retry and silently fail - we'll show fallback data
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    refetchOnWindowFocus: false
+  });
   
-  // Filter books for recommended section
-  const recommendedBooks = featuredBooks.filter(
-    book => ["Fantasy", "Science Fiction", "Cyberpunk", "Adventure", "Mystery"].includes(book.genre)
-  );
+  // Fetch new releases using React Query - sorted by creation date
+  const { data: newReleasesData, isLoading: isLoadingNewReleases } = useQuery({
+    queryKey: BOOK_KEYS.NEW_RELEASES,
+    queryFn: async () => {
+      const response = await getBooks({
+        page: 1,
+        limit: 10,
+        sortBy: 'createdAt', // This should map to createdAt on the backend
+        sortDirection: SortDirectionEnum.DESC, // Get the newest first
+        accessStatusId: AccessStatusEnum.PUBLISHED // Only published books
+      });
+
+      
+      if (response.status === 200) {
+        return response.data.data;
+      }
+      throw new Error(response.msg || 'Failed to fetch new releases');
+    },
+    // On error, don't retry and silently fail - we'll show fallback data
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    refetchOnWindowFocus: false
+  });
   
-  // Get recently viewed books (for demo, every other book from first 10)
-  const recentlyViewedBooks = [
-    featuredBooks.find(book => book.id === "16"), // Our new book
-    ...featuredBooks.slice(0, 10).filter((_, i) => i % 2 === 0)
-  ].filter(Boolean);
+  // Fetch recently updated books using React Query - sorted by updatedAt date
+  const { data: recentlyUpdatedData, isLoading: isLoadingRecentlyUpdated } = useQuery({
+    queryKey: BOOK_KEYS.RECENTLY_UPDATED,
+    queryFn: async () => {
+      const response = await getBooks({
+        page: 1,
+        limit: 10,
+        sortBy: 'updatedAt', // Sort by update date
+        sortDirection: SortDirectionEnum.DESC, // Get the most recently updated first
+        accessStatusId: AccessStatusEnum.PUBLISHED // Only published books
+      });
+      
+      if (response.status === 200) {
+        return response.data.data;
+      }
+      throw new Error(response.msg || 'Failed to fetch recently updated books');
+    },
+    // On error, don't retry and silently fail - we'll show fallback data
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    refetchOnWindowFocus: false
+  });
   
-  // Get recently updated books
-  const recentlyUpdatedBooks = featuredBooks.slice(5, 15);
+  // Fetch trending books using React Query
+  const { data: trendingData, isLoading: isLoadingTrending } = useQuery({
+    queryKey: BOOK_KEYS.TRENDING,
+    queryFn: async () => {
+      const response = await getTrendingBooks({
+        page: 1,
+        limit: 10
+      });
+      
+      if (response.status === 200) {
+        return response.data.data;
+      }
+      throw new Error(response.msg || 'Failed to fetch trending books');
+    },
+    // On error, don't retry and silently fail - we'll show fallback data
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    refetchOnWindowFocus: false
+  });
   
-  // New Releases (randomized selection for demo)
-  const newReleases = [...featuredBooks]
-    .sort(() => 0.5 - Math.random())
-    .slice(0, 10);
-  
-  // Top Trending (highest ratings + random factor for demo)
-  const topTrendingBooks = [...featuredBooks]
-    .sort((a, b) => (b.rating * 0.7 + Math.random() * 0.3) - (a.rating * 0.7 + Math.random() * 0.3))
-    .slice(0, 10);
+  // Fetch recommended books using React Query
+  const { data: recommendedData, isLoading: isLoadingRecommended } = useQuery({
+    queryKey: BOOK_KEYS.RECOMMENDED,
+    queryFn: async () => {
+      const response = await getRecommendedBooks({
+        limit: 10
+      });
+
+      if (response.status === 200) {
+        return response.data;
+      }
+      throw new Error(response.msg || 'Failed to fetch recommended books');
+    },
+    // On error, don't retry and silently fail - we'll show fallback data
+    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    refetchOnWindowFocus: false
+  });
+
+
 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <BookCarousel />
+      <BookCarousel books={trendingData} />
       
       {/* Spacer between hero and first section */}
       <div className="h-8"></div>
       
       {/* Recent Read Section */}
-      <div>
-        <SectionCarousel 
-          title="Recent Read" 
-          books={recentlyViewedBooks} 
-          linkHref="/books" 
-          className="bg-section-light"
-        />
-      </div>
+      {!!readingHistoryData && readingHistoryData?.length > 0 && 
+        (<div>
+          <SectionCarousel 
+            title="Recent Read" 
+            books={readingHistoryData} 
+            linkHref="/user/reading-history" 
+            className="bg-section-light"
+            isLoading={isLoading}
+          />
+        </div>  )
+      }
       
       {/* New Releases Section */}
-      <div>
-        <SectionCarousel 
-          title="New Releases" 
-          books={newReleases} 
-          linkHref="/books?category=new" 
-          className="bg-section-dark"
-        />
-      </div>
+      {
+        !!newReleasesData && newReleasesData?.length > 0 &&
+        <div>
+          <SectionCarousel 
+            title="New Releases" 
+            books={newReleasesData} 
+            linkHref="/books?category=new" 
+            className="bg-section-dark"
+            isLoading={isLoadingNewReleases}
+          />
+        </div>
+      }
       
       {/* Recently Updated Section */}
-      <div>
-        <SectionCarousel 
-          title="Recently Updated" 
-          books={recentlyUpdatedBooks} 
-          linkHref="/books" 
-          className="bg-section-light"
-        />
-      </div>
+
+      {   
+        !!recentlyUpdatedData && recentlyUpdatedData?.length > 0 &&
+        <div>
+          <SectionCarousel 
+            title="Recently Updated" 
+            books={recentlyUpdatedData} 
+            linkHref="/books?sortBy=updatedAt" 
+            className="bg-section-light"
+          isLoading={isLoadingRecentlyUpdated}
+          />
+        </div>
+      }
       
       {/* Top Trending Section */}
-      <div>
-        <SectionCarousel 
-          title="Top Trending" 
-          books={topTrendingBooks} 
+      {
+        !!trendingData && trendingData?.length > 0 &&
+        <div>
+          <SectionCarousel 
+            title="Top Trending" 
+          books={trendingData} 
           linkHref="/books?sort=trending" 
           className="bg-section-dark"
+          isLoading={isLoadingTrending}
         />
       </div>
+}
       
       {/* Recommended Section */}
-      <div>
-        <SectionCarousel 
-          title="Recommended For You" 
-          books={recommendedBooks} 
+      {
+        !!recommendedData && recommendedData?.length > 0 &&
+        <div>
+          <SectionCarousel 
+            title="Recommended For You" 
+            books={recommendedData} 
           linkHref="/books" 
           className="bg-section-light"
+          isLoading={isLoadingRecommended}
         />
       </div>
+      }
       
       {/* Call to Action Section */}
       <div className="py-16">

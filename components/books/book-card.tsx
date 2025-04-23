@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BookOpen, Star, Clock, Bookmark } from "lucide-react";
+import { BookOpen, Star, Clock, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -12,19 +12,26 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Genre, GENRE_OPTIONS } from "@/models/genre";
+import { Author, Category } from "@/models";
+import { FollowButton } from "@/components/books/follow-button";
 
 interface BookCardProps {
-  id: string;
+  id: number;
   title: string;
-  author: string;
+  author: Author;
   description: string;
   coverImage?: string;
   chapters: number;
   rating: number;
-  genre: Genre;
+  genres: Category[];
   progress?: number;
   className?: string;
   showPreview?: boolean;
+  lastReadAt?: string;
+  currentChapter?: number;
+  lastReadChapterTitle?: string;
+  isCreator?: boolean;
+  isFollowed?: boolean;
 }
 
 export function BookCard({
@@ -35,15 +42,19 @@ export function BookCard({
   coverImage,
   chapters,
   rating,
-  genre,
+  genres,
   progress = 0,
   className,
   showPreview = true,
+  lastReadAt,
+  currentChapter,
+  lastReadChapterTitle,
+  isCreator = false,
+  isFollowed = false,
 }: BookCardProps) {
   const hasStartedReading = progress > 0;
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -59,12 +70,6 @@ export function BookCard({
       }
     };
   }, []);
-
-  // Get genre display name 
-  const getGenreDisplayName = (): string => {
-    const option = GENRE_OPTIONS.find(opt => opt.value === genre);
-    return option?.label || genre;
-  };
   
   // Hover handlers with delay for better UX
   const handleMouseEnter = () => {
@@ -90,68 +95,87 @@ export function BookCard({
   // Card content that's used in both cases
   const CardContent = () => (
     <div 
-      className={cn(
-        "flex flex-col rounded-xl overflow-hidden transition-transform duration-300 cursor-pointer border border-gray-200 bg-white", 
-        className
-      )}
+    className={cn(
+      "flex flex-col rounded-xl overflow-hidden transition-transform duration-300 cursor-pointer border border-gray-200 bg-white h-full w-full", 
+      className
+    )}
     >
       {/* Cover image container with padding */}
       <div className="p-3 pt-4">
         <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden shadow-sm">
           {/* Cover image */}
           <Image
-            src="/images/book-cover.jpeg"
+            src={coverImage || "/images/book-cover.jpeg"}
             alt={title}
             fill
             className="object-cover"
             priority
+            onError={(e) => {
+              // Fallback to default image if the provided URL fails to load
+              const target = e.target as HTMLImageElement;
+              target.src = "/images/book-cover.jpeg";
+            }}
           />
           
           {/* Genre badge */}
-          <div className="absolute top-3 left-3 z-10">
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{getGenreDisplayName()}</span>
+          <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1 max-w-[90%]">
+             {genres?.map((genre) => (
+               <span key={genre.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{genre.name}</span>
+             ))}
           </div>
         </div>
       </div>
       
       {/* Basic info below the cover */}
-      <div className="px-4 pb-4">
-        <Link href={`/books/${id}`}>
-          <h3 className="font-medium text-gray-900 leading-tight line-clamp-1 hover:text-red-600 transition-colors">{title}</h3>
-        </Link>
-        <p className="text-xs text-gray-600 mt-1">by {author}</p>
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center">
-              <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-              <span className="text-xs ml-1 text-gray-700">{rating.toFixed(1)}</span>
-            </div>
-            <span className="text-gray-400 text-xs">•</span>
-            <div className="flex items-center">
-              <BookOpen className="h-3.5 w-3.5 text-gray-500" />
-              <span className="text-xs ml-1 text-gray-700">{chapters} Ch</span>
-            </div>
-          </div>
-          
-          {progress > 0 && (
-            <div className="flex items-center">
-              <div className="relative h-1.5 w-12 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="absolute top-0 left-0 h-full bg-red-600 rounded-full" 
-                  style={{ width: `${progress * 100}%` }}
-                />
+      <div className="px-4 pb-4 flex flex-col flex-grow justify-between">
+        <div>
+          <Link href={`/books/${id}`}>
+            <h3 className="font-medium text-gray-900 leading-tight line-clamp-1 hover:text-red-600 transition-colors">{title}</h3>
+          </Link>
+          <p className="text-xs text-gray-600 mt-1">by {author.name}</p>
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center">
+                <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+                <span className="text-xs ml-1 text-gray-700">{rating.toFixed(1)}</span>
               </div>
-              <span className="text-[9px] text-gray-600 ml-1">{Math.round(progress * 100)}%</span>
+              <span className="text-gray-400 text-xs">•</span>
+              <div className="flex items-center">
+                <BookOpen className="h-3.5 w-3.5 text-gray-500" />
+                <span className="text-xs ml-1 text-gray-700">{chapters} Ch</span>
+              </div>
             </div>
-          )}
+            
+            {progress > 0 && (
+              <div className="flex items-center">
+                <div className="relative h-1.5 w-12 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="absolute top-0 left-0 h-full bg-red-600 rounded-full" 
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
+                <span className="text-[9px] text-gray-600 ml-1">{Math.round(progress * 100)}%</span>
+              </div>
+            )}
+            
+            {/* Last read chapter info - show only if available and progress > 0 */}
+            {progress > 0 && lastReadChapterTitle && (
+              <div className="mt-1.5 flex items-center text-xs text-gray-600">
+                <Clock className="h-3 w-3 mr-1 text-gray-500" />
+                <span className="line-clamp-1 text-[10px]">
+                  Last read: {lastReadChapterTitle}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
-        
+
         {/* Action buttons */}
         <div className="flex gap-2 mt-3">
           <Link 
             href={hasStartedReading 
-              ? `/read/${id}?chapter=${Math.ceil(progress * chapters)}` 
-              : `/read/${id}?chapter=1`} 
+              ? `/books/${id}/read?chapter=${Math.ceil(progress * chapters)}` 
+              : `/books/${id}/read?chapter=${currentChapter}&id=${id}`} 
             className="flex-1"
           >
             <Button variant="destructive" size="sm" className="w-full text-xs h-8 rounded-lg">
@@ -159,24 +183,26 @@ export function BookCard({
             </Button>
           </Link>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className={cn(
-              "h-8 px-2 rounded-lg border", 
-              isBookmarked 
-                ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:text-red-700" 
-                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+          <div className="flex gap-1">
+            {isCreator && (
+              <Link href={`/books/${id}/edit`}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 px-2 rounded-lg border bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+                >
+                  <Pencil className="h-4 w-4 text-gray-500" />
+                </Button>
+              </Link>
             )}
-            onClick={() => setIsBookmarked(!isBookmarked)}
-          >
-            <Bookmark 
-              className={cn(
-                "h-4 w-4 transition-colors", 
-                isBookmarked ? "text-red-500 fill-red-500" : "text-gray-500"
-              )} 
+            
+            <FollowButton 
+              bookId={id} 
+              isFollowed={isFollowed} 
+              size="sm" 
+              className="h-8 px-2 rounded-lg border" 
             />
-          </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -196,7 +222,8 @@ export function BookCard({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <div 
+        <div
+          className="w-full"
           ref={triggerRef}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
@@ -223,9 +250,13 @@ export function BookCard({
                 <Link href={`/books/${id}`}>
                   <h3 className="text-base font-bold text-black leading-tight mb-1 hover:underline">{title}</h3>
                 </Link>
-                <p className="text-xs text-gray-600">by {author}</p>
+                <p className="text-xs text-gray-600">by {author.name}</p>
               </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{getGenreDisplayName()}</span>
+              <div className="flex flex-wrap gap-1 justify-end max-w-[40%]">
+                {genres?.map((genre) => (
+                  <span key={genre.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{genre.name}</span>
+                ))}
+              </div>
             </div>
             
             <p className="text-xs text-gray-600 mb-4 line-clamp-3">{description}</p>

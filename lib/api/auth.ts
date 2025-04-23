@@ -1,8 +1,6 @@
-import { LoginCredentials, SigninResponse, SignupCredentials, User } from '@/models';
+import { LoginCredentials, SigninResponse, SignupCredentials, User, VerifyEmailResponse } from '@/models';
 import { get, patch, post } from '../api';
 import { ApiResponse } from '@/models/api';
-
-
 
 /**
  * Login a user with email and password
@@ -21,8 +19,8 @@ export async function signup(credentials: SignupCredentials): Promise<ApiRespons
 /**
  * Get the current user's profile
  */
-export async function getCurrentUser(): Promise<ApiResponse<User>> {
-  return get<User>('/user/me', { isProtectedRoute: true });
+export async function getCurrentUser(token?: string): Promise<ApiResponse<User>> {
+  return get<User>('/user/me', { token });
 }
 
 /**
@@ -36,28 +34,21 @@ export async function getUserById(id: string): Promise<ApiResponse<User>> {
  * Update user preferences
  */
 export async function updateUserPreferences(genres: string[]): Promise<ApiResponse<User>> {
-  return post<User, { genres: string[] }>('/user/preferences', { genres }, { isProtectedRoute: true });
+  return post<User, { genres: string[] }>('/user/preferences', { genres });
 }
 
 /**
  * Update user profile
  */
 export async function updateUserProfile(id: string, data: Partial<User>): Promise<ApiResponse<User>> {
-  return patch<User>(`/user`, data, { isProtectedRoute: true });
-}
-
-/**
- * Resend verification email
- */
-export async function resendVerificationEmail(email: string): Promise<ApiResponse<{ success: boolean }>> {
-  return post<{ success: boolean }>('/user/resend-verification', { email });
+  return patch<User>(`/user`, data);
 }
 
 /**
  * Verify email with token
  */
-export async function verifyEmail(token: string): Promise<ApiResponse<{ success: boolean }>> {
-  return get<{ success: boolean }>(`/user/verify?token=${encodeURIComponent(token)}`);
+export async function verifyEmail(token: string): Promise<ApiResponse<VerifyEmailResponse>> {
+  return get<VerifyEmailResponse>(`/user/verify?token=${encodeURIComponent(token)}`);
 }
 
 /**
@@ -115,7 +106,6 @@ export async function updatePassword(
 ): Promise<ApiResponse<{ success: boolean }>> {
   return patch<{ success: boolean }>(
     '/user/update-password',
-    { oldPassword, newPassword },
-    { isProtectedRoute: true }
+    { oldPassword, newPassword }
   );
 }

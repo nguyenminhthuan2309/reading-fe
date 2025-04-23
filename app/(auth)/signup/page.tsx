@@ -6,12 +6,15 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { FormInput } from "@/components/ui/form-input";
-import { useAuth } from "@/lib/hooks";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { signup } from "@/lib/api/auth";
+import { useRouter } from "next/navigation";
+import { SignupCredentials } from "@/models";
 
 // Define validation schema with Yup
 const signupSchema = yup.object({
@@ -34,10 +37,33 @@ const signupSchema = yup.object({
 type SignupFormData = yup.InferType<typeof signupSchema>;
 
 export default function SignUp() {
-  const { signup, isSigningUp } = useAuth();
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const [gender, setGender] = useState<string>("male");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Signup mutation using React Query directly
+  const { mutate: signupMutation, isPending: isSigningUp } = useMutation({
+    mutationFn: async (credentials: SignupCredentials) => {
+      const response = await signup(credentials);
+      
+      if (response.status !== 201) {
+        toast.error(response.msg);
+        throw new Error(response.msg);
+      }
+      
+      if (response.data) {
+        return response.data;
+      }
+      
+      throw new Error('Signup failed');
+    },
+    onSuccess: (userData) => {
+      queryClient.setQueryData(['me'], userData);
+      router.push(`/verify-email?email=${encodeURIComponent(userData.email)}`);
+    }
+  });
   
   const {
     register,
@@ -49,7 +75,7 @@ export default function SignUp() {
 
   const onSubmit = async (data: SignupFormData) => {
     try {
-      await signup({ 
+      signupMutation({ 
         name: data.name, 
         email: data.email, 
         password: data.password,

@@ -1,8 +1,22 @@
 // User type definition
 import { Genre } from './genre';
 
+// User role enum
+export enum UserRoleEnum {
+  ADMIN = 'ADMIN',
+  MANAGER = 'MANAGER',
+  MEMBER = 'MEMBER'
+}
+
+// User roles with their IDs
+export const USER_ROLES = [
+  { id: 1, name: UserRoleEnum.ADMIN },
+  { id: 2, name: UserRoleEnum.MANAGER },
+  { id: 3, name: UserRoleEnum.MEMBER }
+];
+
 export type User = {
-  id: string;
+  id: number;
   name: string;
   email: string;
   username?: string;
@@ -24,6 +38,24 @@ export type User = {
     hoursRead: number;
     avgRating: number;
   };
+  tokenBalance
+: 
+number
+tokenEarned
+: 
+number
+tokenPurchased
+: 
+number
+tokenReceived
+: 
+number
+tokenSpent
+: 
+number
+tokenWithdrawn
+: 
+number
   authoredBooks?: any[]; // Books created by the user
   socialLinks?: SocialLinks; // Social media links
 };
@@ -42,7 +74,7 @@ export interface UserStatus {
 // User roles
 export interface UserRole {
   id: number;
-  name: string;
+  name: UserRoleEnum | string;
 }
 
 // User preferences
@@ -73,6 +105,12 @@ export type SigninResponse = {
   user: User;
 }
 
+export type VerifyEmailResponse = {
+  accessToken: string;
+  expiresIn: number;
+  user: User;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -83,4 +121,11 @@ export interface SignupCredentials {
   email: string;
   password: string;
   gender?: string; // Added gender field
+}
+
+export interface Author {
+  id: string;
+  name: string;
+  avatar?: string;
+  email: string;
 }

@@ -4,8 +4,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Mail, AlarmClock, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { verifyEmail, getCurrentUser } from '@/lib/api/auth';
+import { toast } from 'sonner';
+import { useUserStore } from '@/lib/store';
+import { AUTH_KEYS } from '@/lib/query-keys';
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -13,55 +17,63 @@ export default function VerifyEmailPage() {
   const email = searchParams.get('email') || '';
   const token = searchParams.get('token') || '';
   
-  const { 
-    verifyEmail, 
-    isVerifyingEmail,
-    isVerificationSuccessful,
-    isVerificationFailed,
-    verificationError,
-    verificationData,
-    resendVerification, 
-    isResendingVerification 
-  } = useAuth();
-  
   const [verificationMessage, setVerificationMessage] = useState('');
+  const { setUser, setToken } = useUserStore();
 
-  // Verify email with token when page loads
-  useEffect(() => {
-    if (!token) return;
-    
-    // Use the verifyEmail mutation from the auth hook
-    verifyEmail(token);
-  }, [token, verifyEmail]);
-  
-  // Handle verification success/failure
-  useEffect(() => {
-    if (isVerificationSuccessful) {
-      setVerificationMessage(verificationData?.message || 'Your email has been successfully verified. You can now sign in.');
+  // Get user query
+  const {
+    refetch: fetchUserProfile,
+    isPending: isFetchingUserProfile,
+  } = useQuery({
+    queryKey: AUTH_KEYS.ME,
+    queryFn: async () => {
+      const response = await getCurrentUser();
       
-      // Redirect to sign in page after 3 seconds
-      const redirectTimer = setTimeout(() => {
-        router.push('/signin');
-      }, 3000);
+      if (!response.status) {
+        throw new Error(response.msg || 'Failed to load profile');
+      }
       
-      return () => clearTimeout(redirectTimer);
-    }
-    
-    if (isVerificationFailed) {
-      setVerificationMessage(
-        verificationError instanceof Error 
-          ? verificationError.message 
-          : 'Verification failed'
-      );
-    }
-  }, [isVerificationSuccessful, isVerificationFailed, verificationData, verificationError, router]);
+      setUser(response.data);
+      router.push('/onboarding');
+      return response.data;
+    },
+    enabled: false // Don't run on component mount
+  });
 
-  const handleResendVerification = () => {
-    if (!email) return;
-    
-    // Use the resendVerification mutation from the auth hook
-    resendVerification(email);
-  };
+  // Verify email mutation
+  const { 
+    mutate: verifyEmailMutation, 
+    isPending: isVerifyingEmail,
+    data: verificationData,
+    isSuccess: isVerificationSuccessful,
+    isError: isVerificationFailed,
+    error: verificationError
+  } = useMutation({
+    mutationKey: ['emailVerification'],
+    mutationFn: async (verificationToken: string) => {
+      const response = await verifyEmail(verificationToken);
+      
+      if (response.status !== 200) {
+        toast.error(response.msg || 'Verification failed');
+        throw new Error(response.msg || 'Verification failed');
+      }
+      
+      setToken(response.data.accessToken);
+      setUser(response.data.user);
+
+      fetchUserProfile();
+
+      return {
+        success: true,
+        message: 'Your email has been successfully verified. Getting your profile...'
+      };
+    }
+  });
+
+  // Attempt verification immediately if token is present
+  if (token && !isVerifyingEmail && !isVerificationSuccessful && !isVerificationFailed) {
+    verifyEmailMutation(token);
+  }
 
   // Show verification result if we have a token
   if (token && (isVerificationSuccessful || isVerificationFailed)) {
@@ -87,30 +99,12 @@ export default function VerifyEmailPage() {
               ) : (
                 <div className="space-y-4">
                   <Button 
-                    onClick={handleResendVerification} 
+                    onClick={() => router.back()}
                     variant="outline" 
                     className="w-full"
-                    disabled={isResendingVerification || !email}
                   >
-                    {isResendingVerification ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Resending...
-                      </>
-                    ) : (
-                      'Resend verification email'
-                    )}
+                    Back
                   </Button>
-                  
-                  <div className="text-center">
-                    <Button 
-                      variant="link" 
-                      className="text-primary"
-                      onClick={() => router.back()}
-                    >
-                      Back
-                    </Button>
-                  </div>
                 </div>
               )}
             </div>
@@ -178,30 +172,12 @@ export default function VerifyEmailPage() {
           
           <div className="space-y-4">
             <Button 
-              onClick={handleResendVerification} 
+              onClick={() => router.back()}
               variant="outline" 
               className="w-full"
-              disabled={isResendingVerification}
             >
-              {isResendingVerification ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Resending...
-                </>
-              ) : (
-                'Resend verification email'
-              )}
+              Back
             </Button>
-            
-            <div className="text-center">
-              <Button 
-                variant="link" 
-                className="text-primary"
-                onClick={() => router.back()}
-              >
-                Back
-              </Button>
-            </div>
           </div>
         </div>
       </div>

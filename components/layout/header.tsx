@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, User, LogOut, PlusCircle, BookIcon, Award, Heart, Moon, Sun, Languages } from "lucide-react";
+import { BookOpen, User, LogOut, PlusCircle, BookIcon, Award,  Sun, Languages,  Settings } from "lucide-react";
 import { SearchDialog } from "@/components/search/search-dialog";
 import {
   NavigationMenu,
@@ -25,14 +25,9 @@ import { useUserStore } from "@/lib/store";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
 import * as React from "react";
 import { Genre, GENRE_OPTIONS } from "@/models/genre";
+import { UserRoleEnum } from "@/models/user";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -122,7 +117,7 @@ export default function Header() {
     // Clear user from Zustand store
     logoutStore();
     // Clear user from React Query cache
-    queryClient.setQueryData(['currentUser'], null);
+    queryClient.setQueryData(['me'], null);
     // Redirect to sign in page
     router.push('/signin');
   };
@@ -136,6 +131,9 @@ export default function Header() {
 
   // Generate username for display
   const username = user ? generateUsername(user.email, user.name) : '';
+
+  // Check if user has admin role
+  const isAdmin = user?.role?.name === UserRoleEnum.ADMIN;
 
   return (
     <header className="bg-white text-black border-b border-gray-200 dark:bg-gray-950 dark:text-white dark:border-gray-800">
@@ -266,69 +264,87 @@ export default function Header() {
           )}
           
           {isLoggedIn && user ? (
-            <HoverCard openDelay={0} closeDelay={300}>
-              <HoverCardTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full focus-visible:ring-offset-2" onClick={navigateToProfile}>
-                  <Avatar className="h-9 w-9 transition-transform hover:scale-110">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback gender={user.gender}>
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80 p-3" align="end" sideOffset={4} side="bottom">
-                <div className="flex">
-                  {/* Left side: User info */}
-                  <div className="w-2/5 pr-3 border-r border-border">
-                    <div className="flex flex-col items-center">
-                      <Avatar className="h-14 w-14 mb-2">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback gender={user.gender}>
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="text-center">
-                        <p className="font-medium text-sm line-clamp-1">{user.name}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">@{username}</p>
-                        <div className="flex items-center justify-center mt-1">
-                          <Award className="h-4 w-4 mr-1 text-amber-500" />
-                          <span className="text-xs font-semibold">{user.points || 0} Points</span>
+            <>
+              {/* Add Haru balance display */}
+              <div className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/30">
+                <Award className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{user.tokenBalance || 0}</span>
+              </div>
+              
+              <HoverCard openDelay={0} closeDelay={300}>
+                <HoverCardTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full focus-visible:ring-offset-2" onClick={navigateToProfile}>
+                    <Avatar className="h-9 w-9 transition-transform hover:scale-110">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback gender={user.gender}>
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80 p-3" align="end" sideOffset={4} side="bottom">
+                  <div className="flex">
+                    {/* Left side: User info */}
+                    <div className="w-2/5 pr-3 border-r border-border">
+                      <div className="flex flex-col items-center">
+                        <Avatar className="h-14 w-14 mb-2">
+                          <AvatarImage src={user.avatar} alt={user.name} />
+                          <AvatarFallback gender={user.gender}>
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="text-center">
+                          <p className="font-medium text-sm line-clamp-1">{user.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">@{username}</p>
+                          <div className="flex items-center justify-center mt-1">
+                            <Award className="h-4 w-4 mr-1 text-amber-500" />
+                            <span className="text-xs font-semibold">{user.tokenBalance || 0} Haru</span>
+                          </div>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Right side: Actions */}
+                    <div className="w-3/5 pl-3">
+                      <div className="grid grid-cols-1 gap-1.5">
+                        <Link href={`/user/${user.id}`} className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                        </Link>
+                        
+                        <Link href={`/user/${user.id}?section=shelf`} className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+                          <BookIcon className="mr-2 h-4 w-4" />
+                          <span>My Books</span>
+                        </Link>
+                        
+                        <Link href="/books/create" className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          <span>Create Book</span>
+                        </Link>
+
+                        {isAdmin && (
+                          <Link 
+                            href="/admin/books" 
+                            className="flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
+                          >
+                            <Settings className="mr-2 h-4 w-4" />
+                            <span>Settings</span>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Right side: Actions */}
-                  <div className="w-3/5 pl-3">
-                    <div className="grid grid-cols-1 gap-1.5">
-                      <Link href={`/user/${user.id}`} className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                      </Link>
-                      
-                      <Link href="/books/my" className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-                        <BookIcon className="mr-2 h-4 w-4" />
-                        <span>My Books</span>
-                      </Link>
-                      
-                      <Link href="/books/create" className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        <span>Create Book</span>
-                      </Link>
-                    </div>
+                  <div className="border-t border-border pt-2 mt-3 flex justify-center">
+                    <button 
+                      className="flex items-center rounded-md px-6 py-1.5 text-sm text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/20"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </button>
                   </div>
-                </div>
-
-                <div className="border-t border-border pt-2 mt-3 flex justify-center">
-                  <button 
-                    className="flex items-center rounded-md px-6 py-1.5 text-sm text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/20"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </button>
-                </div>
-              </HoverCardContent>
-            </HoverCard>
+                </HoverCardContent>
+              </HoverCard>
+            </>
           ) : (
             <>
               <Link href="/signin" className="text-black hover:text-black text-sm font-medium">

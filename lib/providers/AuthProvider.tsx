@@ -36,8 +36,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!user) {
         try {
           const response = await getCurrentUser();
-          if (response.data?.data) {
-            setUser(response.data.data);
+          if (response.data) {
+            setUser(response.data);
           }
         } catch (error) {
           console.error('Failed to get user data:', error);

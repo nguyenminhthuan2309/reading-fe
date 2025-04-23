@@ -1,133 +1,35 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import * as React from "react"
+import { format } from "date-fns"
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
+import { DayPicker } from "react-day-picker"
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+} from "@/components/ui/popover"
 
 interface DatePickerProps {
-  date: Date | undefined;
-  setDate: (date: Date | undefined) => void;
-  className?: string;
-  placeholder?: string;
-  disabled?: boolean;
-  fieldName?: string;
+  date?: Date
+  setDate: (date?: Date) => void
+  className?: string
+  disabled?: boolean
+  placeholder?: string
 }
 
-interface MonthSelectorProps {
-  displayMonth: Date;
-  onChange: (date: Date) => void;
-}
-
-export function DatePicker({
-  date,
-  setDate,
+export function DatePicker({ 
+  date, 
+  setDate, 
   className,
-  placeholder = "Pick a date",
   disabled = false,
-  fieldName,
+  placeholder = "Pick a date"
 }: DatePickerProps) {
-  const [calendarOpen, setCalendarOpen] = React.useState(false);
-  
-  // Custom month/year selector
-  const MonthYearSelector = ({ displayMonth, onChange }: MonthSelectorProps) => {
-    // Get array of months
-    const months = Array.from({ length: 12 }, (_, i) => {
-      const d = new Date();
-      d.setMonth(i);
-      return { value: i.toString(), label: format(d, 'MMMM') };
-    });
-    
-    // Get array of years (100 years back, to current year)
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 100 }, (_, i) => {
-      const year = currentYear - 99 + i;
-      return { value: year.toString(), label: year.toString() };
-    });
-    
-    return (
-      <div className="flex justify-between items-center px-2 py-1">
-        <Button
-          variant="ghost"
-          className="p-1 h-auto"
-          onClick={() => {
-            const prev = new Date(displayMonth);
-            prev.setMonth(prev.getMonth() - 1);
-            onChange(prev);
-          }}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        
-        <div className="flex gap-1">
-          <Select
-            value={displayMonth.getMonth().toString()}
-            onValueChange={(value: string) => {
-              const newDate = new Date(displayMonth);
-              newDate.setMonth(parseInt(value));
-              onChange(newDate);
-            }}
-          >
-            <SelectTrigger className="h-8 w-[105px]">
-              <SelectValue placeholder={format(displayMonth, 'MMMM')} />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month) => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Select
-            value={displayMonth.getFullYear().toString()}
-            onValueChange={(value: string) => {
-              const newDate = new Date(displayMonth);
-              newDate.setFullYear(parseInt(value));
-              onChange(newDate);
-            }}
-          >
-            <SelectTrigger className="h-8 w-[80px]">
-              <SelectValue placeholder={displayMonth.getFullYear().toString()} />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year.value} value={year.value}>
-                  {year.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <Button
-          variant="ghost"
-          className="p-1 h-auto"
-          onClick={() => {
-            const next = new Date(displayMonth);
-            next.setMonth(next.getMonth() + 1);
-            onChange(next);
-          }}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  };
-  
   return (
-    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+    <Popover>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
@@ -137,27 +39,57 @@ export function DatePicker({
             className
           )}
           disabled={disabled}
-          aria-label={fieldName ? `Select ${fieldName}` : "Select date"}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? format(date, "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
+      <PopoverContent className="w-auto p-0" align="start">
+        <DayPicker
           mode="single"
           selected={date}
-          onSelect={(date) => {
-            setDate(date);
-            setCalendarOpen(false);
+          onSelect={setDate}
+          showOutsideDays={true}
+          className="p-3"
+          captionLayout="buttons"
+          classNames={{
+            months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+            month: "space-y-4",
+            caption: "flex justify-center pt-1 relative items-center",
+            caption_label: "text-sm font-medium",
+            nav: "space-x-1 flex items-center",
+            nav_button: cn(
+              buttonVariants({ variant: "outline" }),
+              "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+            ),
+            nav_button_previous: "absolute left-1",
+            nav_button_next: "absolute right-1",
+            table: "w-full border-collapse space-y-1",
+            head_row: "flex",
+            head_cell:
+              "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+            row: "flex w-full mt-2",
+            cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+            day: cn(
+              buttonVariants({ variant: "ghost" }),
+              "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+            ),
+            day_selected:
+              "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+            day_today: "bg-accent text-accent-foreground",
+            day_outside: "text-muted-foreground opacity-50",
+            day_disabled: "text-muted-foreground opacity-50",
+            day_range_middle:
+              "aria-selected:bg-accent aria-selected:text-accent-foreground",
+            day_hidden: "invisible",
+          }}
+          components={{
+            IconLeft: () => <ChevronLeft className="h-4 w-4" />,
+            IconRight: () => <ChevronRight className="h-4 w-4" />,
           }}
           initialFocus
-          disabled={(date) => disabled || date > new Date()}
-          captionLayout="buttons"
-          fromYear={new Date().getFullYear() - 99}
-          toYear={new Date().getFullYear()}
         />
       </PopoverContent>
     </Popover>
-  );
+  )
 } 

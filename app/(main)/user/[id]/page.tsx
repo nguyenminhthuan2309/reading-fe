@@ -4,15 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 import { 
   Select,
   SelectContent,
@@ -37,35 +29,26 @@ import {
   PenSquare,
   ArrowDownCircle,
   ArrowUpCircle,
-  Save,
-  Edit,
-  X,
-  Facebook,
-  Twitter,
-  Instagram,
-  Link as LinkIcon,
-  CreditCard,
   CheckCircle2,
   Eye,
   EyeOff,
   Lock,
   Camera,
-  Upload,
   RefreshCw
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCurrentUser, getUserById, updateUserProfile } from "@/lib/api";
+import {  getUserById, updateUserProfile } from "@/lib/api/auth";
 import { updatePassword } from "@/lib/api/auth";
-import { uploadAvatar, FileSizeError, MAX_AVATAR_SIZE } from "@/lib/api/user";
+import { uploadAvatar } from "@/lib/api/user";
 import { useUserStore } from "@/lib/store";
 import { User, UserPreferences } from "@/models";
-import { Genre } from "@/models/genre";
-import { BookCard } from "@/components/books/book-card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useAuth } from "@/lib/hooks";
 import { toast } from "sonner";
 import * as yup from "yup";
+import { UserBooks } from "@/components/user/user-books";
+import { FollowedBooks } from "@/components/user/followed-books";
+import { AUTH_KEYS, USER_KEYS } from "@/lib/query-keys";
 
 // Create a complete initial user data with proper types
 const defaultPreferences: Required<UserPreferences> = {
@@ -79,9 +62,12 @@ const defaultPreferences: Required<UserPreferences> = {
   }
 };
 
+export const MAX_AVATAR_SIZE = 1 * 1024 * 1024; // 1MB in bytes
+
+
 // Initial user data
 const INITIAL_USER_DATA: User = {
-  id: '',
+  id: 0,
   name: '',
   email: '',
   username: '',
@@ -100,6 +86,12 @@ const INITIAL_USER_DATA: User = {
     hoursRead: 0,
     avgRating: 0
   },
+  tokenBalance: 0,
+  tokenEarned: 0,
+  tokenPurchased: 0,
+  tokenReceived: 0,
+  tokenSpent: 0,
+  tokenWithdrawn: 0,
   preferences: defaultPreferences,
   socialLinks: {
     facebook: '',
@@ -116,7 +108,6 @@ export default function UserProfilePage() {
   const queryClient = useQueryClient();
   const userId = params.id as string;
   const { user, token } = useUserStore();
-  const { logout } = useAuth();
   
   // Create updatePassword mutation
   const updatePasswordMutation = useMutation({
@@ -124,7 +115,7 @@ export default function UserProfilePage() {
       const response = await updatePassword(oldPassword, newPassword);
       
       if (response.status !== 200 && response.status !== 201) {
-        throw new Error(response.data.msg || 'Failed to update password');
+        throw new Error(response.msg || 'Failed to update password');
       }
       
       return { success: true };
@@ -140,9 +131,7 @@ export default function UserProfilePage() {
         confirmPassword: ''
       });
     },
-    onError: (error: Error) => {
-      console.log('API Error:', error);
-      
+    onError: (error: Error) => {      
       // Set error message to current password field by default
       setPasswordErrors(prev => ({
         ...prev,
@@ -275,18 +264,17 @@ export default function UserProfilePage() {
   });
   
   const userQuery = useQuery({
-    queryKey: ['user', userId],
+    queryKey: USER_KEYS.DETAIL(userId),
     queryFn: async () => {
         
-        const response = await getUserById(userId);
-        
+        const response = await getUserById(userId);        
         // Check if user doesn't exist (404 status)
         if (response.status === 404) {
           return null;
         }
         
-        if (response.data?.data) {
-          const fetchedUser = response.data.data;
+        if (response.data) {
+          const fetchedUser = response.data;
           
           // Create a safely merged user object
           const mergedUser: User = {
@@ -319,8 +307,24 @@ export default function UserProfilePage() {
     mutationFn: async (updatedData: Partial<User>) => {
       return await updateUserProfile(userId, updatedData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+    onSuccess: (response) => {
+      // Invalidate the user query to refetch the data
+      queryClient.invalidateQueries({ queryKey: USER_KEYS.DETAIL(userId) });
+      
+      // If this is the current user's profile, update the global user state as well
+      if (isMyProfile && response?.data) {
+        // Get the updated user data
+        const updatedUser = response.data;
+        
+        // Update the global user state
+        useUserStore.getState().setUser({
+          ...user!,  // Keep existing user data
+          ...updatedUser // Merge with the updated data
+        });
+        
+        // Also invalidate the current user query if it exists
+        queryClient.invalidateQueries({ queryKey: AUTH_KEYS.ME });
+      }
     }
   });
   
@@ -344,25 +348,26 @@ export default function UserProfilePage() {
     },
     onSuccess: (response) => {
       // Check if the API response is successful
-      if (response.data.status) {
-        const avatarUrl = response.data.data.data;
+      if (response.status) {
+        const avatarUrl = response.data;
+
         
         // Update the user profile with the new avatar URL
         handleProfileUpdate({ avatar: avatarUrl });
         
+        // If this is the current user's profile, also update the avatar in the global user state
+        if (isMyProfile && user) {
+          useUserStore.getState().setUser({
+            ...user,
+            avatar: avatarUrl
+          });
+        }
+        
         toast.success('Avatar uploaded successfully');
       } else {
-        toast.error(response.data.msg || 'Failed to upload avatar');
+        toast.error(response.msg || 'Failed to upload avatar');
       }
     },
-    onError: (error) => {
-      if (error instanceof FileSizeError) {
-        toast.error(error.message);
-      } else {
-        toast.error('Failed to upload avatar. Please try again later.');
-        console.error('Avatar upload error:', error);
-      }
-    }
   });
   
   if (userQuery.isLoading) {
@@ -861,32 +866,12 @@ export default function UserProfilePage() {
                         <div>
                           <p className="text-xs text-muted-foreground">Birthday</p>
                           {isEditing ? (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className="w-full justify-start text-left font-normal mt-1"
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {editFormData.birthday ? (
-                                    format(new Date(editFormData.birthday), "PPP")
-                                  ) : (
-                                    <span className="text-muted-foreground">Select your birthday</span>
-                                  )}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={editFormData.birthday ? new Date(editFormData.birthday) : undefined}
-                                  onSelect={(date) => handleInputChange('birthday', date ? date.toISOString().split('T')[0] : '')}
-                                  initialFocus
-                                  captionLayout="dropdown-buttons"
-                                  fromYear={1920}
-                                  toYear={new Date().getFullYear()}
-                                />
-                              </PopoverContent>
-                            </Popover>
+                            <DatePicker
+                              date={editFormData.birthday ? new Date(editFormData.birthday) : undefined}
+                              setDate={(date) => handleInputChange('birthday', date ? date.toISOString() : '')}
+                              placeholder="Select your birthday"
+                              className="mt-1"
+                            />
                           ) : (
                             <p className="text-sm font-medium">
                               {userData.birthday ? new Date(userData.birthday).toLocaleDateString('en-US', {
@@ -1443,26 +1428,18 @@ export default function UserProfilePage() {
                 
                 <div className="flex gap-2">
                   {isMyProfile && (
-                    <Link href="/books/create">
+                    <Link href="/books">
                       <Button variant="outline" className="flex items-center gap-2">
-                        <PlusCircle size={16} />
-                        <span className="hidden sm:inline">Create Book</span>
-                        <span className="sm:hidden">Create</span>
+                        <BookOpen size={16} />
+                        <span className="hidden sm:inline">Browse Books</span>
+                        <span className="sm:hidden">Browse</span>
                       </Button>
                     </Link>
                   )}
                 </div>
               </div>
               
-              <div className="text-center py-10">
-                <div className="flex justify-center mb-4">
-                  <Bookmark size={48} className="text-muted-foreground/50" />
-                </div>
-                <p className="text-muted-foreground">No bookmarked books yet.</p>
-                <Link href="/books">
-                  <Button className="mt-4">Browse Books</Button>
-                </Link>
-              </div>
+              <FollowedBooks />
             </div>
           )}
           
@@ -1515,63 +1492,8 @@ export default function UserProfilePage() {
                 </Button>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Show books based on active filter */}
-                {(activeBookFilter === "all" || activeBookFilter === "inProgress") && (
-                  <div>
-                    <BookCard
-                      id="1"
-                      title="The Adventure Begins"
-                      author={userData.name}
-                      description="An exciting journey through imagination and creativity."
-                      chapters={5}
-                      rating={4.5}
-                      genre="Fantasy"
-                      progress={0.3}
-                      className="h-[360px] border-0 shadow-lg"
-                      showPreview={false}
-                    />
-                  </div>
-                )}
-                
-                {(activeBookFilter === "all" || activeBookFilter === "inProgress") && (
-                  <div>
-                    <BookCard
-                      id="2"
-                      title="Fantasy World"
-                      author="Maria Johnson"
-                      description="Explore a magical world full of wonder and mystery."
-                      chapters={8}
-                      rating={4.2}
-                      genre="Fantasy"
-                      progress={0.7}
-                      className="h-[360px] border-0 shadow-lg"
-                      showPreview={false}
-                    />
-                  </div>
-                )}
-                
-                {(activeBookFilter === "all" || activeBookFilter === "created") && (
-                  <div>
-                    <div className="rounded-lg border border-dashed border-secondary/90 h-[360px] flex flex-col items-center justify-center p-6 bg-secondary/10 hover:bg-secondary/20 transition-colors cursor-pointer">
-                      <PlusCircle size={40} className="mb-4" />
-                      <p className="text-center text-sm text-muted-foreground">Create a new book</p>
-                      <Button variant="outline" size="sm" className="mt-4 text-black">Start Creating</Button>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Show empty state if no books match the filter */}
-                {activeBookFilter === "completed" && (
-                  <div className="col-span-full text-center py-10">
-                    <div className="flex justify-center mb-4">
-                      <CheckCircle2 size={48} className="text-muted-foreground/50" />
-                    </div>
-                    <p className="text-muted-foreground">No completed books yet.</p>
-                    <Button variant="outline" className="mt-4" onClick={() => handleBookFilterChange("all")}>View All Books</Button>
-                  </div>
-                )}
-              </div>
+              {/* Display user books based on the selected filter */}
+              <UserBooks userId={userId} filter={activeBookFilter as "all" | "inProgress" | "created" | "completed"} />
             </div>
           )}
           

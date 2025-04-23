@@ -11,10 +11,9 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { BookOpen, Star, Clock, ChevronRight } from "lucide-react";
+import { BookOpen, Star, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { featuredBooks } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
+import { Book } from "@/models";
 
 const textShadowStyles = {
   'text-shadow-xs': 'text-shadow: 0 1px 2px rgba(0,0,0,0.1);',
@@ -22,7 +21,7 @@ const textShadowStyles = {
   'text-shadow-md': 'text-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);',
 };
 
-export function BookCarousel() {
+export function BookCarousel({ books }: { books: Book[] | undefined }) {
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -56,7 +55,7 @@ export function BookCarousel() {
   }, [api]);
 
   // Take the first 3 books for the hero carousel
-  const heroBooks = featuredBooks.slice(0, 3);
+  const heroBooks = books?.slice(0, 3) || [];
 
   return (
     <div className="relative border-b border-gray-200">
@@ -81,7 +80,7 @@ export function BookCarousel() {
                       <div className="w-full max-w-[180px] md:max-w-[240px] md:w-1/3 flex-shrink-0 relative">
                         <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg transform transition-transform duration-500 hover:scale-105">
                           <Image
-                            src="/images/book-cover.jpeg"
+                            src={book.cover}
                             alt={book.title}
                             fill
                             className="object-cover"
@@ -94,14 +93,14 @@ export function BookCarousel() {
                       <div className="w-full md:w-2/3 space-y-3 text-center md:text-left">
                         <div>
                           <div className="mb-1">
-                            <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold uppercase rounded-full">
-                              {book.genre}
-                            </span>
+                            {book.categories.map((genre) => <span key={genre.id} className="px-3 py-1 bg-red-600 text-white text-xs font-bold uppercase rounded-full">
+                              {genre.name}
+                            </span> )}
                           </div>
                           <h1 className="text-2xl md:text-4xl font-bold text-gray-800 mb-1 leading-tight text-shadow-sm">
                             {book.title}
                           </h1>
-                          <p className="text-sm text-gray-700 text-shadow-xs">by {book.author}</p>
+                          <p className="text-sm text-gray-700 text-shadow-xs">by {book.author.name}</p>
                         </div>
 
                         <p className="text-gray-800 max-w-[600px] mx-auto md:mx-0 leading-relaxed text-sm md:text-base line-clamp-3 text-shadow-xs break-words">
@@ -111,7 +110,7 @@ export function BookCarousel() {
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start text-xs">
                           <div className="flex items-center bg-white/70 backdrop-blur-sm rounded-full px-3 py-1.5 border border-gray-200">
                             <BookOpen className="h-3.5 w-3.5 text-gray-600 mr-1.5" />
-                            <span className="text-gray-800">{book.chapters} Chapters</span>
+                            <span className="text-gray-800">{book.totalChapters} Chapters</span>
                           </div>
                           <div className="flex items-center bg-white/70 backdrop-blur-sm rounded-full px-3 py-1.5 border border-gray-200">
                             <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500 mr-1.5" />
@@ -119,7 +118,7 @@ export function BookCarousel() {
                           </div>
                           <div className="flex items-center bg-white/70 backdrop-blur-sm rounded-full px-3 py-1.5 border border-gray-200">
                             <Clock className="h-3.5 w-3.5 text-gray-600 mr-1.5" />
-                            <span className="text-gray-800">~{Math.round(book.chapters * 8)} min</span>
+                            <span className="text-gray-800">~{Math.round(book.totalChapters * 8)} min</span>
                           </div>
                         </div>
 

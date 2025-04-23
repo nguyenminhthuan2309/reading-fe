@@ -3,26 +3,49 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { GENRE_OPTIONS } from "@/models/genre";
-import { BookOpen, Check } from "lucide-react";
-import { useAuth } from "@/lib/hooks";
+import {  Check } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { updateUserFavorites } from "@/lib/api/user";
+import { useUserStore } from "@/lib/store";
+import { getGenres } from "@/lib/api/books";
+import { useRouter } from "next/navigation";
+import { CATEGORY_KEYS } from "@/lib/query-keys";
 
 export default function OnboardingPage() {
-  const { updatePreferences, isUpdatingPreferences, user } = useAuth();
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const router = useRouter();
+  const { user } = useUserStore();
+  const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   
-  const toggleGenre = (genre: string) => {
+  const toggleGenre = (genre: number) => {
     setSelectedGenres(prevSelected => 
       prevSelected.includes(genre)
         ? prevSelected.filter(g => g !== genre)
         : [...prevSelected, genre]
     );
   };
-  
+
+  // Update preferences mutation
+  const { mutate: updateUserFavoritesGenres, isPending: isUpdatingPreferences } = useMutation({
+    mutationFn: async (genres: number[]) => {
+      const response = await updateUserFavorites({userId: user?.id || '', categories: genres});
+      return response.data;
+    }
+  });
+
+  // Get categories query
+  const { data: categories } = useQuery({
+    queryKey: CATEGORY_KEYS.CATEGORIES,
+    queryFn: async () => {
+      const response = await getGenres();
+      return response.data;
+    }
+  });
+
   const handleContinue = async () => {
     try {
-      await updatePreferences(selectedGenres);
+      await updateUserFavoritesGenres(selectedGenres);
+      router.push('/');
     } catch (error) {
       console.error("Error updating preferences:", error);
       toast.error(error instanceof Error ? error.message : "Failed to update preferences");
@@ -50,12 +73,12 @@ export default function OnboardingPage() {
         <div className="mx-auto w-full md:w-[70%] lg:w-1/2">
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
             <div className="flex flex-wrap gap-2">
-              {GENRE_OPTIONS.map(genre => {
-                const isSelected = selectedGenres.includes(genre.value);
+              {categories?.map(genre => {
+                const isSelected = selectedGenres.includes(genre.id);
                 return (
                   <button
-                    key={genre.value}
-                    onClick={() => toggleGenre(genre.value)}
+                    key={genre.id}
+                    onClick={() => toggleGenre(genre.id)}
                     className={`inline-flex items-center px-3 py-1.5 rounded-full transition-all ${
                       isSelected 
                         ? 'bg-primary text-primary-foreground' 
@@ -63,7 +86,7 @@ export default function OnboardingPage() {
                     }`}
                   >
                     {isSelected && <Check size={14} className="mr-1" />}
-                    <span className="text-sm font-medium">{genre.label}</span>
+                    <span className="text-sm font-medium">{genre.name}</span>
                   </button>
                 );
               })}

@@ -1,51 +1,101 @@
 "use client";
 
-import { getRelatedBooks } from "@/lib/mock-data";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { Star, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Genre } from "@/models/genre";
-
-// Define BookType to match the expected structure
-type BookType = {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  coverImage: string;
-  chapters: number;
-  rating: number;
-  genre: Genre;
-  progress?: number;
-};
-
+import { Skeleton } from "@/components/ui/skeleton";
+import { Book } from "@/models/book";
+import { getRelatedBooks } from "@/lib/api/books";
+import { BOOK_KEYS } from "@/lib/query-keys";
 export function RelatedBooks({ bookId, compactView = false }: { bookId: string; compactView?: boolean }) {
-  const [relatedBooks, setRelatedBooks] = useState<BookType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const limit = compactView ? 5 : 4;
+  const page = 1;
 
-  useEffect(() => {
-    // In a real app, this would be an API call
-    // Use a different limit based on view mode
-    const limit = compactView ? 5 : 4;
-    const books = getRelatedBooks(bookId, limit);
-    setRelatedBooks(books);
-    setIsLoading(false);
-  }, [bookId, compactView]);
+  // Use React Query to fetch related books
+  const {
+    data: relatedBooksData,
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: BOOK_KEYS.RELATED(bookId, page, limit),
+    queryFn: async () => {
+      const response = await getRelatedBooks({
+        bookId: Number(bookId),
+        page,
+        limit
+      });
+      
+      if (response.status !== 200) {
+        throw new Error(response.msg || 'Failed to fetch related books');
+      }
+      
+      return response.data;
+    },
+    enabled: !!bookId,
+  });
 
+  // If loading, show skeleton
   if (isLoading) {
     return (
       <div className="space-y-4">
         {!compactView && <h2 className="text-2xl font-bold">Related Books</h2>}
-        <div className="text-center py-8 text-muted-foreground">
-          Loading related books...
+        {compactView ? (
+          // Compact view skeleton (sidebar)
+          <div className="space-y-6">
+            {[...Array(limit)].map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <Skeleton className="w-20 h-28 rounded" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <Skeleton className="h-3 w-3/4" />
+                  <Skeleton className="h-3 w-1/4 mt-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Grid view skeleton
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(limit)].map((_, i) => (
+              <div key={i} className="flex flex-col rounded-xl overflow-hidden border border-gray-200 bg-white p-3">
+                <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                <div className="pt-3 space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-3 w-2/3" />
+                  <div className="flex justify-between">
+                    <div className="flex gap-2">
+                      <Skeleton className="h-3 w-8" />
+                      <Skeleton className="h-3 w-8" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-8 w-full mt-1 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // If error, show message
+  if (error) {
+    return (
+      <div className="space-y-4">
+        {!compactView && <h2 className="text-2xl font-bold">Related Books</h2>}
+        <div className="text-center py-8 text-destructive">
+          Error loading related books. Please try again later.
         </div>
       </div>
     );
   }
 
-  if (relatedBooks.length === 0) {
+  // If no related books found
+  if (!relatedBooksData?.data || relatedBooksData.data.length === 0) {
     return (
       <div className="space-y-4">
         {!compactView && <h2 className="text-2xl font-bold">Related Books</h2>}
@@ -56,10 +106,11 @@ export function RelatedBooks({ bookId, compactView = false }: { bookId: string; 
     );
   }
 
+  // Render appropriate view
   if (compactView) {
     return (
       <div className="space-y-6">
-        {relatedBooks.map((book) => (
+        {relatedBooksData.data.map((book) => (
           <NewCompactBookCard key={book.id} book={book} />
         ))}
       </div>
@@ -70,7 +121,7 @@ export function RelatedBooks({ bookId, compactView = false }: { bookId: string; 
     <div className="space-y-4">
       <h2 className="text-2xl font-bold">Related Books</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {relatedBooks.map((book) => (
+        {relatedBooksData.data.map((book) => (
           <RelatedBookCard key={book.id} book={book} />
         ))}
       </div>
@@ -79,7 +130,7 @@ export function RelatedBooks({ bookId, compactView = false }: { bookId: string; 
 }
 
 // New compact book card that matches the reference design
-function NewCompactBookCard({ book }: { book: BookType }) {
+function NewCompactBookCard({ book }: { book: Book }) {
   return (
     <div className="flex gap-4">
       {/* Book cover */}
@@ -87,7 +138,7 @@ function NewCompactBookCard({ book }: { book: BookType }) {
         <Link href={`/books/${book.id}`}>
           <div className="relative w-full h-full rounded overflow-hidden">
             <Image
-              src={book.coverImage}
+              src={book.cover}
               alt={book.title}
               fill
               className="object-cover"
@@ -104,12 +155,10 @@ function NewCompactBookCard({ book }: { book: BookType }) {
           </h3>
         </Link>
         <p className="text-sm text-gray-600 mt-1">
-          {book.author}
+          {book.author.name}
         </p>
         <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-          {book.genre === "Fantasy" 
-            ? "Pioneer in the world of commercial magazine fiction, he was one of the first writers to become a worldwide..." 
-            : "This book explores themes of human nature, society, and the complexity of interpersonal relationships..."}
+          {book.description.length > 120 ? `${book.description.substring(0, 120)}...` : book.description}
         </p>
         <Link href={`/books/${book.id}`}>
           <Button variant="link" className="text-xs text-blue-400 h-auto p-0 mt-2">View details</Button>
@@ -119,68 +168,27 @@ function NewCompactBookCard({ book }: { book: BookType }) {
   );
 }
 
-// Compact version of the book card for sidebar display
-function CompactBookCard({ book }: { book: BookType }) {
-  return (
-    <Link href={`/books/${book.id}`}>
-      <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors">
-        {/* Small book cover */}
-        <div className="relative w-16 h-20 rounded overflow-hidden flex-shrink-0">
-          <Image
-            src={book.coverImage}
-            alt={book.title}
-            fill
-            className="object-cover"
-          />
-        </div>
-        
-        {/* Book info */}
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm leading-tight line-clamp-2">
-            {book.title}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-            by {book.author}
-          </p>
-          <div className="flex items-center mt-1.5">
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  size={12}
-                  className={`${
-                    i < book.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-xs ml-1">{book.rating.toFixed(1)}</span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-// Simplified version of BookCard to avoid TypeScript errors
-function RelatedBookCard({ book }: { book: BookType }) {
+// Simplified version of BookCard for grid display
+function RelatedBookCard({ book }: { book: Book }) {
   return (
     <div className="flex flex-col rounded-xl overflow-hidden border border-gray-200 bg-white">
       {/* Cover image container with padding */}
       <div className="p-3 pt-4">
         <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden shadow-sm">
           <Image
-            src={book.coverImage}
+            src={book.cover}
             alt={book.title}
             fill
             className="object-cover"
             priority
           />
-          <div className="absolute top-3 left-3 z-10">
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">
-              {book.genre}
-            </span>
-          </div>
+          {book.categories && book.categories.length > 0 && (
+            <div className="absolute top-3 left-3 z-10">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">
+                {book.categories[0].name}
+              </span>
+            </div>
+          )}
         </div>
       </div>
       
@@ -191,7 +199,7 @@ function RelatedBookCard({ book }: { book: BookType }) {
             {book.title}
           </h3>
         </Link>
-        <p className="text-xs text-gray-600 mt-1">by {book.author}</p>
+        <p className="text-xs text-gray-600 mt-1">by {book.author.name}</p>
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center space-x-2">
             <div className="flex items-center">
@@ -201,7 +209,7 @@ function RelatedBookCard({ book }: { book: BookType }) {
             <span className="text-gray-400 text-xs">•</span>
             <div className="flex items-center">
               <BookOpen className="h-3.5 w-3.5 text-gray-500" />
-              <span className="text-xs ml-1 text-gray-700">{book.chapters} Ch</span>
+              <span className="text-xs ml-1 text-gray-700">{book.totalChapters} Ch</span>
             </div>
           </div>
         </div>
