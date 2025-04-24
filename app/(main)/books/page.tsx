@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GENRE_OPTIONS } from "@/models/genre";
 import React from "react";
 import { useUserStore } from "@/lib/store";
-import { BOOK_KEYS, CATEGORY_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS, CATEGORY_KEYS } from "@/lib/constants/query-keys";
 // Define a string-based genre type for the UI
 type UIGenre = string;
 

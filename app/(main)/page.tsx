@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getUserReadingHistory, getBooks, getTrendingBooks, getRecommendedBooks } from "@/lib/api/books";
 import { ReadingHistoryItem, SortDirectionEnum, AccessStatusEnum, Book } from "@/models/book";
 import { useQuery } from "@tanstack/react-query";
-import { BOOK_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS } from "@/lib/constants/query-keys";
 export default function Home() {
   // Fetch reading history using React Query
   const { data: readingHistoryData, isLoading } = useQuery({

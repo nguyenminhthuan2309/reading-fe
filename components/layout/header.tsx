@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, User, LogOut, PlusCircle, BookIcon, Award,  Sun, Languages,  Settings } from "lucide-react";
+import { BookOpen, User, LogOut, PlusCircle, BookIcon, Award, Sun, Languages, Settings, Bell, X, Check, Moon, CheckSquare, Loader2, ChevronDown } from "lucide-react";
 import { SearchDialog } from "@/components/search/search-dialog";
 import {
   NavigationMenu,
@@ -19,8 +19,13 @@ import {
   HoverCardContent,
   HoverCardTrigger
 } from "@/components/ui/hover-card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, formatNotificationTime, generateUsername } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
 import * as React from "react";
@@ -28,12 +33,9 @@ import { Genre, GENRE_OPTIONS } from "@/models/genre";
 import { UserRoleEnum } from "@/models/user";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { useNotifications } from "@/lib/hooks/useNotifications";
+import { useSocket } from '@/lib/hooks';
 
 // Define genre categories with typed Genre arrays
 const genreColumns: Record<string, Genre[]> = {
@@ -70,19 +72,23 @@ const ListItem = React.forwardRef<
 });
 ListItem.displayName = "ListItem";
 
-// Generate a username from email if no username exists
-function generateUsername(email: string, name: string): string {
-  if (!email) return name || 'User';
+// Get notification icon based on type
+export const getNotificationIcon = (type: any) => {
+  // Use a simple approach based on the type string to avoid type issues
+  const typeStr = String(type).toLowerCase();
   
-  // Get username from email (part before @)
-  const username = email.split('@')[0];
-  
-  // Make it look nicer
-  return username
-    .replace(/[0-9]/g, '')  // Remove numbers
-    .replace(/[._-]/g, '')  // Remove common email separators
-    .toLowerCase();
-}
+  if (typeStr.includes('comment') || typeStr.includes('reply') || typeStr.includes('message')) {
+    return <Bell className="h-4 w-4 text-blue-500" />;
+  } else if (typeStr.includes('mention') || typeStr.includes('user')) {
+    return <User className="h-4 w-4 text-green-500" />;
+  } else if (typeStr.includes('book') || typeStr.includes('chapter')) {
+    return <BookIcon className="h-4 w-4 text-purple-500" />;
+  } else if (typeStr.includes('tx') || typeStr.includes('system')) {
+    return <Settings className="h-4 w-4 text-gray-500" />;
+  } else {
+    return <Bell className="h-4 w-4" />;
+  }
+};
 
 export default function Header() {
   const pathname = usePathname();
@@ -92,13 +98,6 @@ export default function Header() {
   const { theme, setTheme } = useTheme();
   const { language, setLanguage, languageLabels } = useLanguage();
   
-  // Use useState with useEffect for browser-only features to avoid hydration errors
-  const [mounted, setMounted] = React.useState(false);
-  
-  // Use this effect to set mounted to true on client-side only
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
   
   // Get all genre names that aren't already in the genreColumns
   const moreGenres = React.useMemo(() => {
@@ -108,9 +107,25 @@ export default function Header() {
       .slice(0, 5); // Take only 5 additional genres for the "More" section
   }, []);
   
-  const isActive = (path: string) => {
-    return pathname === path || pathname.startsWith(`${path}/`);
-  };
+  // Use our custom notifications hook
+  const { 
+    notifications, 
+    unreadCount, 
+    isLoading: isLoadingNotifications,
+    handleMarkAsRead,
+    handleMarkAllAsRead,
+    handleClearNotifications,
+    hasMoreNotifications,
+    isFetchingMore,
+    handleLoadMore,
+  } = useNotifications();
+  
+  // Initialize socket connection for notifications
+  const { connected: socketConnected } = useSocket({
+    autoConnect: true,
+    namespace: 'notification',
+    enableNotifications: true
+  });
 
   // Handle logout directly in the component
   const handleLogout = () => {
@@ -219,49 +234,54 @@ export default function Header() {
         <div className="flex items-center gap-4">
           <SearchDialog />
           
-          {/* Dark mode toggle - disabled with Coming Soon tooltip */}
-          {mounted && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-9 w-9 rounded-full cursor-not-allowed opacity-70"
-                    disabled
-                  >
-                    <Sun className="h-4 w-4" />
-                    <span className="sr-only">Dark mode - Coming Soon</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Dark Mode - Coming Soon</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          {/* Theme Toggle */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-9 w-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Toggle theme"
+          >
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
           
-          {/* Language selector - disabled with Coming Soon tooltip */}
-          {mounted && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
+          {/* Language Selector */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="h-9 px-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                aria-label="Change language"
+              >
+                <span className="text-base">🇺🇸</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48 p-0 rounded-lg border shadow-md">
+              <div className="p-2">
+                <div className="text-xs font-medium text-muted-foreground mb-2 px-2">SELECT LANGUAGE</div>
+                <div className="space-y-1">
                   <Button 
                     variant="ghost" 
-                    size="icon" 
-                    className="h-9 w-9 rounded-full cursor-not-allowed opacity-70"
-                    disabled
+                    size="sm" 
+                    className="w-full justify-start font-normal text-sm rounded-md bg-gray-100/50 dark:bg-gray-800/50"
                   >
-                    <Languages className="h-4 w-4" />
-                    <span className="sr-only">Change language - Coming Soon</span>
+                    <span className="w-6 flex justify-center mr-2 text-base">🇺🇸</span> English
+                    <Check className="ml-auto h-4 w-4 opacity-100" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Language Selection - Coming Soon</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full justify-start font-normal text-sm rounded-md"
+                  >
+                    <span className="w-6 flex justify-center mr-2 text-base">🇻🇳</span> Tiếng Việt
+                    <Check className="ml-auto h-4 w-4 opacity-0" />
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           
           {isLoggedIn && user ? (
             <>
@@ -270,6 +290,101 @@ export default function Header() {
                 <Award className="h-4 w-4 text-amber-500" />
                 <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{user.tokenBalance || 0}</span>
               </div>
+              
+              {/* Notifications */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0 max-h-[400px] overflow-auto rounded-lg border shadow-md">
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <h4 className="font-medium">Notifications</h4>
+                    {unreadCount > 0 && (
+                      <Button variant="ghost" size="icon" onClick={handleMarkAllAsRead} className="h-8 w-8 rounded-full" title="Mark all as read">
+                        <CheckSquare className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {isLoadingNotifications ? (
+                    <div className="py-8 text-center text-muted-foreground">
+                      <p>Loading notifications...</p>
+                    </div>
+                  ) : notifications?.length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground">
+                      <p>No notifications</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y p-2">
+                      {notifications?.map((notification) => (
+                        <div 
+                          key={notification.id} 
+                          className={cn(
+                            "p-3 hover:bg-muted flex items-start gap-3 group rounded-md my-1",
+                            !notification.isRead && "bg-blue-50/50 dark:bg-blue-900/10"
+                          )}
+                        >
+                          <div className="mt-1">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex justify-between">
+                              <p className="text-sm font-medium">{notification.title}</p>
+                              <span className="text-xs text-muted-foreground">{formatNotificationTime(notification.createdAt)}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{notification.message}</p>
+                          </div>
+                          {!notification.isRead && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 rounded-full"
+                              onClick={() => handleMarkAsRead(notification.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {/* Load More Button */}
+                      {hasMoreNotifications && (
+                        <div className="pt-2 pb-1 flex justify-center">
+                          <Button 
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1"
+                            onClick={handleLoadMore}
+                            disabled={isFetchingMore}
+                          >
+                            {isFetchingMore ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-3 w-3" />
+                                Load more
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
               
               <HoverCard openDelay={0} closeDelay={300}>
                 <HoverCardTrigger asChild>

@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Comment } from "@/models/book";
-import { COMMENT_KEYS } from "@/lib/query-keys";
+import { COMMENT_KEYS } from "@/lib/constants/query-keys";
 
 interface ChapterCommentsProps {
   bookId: number;

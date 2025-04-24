@@ -2,19 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBookById } from "@/lib/api/books";
 import { BookForm } from "@/components/books/book-form";
 import { useUserStore } from "@/lib/store";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BOOK_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 export default function EditBookPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useUserStore();
   const bookId = parseInt(params.id as string);
+  const queryClient = useQueryClient();
   
   // Fetch book data
   const { data, isLoading, error } = useQuery({
@@ -40,6 +41,9 @@ export default function EditBookPage() {
   }, [data, user, router, bookId]);
   
   const handleSuccess = (bookId: number) => {
+    queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId), type: 'active' });
+    queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.BOOK_CHAPTERS(bookId), type: 'active' });
+    queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.LIST(bookId), type: 'active' });
     toast.success("Book updated successfully");
     router.push(`/books/${bookId}`);
   };

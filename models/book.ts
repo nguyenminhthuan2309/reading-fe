@@ -1,4 +1,5 @@
 import { Genre } from './genre';
+import { Author } from './user';
 
 // Define chapter type
 export type Chapter = {
@@ -105,14 +106,6 @@ export const BOOK_TYPES_INTERNAL = {
 } as const;
 
 export type BookTypeInternal = typeof BOOK_TYPES_INTERNAL[keyof typeof BOOK_TYPES_INTERNAL];
-
-// Define user/author type
-export interface Author {
-  id: number;
-  email: string;
-  name: string;
-  avatar: string;
-}
 
 // Status type with description
 export interface Status {

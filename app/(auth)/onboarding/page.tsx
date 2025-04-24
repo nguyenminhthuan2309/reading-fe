@@ -10,7 +10,7 @@ import { updateUserFavorites } from "@/lib/api/user";
 import { useUserStore } from "@/lib/store";
 import { getGenres } from "@/lib/api/books";
 import { useRouter } from "next/navigation";
-import { CATEGORY_KEYS } from "@/lib/query-keys";
+import { CATEGORY_KEYS } from "@/lib/constants/query-keys";
 
 export default function OnboardingPage() {
   const router = useRouter();

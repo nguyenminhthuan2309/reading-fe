@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { getBookReviews, postBookReview } from "@/lib/api/books";
 import { BookReview as BookReviewType } from "@/models/book";
-import { BOOK_KEYS, COMMENT_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS, COMMENT_KEYS } from "@/lib/constants/query-keys";
 
 interface BookReviewProps {
   bookId: string;
@@ -90,11 +90,11 @@ export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
       
       // Invalidate and refetch the book details (to update average rating, review count)
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId) });
+      queryClient.invalidateQueries({ queryKey: COMMENT_KEYS.BOOK_REVIEWS(bookId, commentsPage, commentsLimit) });
       
       // Reset to page 1 and refetch reviews
       setCommentsPage(1);
       setAllReviews([]);
-      queryClient.invalidateQueries({ queryKey: COMMENT_KEYS.BOOK_REVIEWS(bookId) });
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to post your review. Please try again.");

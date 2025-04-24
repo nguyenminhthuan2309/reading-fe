@@ -62,3 +62,66 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## OpenAI API Integration
+
+This project includes a server-side API route to interact with OpenAI's API, ensuring your API key stays secure on the server.
+
+### Setup
+
+1. Get an API key from [OpenAI Platform](https://platform.openai.com/account/api-keys)
+2. Create a `.env.local` file in the root of your project 
+3. Add your OpenAI API key:
+   ```
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+### Usage
+
+1. Access the demo page at [http://localhost:3001/openai-demo](http://localhost:3001/openai-demo)
+2. Enter a prompt and click "Generate Response"
+3. Try the moderation API at [http://localhost:3001/moderation-demo](http://localhost:3001/moderation-demo)
+
+### Integration in Your Components
+
+You can use the helper functions in your components:
+
+```tsx
+import { sendOpenAIRequest, checkModeration } from '@/lib/openai-helper';
+
+// For text generation:
+const result = await sendOpenAIRequest({ 
+  prompt: 'Your prompt here',
+  model: 'gpt-3.5-turbo', // optional
+  max_tokens: 500 // optional
+});
+console.log(result.content); // The AI's response
+
+// For content moderation:
+const moderation = await checkModeration({
+  input: 'Text to analyze for harmful content',
+  model: 'omni-moderation-latest' // optional
+});
+console.log(moderation.results[0].flagged); // true if content is flagged
+```
+
+### API Routes
+
+The API endpoints are available at:
+
+1. `/api/openai` - For text generation with the following structure:
+   ```json
+   {
+     "prompt": "Your prompt here",
+     "model": "gpt-3.5-turbo", // optional
+     "max_tokens": 500 // optional
+   }
+   ```
+
+2. `/api/openai/moderation` - For content moderation with the following structure:
+   ```json
+   {
+     "input": "Text to analyze for harmful content",
+     "model": "omni-moderation-latest" // optional
+   }
+   ```

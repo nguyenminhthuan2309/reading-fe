@@ -14,7 +14,7 @@ import { useUserStore } from "@/lib/store";
 import { useNavigationGuard } from "@/lib/hooks/useUnsavedChangesWarning";
 import BookInfo from "@/components/books/book-info";
 import ChapterCreator, { LocalChapter } from "@/components/books/chapter-creator";
-import { CATEGORY_KEYS } from "@/lib/query-keys";
+import { CATEGORY_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 // Basic error message component
 const ErrorMessage = ({ message }: { message: string }) => (
   <p className="text-sm text-destructive mt-1 flex items-center gap-1">
@@ -33,8 +33,6 @@ type BookInfoProps = Parameters<typeof BookInfo>[0];
 
 export function BookForm({ initialData, isEditing = false, onSuccess }: BookFormProps) {
   const router = useRouter();
-  const { user } = useUserStore();
-  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -168,12 +166,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       }
       return response.data;
     },
-    onSuccess: (data, variables) => {
-      // Invalidate the chapters query to update any cached data
-      if (initialData?.id) {
-        queryClient.invalidateQueries({ queryKey: ['chapters', initialData.id] });
-      }
-    }
   });
 
   // Create mutation for creating chapters in batch
@@ -191,32 +183,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       }
       return response.data;
     },
-    onSuccess: (data, variables) => {
-      // Invalidate the chapters query to update any cached data
-      queryClient.invalidateQueries({ queryKey: ['chapters', variables.bookId] });
-    }
-  });
-
-  // Create mutation for deleting a chapter
-  const deleteChapterMutation = useMutation({
-    mutationFn: async ({ 
-      bookId, 
-      chapterId 
-    }: { 
-      bookId: number, 
-      chapterId: number 
-    }) => {
-      const response = await deleteChapter(chapterId);
-      // Check for success status codes (200, 201, 204)
-      if (!(response.status >= 200 && response.status < 300)) {
-        throw new Error(response.msg || 'Failed to delete chapter');
-      }
-      return response.data;
-    },
-    onSuccess: (data, variables) => {
-      // Invalidate the chapters query to update any cached data
-      queryClient.invalidateQueries({ queryKey: ['chapters', variables.bookId] });
-    }
   });
 
   // Process chapters data when it's available
@@ -507,12 +473,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         updatedBookId = initialData.id;
         
         // Handle chapter updates for existing book
-        if (chapters.length > 0) {
+        if (chapters.length > 0 || chaptersToDelete.length > 0) {
           try {
-            const success = await handleExistingBookChapters(updatedBookId);
-            if (success) {
-              toast.success(`Book ${isDraft ? 'draft saved' : 'updated'} successfully!`);
-            }
+            await handleExistingBookChapters(updatedBookId);
           } catch (error) {
             console.error("Error creating chapters:", error);
             setChapterUploadFailed(true);
@@ -531,10 +494,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         // Create chapters for new book
         if (chapters.length > 0) {
           try {
-            const success = await handleNewBookChapters(updatedBookId);
-            if (success) {
-              toast.success(`Book ${isDraft ? 'draft' : ''} created successfully!`);
-            }
+            await handleNewBookChapters(updatedBookId);
           } catch (error) {
             console.error("Error creating chapters:", error);
             setChapterUploadFailed(true);
@@ -757,8 +717,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       if (failedChapters > 0) {
         setChapterUploadFailed(true);
         toast.error(`${failedChapters} chapters couldn't be saved. You can retry later.`);
-      } else {
-        toast.success(`All ${processedChapters} chapters saved successfully!`);
       }
       
       return failedChapters === 0;
@@ -880,9 +838,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
 
   // Navigation handlers after successful submission
   const handleViewBook = () => {
-    if (successBookId) {
+    if (successBookId) 
       router.push(`/books/${successBookId}`);
-    }
+    
   };
   
   const handleGoToHome = () => {
@@ -1022,14 +980,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   }, [isEditing, initialData]);
 
-  // Update handleInputChange to also set hasChanges
-  const handleInputChange = () => {
-    setHasUnsavedChanges(true);
-    if (isEditing) {
-      setHasChanges(true);
-    }
-  };
-  
   const handleBack = () => {
     if (hasUnsavedChanges) {
       if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
@@ -1105,54 +1055,12 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       if (success) {
         // Reset chapter upload failed state
         setChapterUploadFailed(false);
-        toast.success("All chapters saved successfully!");
       }
     } catch (error) {
       console.error("Error retrying chapter upload:", error);
       toast.error(`Failed to save chapters: ${(error as Error).message}. Please try again.`);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // Handle chapter deletion with reordering
-  const handleChapterDeletion = async (bookId: number, chapterId: number, chapterNumber: number) => {
-    try {
-      // First, delete the chapter
-      await deleteChapterMutation.mutateAsync({ bookId, chapterId });
-      
-      // Now find all chapters with a higher chapter number and update them
-      const chaptersToUpdate = chaptersQuery.data?.filter(ch => 
-        ch.chapter > chapterNumber
-      ) || [];
-      
-      if (chaptersToUpdate.length > 0) {
-        // Update each chapter's number
-        for (const chapter of chaptersToUpdate) {
-          const updatedChapterData = {
-            ...chapter,
-            chapter: chapter.chapter - 1
-          };
-          
-          await updateChapterMutation.mutateAsync({
-            chapterId: chapter.id,
-            chapterData: { chapter: chapter.chapter - 1 }
-          });
-        }
-        
-        // After all updates, refresh the chapters query
-        queryClient.invalidateQueries({ queryKey: ['chapters', bookId] });
-        
-        toast.success('Chapter deleted and numbering updated');
-      } else {
-        toast.success('Chapter deleted');
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Error deleting chapter:", error);
-      toast.error(`Failed to delete chapter: ${(error as Error).message}`);
-      return false;
     }
   };
 
@@ -1177,7 +1085,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         });
         
         setChapters(reorderedChapters);
-        toast.success("Chapter deleted and numbering updated");
       } 
       // Case 2: Existing chapters (saved to server)
       else if (isEditing) {
@@ -1198,7 +1105,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         });
         
         setChapters(reorderedChapters);
-        toast.success("Chapter marked for deletion. Changes will be applied when you update the book.");
         // Signal that we have unsaved changes
         setHasUnsavedChanges(true);
         setHasChanges(true);

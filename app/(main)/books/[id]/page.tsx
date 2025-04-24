@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { getBookById, getChaptersByBookId } from "@/lib/api/books";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import { useUserStore } from "@/lib/store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FollowButton } from "@/components/books/follow-button";

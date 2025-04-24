@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Book } from "@/models/book";
 import { getRelatedBooks } from "@/lib/api/books";
-import { BOOK_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS } from "@/lib/constants/query-keys";
 export function RelatedBooks({ bookId, compactView = false }: { bookId: string; compactView?: boolean }) {
   const limit = compactView ? 5 : 4;
   const page = 1;

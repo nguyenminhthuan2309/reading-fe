@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getFollowedBooks } from "@/lib/api/books";
 import { Book } from "@/models/book";
 import { PaginatedData } from "@/models/api";
-import { BOOK_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS } from "@/lib/constants/query-keys";
 
 export function useFollowedBooks(page: number = 1, limit: number = 10) {
   return useQuery({

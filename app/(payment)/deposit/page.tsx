@@ -33,7 +33,7 @@ import Link from "next/link";
 import { TransactionStatus } from "@/models/payment";
 import { ApiResponse } from "@/models/api";
 import { toast } from "sonner";
-import { AUTH_KEYS, PAYMENT_KEYS } from "@/lib/query-keys";
+import { AUTH_KEYS, PAYMENT_KEYS } from "@/lib/constants/query-keys";
 
 // Define the exchange rate: 1 Haru = 1000 VND
 const HARU_TO_VND_RATE = 1000;

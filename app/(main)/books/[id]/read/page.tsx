@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChapterComments } from "@/components/books/chapter-comments";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 
 // Define reading mode type for type safety
 type ReadingMode = 'scroll' | 'flip';

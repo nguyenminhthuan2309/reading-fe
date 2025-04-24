@@ -48,7 +48,7 @@ import { toast } from "sonner";
 import * as yup from "yup";
 import { UserBooks } from "@/components/user/user-books";
 import { FollowedBooks } from "@/components/user/followed-books";
-import { AUTH_KEYS, USER_KEYS } from "@/lib/query-keys";
+import { AUTH_KEYS, USER_KEYS } from "@/lib/constants/query-keys";
 
 // Create a complete initial user data with proper types
 const defaultPreferences: Required<UserPreferences> = {

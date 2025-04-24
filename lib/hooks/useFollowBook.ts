@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followBook, unfollowBook } from "@/lib/api/books";
-import { BOOK_KEYS } from "@/lib/query-keys";
+import { BOOK_KEYS } from "@/lib/constants/query-keys";
 
 export function useFollowBook() {
   const queryClient = useQueryClient();

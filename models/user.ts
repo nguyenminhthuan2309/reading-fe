@@ -89,16 +89,6 @@ export type UserPreferences = {
   };
 };
 
-// Reading history item
-export interface ReadingHistoryItem {
-  bookId: string;
-  bookTitle: string;
-  coverImage?: string;
-  lastReadChapter: number;
-  progress: number;
-  lastReadAt: string;
-}
-
 export type SigninResponse = {
   accessToken: string;
   expiresIn: number;
@@ -124,7 +114,7 @@ export interface SignupCredentials {
 }
 
 export interface Author {
-  id: string;
+  id: number;
   name: string;
   avatar?: string;
   email: string;

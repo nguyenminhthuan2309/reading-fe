@@ -63,3 +63,18 @@ export const PAYMENT_KEYS = {
   TRANSACTION: (orderId: string | number, requestId: string | number) => 
     ['payment', 'transaction', orderId, requestId] as const,
 } as const; 
+
+// OpenAI related query keys
+export const OPENAI_KEYS = {
+  MODERATION: ['openai', 'moderation'] as const,
+} as const;
+
+// Notification related query keys
+export const NOTIFICATION_KEYS = {
+  NOTIFICATIONS: (query: string) => ['notifications', query] as const,
+  NOTIFICATION_COUNT: ['notification', 'count'] as const,
+  NOTIFICATION_READ: ['notification', 'read'] as const,
+  NOTIFICATION_UNREAD: ['notification', 'unread'] as const,
+} as const;
+
+

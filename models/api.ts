@@ -3,6 +3,7 @@ export interface ApiResponse<T> {
     data: T;
     msg: string;
     status: ApiResponseStatus;
+    success: boolean;
 }
 
 export type ApiResponseStatus = 200 | 201 | 400 | 401 | 403 | 404 | 500;

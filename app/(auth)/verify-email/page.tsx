@@ -9,7 +9,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { verifyEmail, getCurrentUser } from '@/lib/api/auth';
 import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store';
-import { AUTH_KEYS } from '@/lib/query-keys';
+import { AUTH_KEYS } from '@/lib/constants/query-keys';
 
 export default function VerifyEmailPage() {
   const router = useRouter();
