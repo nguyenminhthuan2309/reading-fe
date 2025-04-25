@@ -2,10 +2,9 @@
 
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Menu, X, BookOpen, ScrollText, Maximize2, Volume2, VolumeX, Volume1, MessageCircle, Plus, Minus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, X, Volume2, VolumeX, Volume1, MessageCircle, Plus, Minus, Maximize2, ScrollText, BookOpen } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
-import HTMLFlipBook from "react-pageflip";
+import { useState, useEffect } from "react";
 import { PictureBookReader } from "@/components/books/picture-book-reader";
 import {
   Tooltip,
@@ -22,205 +21,17 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import NovelContent, { extractTextContent } from "@/components/novel/NovelContent";
+import { NovelBookReader } from "@/components/books/novel-book-reader";
 
-// Define reading mode type for type safety
+// Define reading mode type for type safety (keep for reference)
 type ReadingMode = 'scroll' | 'flip';
 
-// Define a ref type for the flipbook
-type FlipBookRef = {
-  pageFlip: () => {
-    turnToPage: (page: number) => void;
-    flipNext: () => void;
-    flipPrev: () => void;
-    getCurrentPageIndex: () => number;
-  };
-};
-
-// Define type for book content items
-interface PictureItem {
-  url: string;
-  caption: string;
-}
-
-// Page component for flip book
-const Page = ({ children, pageNumber }: { children: React.ReactNode, pageNumber: number }) => {
-  return (
-    <div className="demoPage page relative bg-white dark:bg-zinc-900 shadow-md rounded-r-md overflow-hidden" style={{ width: '100%', height: '100%' }}>
-      <div className="page-content p-6 h-full flex flex-col">
-        {children}
-        <div className="page-number text-xs text-muted-foreground text-center absolute bottom-3 right-4">
-          {pageNumber}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Cover component
-const BookCover = ({ title, author, isBackCover = false }: { title: string, author: string, isBackCover?: boolean }) => {
-  return (
-    <div className={`demoPage cover-page relative bg-primary/10 dark:bg-primary/20 shadow-md ${isBackCover ? 'rounded-l-md' : 'rounded-r-md'} overflow-hidden`} style={{ width: '100%', height: '100%' }}>
-      <div className="page-content p-6 h-full flex flex-col justify-center items-center">
-        {!isBackCover ? (
-          <>
-            <h1 className="text-xl md:text-2xl font-bold text-center mt-3 mb-4">{title}</h1>
-            <p className="text-sm text-muted-foreground">by {author}</p>
-          </>
-        ) : (
-          <div className="text-center">
-            <p className="text-muted-foreground text-sm">End of Chapter</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// FlipBook component wrapper
-const FlipBook = ({ 
-  bookData, 
-  currentChapterIndex, 
-  width, 
-  height 
-}: { 
-  bookData: any, 
-  currentChapterIndex: number, 
-  width: number, 
-  height: number 
-}) => {
-  const flipBookRef = useRef<any>(null);
-  const [currentPage, setCurrentPage] = useState<number>(0);
-  const [totalPages, setTotalPages] = useState<number>(0);
-  
-  const currentChapter = bookData.chapters[currentChapterIndex];
-  const isPictureBook = bookData.type === 'picture';
-  
-  // Generate content for the current chapter
-  const content: string[] = isPictureBook 
-    ? (currentChapter.images || [])
-    : extractTextContent(currentChapter.content || '');
-    
-  useEffect(() => {
-    if (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function') {
-      const pageFlip = flipBookRef.current.pageFlip();
-      if (pageFlip && typeof pageFlip.getPageCount === 'function') {
-        setTotalPages(pageFlip.getPageCount());
-      }
-    }
-  }, [currentChapter, width]);
-  
-  const handlePageFlip = (e: any) => {
-    setCurrentPage(e.data);
-  };
-  
-  return (
-    <div className="flip-book-container my-8 relative w-full flex justify-center" style={{ minHeight: `${height + 50}px` }}>
-      <HTMLFlipBook
-        width={width}
-        height={height}
-        size="stretch"
-        minWidth={315}
-        maxWidth={800}
-        minHeight={400}
-        maxHeight={1000}
-        maxShadowOpacity={0.5}
-        showCover={true}
-        mobileScrollSupport={true}
-        className="demo-book"
-        ref={flipBookRef}
-        onFlip={handlePageFlip}
-        style={{ display: "flex" }}
-        drawShadow={true}
-        flippingTime={1000}
-        usePortrait={false}
-        startPage={0}
-        useMouseEvents={true}
-        startZIndex={20}
-        autoSize={false}
-        clickEventForward={true}
-        swipeDistance={30}
-        showPageCorners={true}
-        disableFlipByClick={false}
-      >
-        <BookCover title={bookData.title} author={bookData.author} />
-        
-        {isPictureBook ? (
-          // Render picture book pages
-          content.map((item, index) => (
-            <Page key={index} pageNumber={index + 1}>
-              <div className="h-full flex flex-col items-center justify-between">
-                <img src={item} alt={`Page ${index + 1}`} className="max-h-[75%] w-auto object-contain mx-auto" />
-                <p className="text-center mt-4">Chapter {currentChapterIndex + 1} - Page {index + 1}</p>
-              </div>
-            </Page>
-          ))
-        ) : (
-          // For text content, check if it's JSON format and render proper flip pages
-          content.length > 0 ? (
-            // Original approach for simple text content split by paragraphs
-            content.map((item, index) => (
-              <Page key={index} pageNumber={index + 1}>
-                <div className="text-base prose-sm">
-                  {item}
-                </div>
-              </Page>
-            ))
-          ) : (
-            // Fallback approach when content isn't properly paginated
-            // This happens with complex content like tables that don't split well
-            <Page pageNumber={1}>
-              <div className="text-base prose-sm overflow-hidden" style={{ maxHeight: height - 40 }}>
-                <NovelContent 
-                  content={currentChapter.content || ''} 
-                  className="flip-page-content text-sm scale-90 origin-top-left"
-                />
-              </div>
-            </Page>
-          )
-        )}
-        
-        <BookCover title={bookData.title} author={bookData.author} isBackCover={true} />
-      </HTMLFlipBook>
-      
-      <div className="flip-controls flex items-center justify-center gap-4 mt-4 absolute bottom-[-3rem] left-0 right-0">
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={() => {
-            if (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function') {
-              flipBookRef.current.pageFlip().flipPrev();
-            }
-          }}
-          disabled={currentPage <= 0}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="text-sm">
-          Page {currentPage + 1} of {totalPages}
-        </span>
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={() => {
-            if (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function') {
-              flipBookRef.current.pageFlip().flipNext();
-            }
-          }}
-          disabled={currentPage >= totalPages - 1}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-};
-
+// Update ReadPage - remove references to readingMode and related state
 export default function ReadPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
   const bookId = params.id as string;
-  const flipBookRef = useRef<FlipBookRef>(null);
   const queryClient = useQueryClient();
   // Get chapter parameters from query params
   const chapterParam = searchParams.get("chapter");
@@ -359,13 +170,6 @@ export default function ReadPage() {
     if (sidebarOpen) setSidebarOpen(false);
   };
   
-  // Toggle reading mode
-  const toggleReadingMode = () => {
-    setReadingMode(prev => prev === 'scroll' ? 'flip' : 'scroll');
-    // Reset to first page when switching to flip mode
-    setCurrentPage(0);
-  };
-  
   // Calculate appropriate dimensions for the flipbook
   const getFlipbookDimensions = () => {
     // Base dimensions for the book
@@ -416,44 +220,6 @@ export default function ReadPage() {
       }
     }
   }, [bookData, chapterData, chapterNumber]);
-  
-  // Navigation for flip mode
-  const goToNextPage = () => {
-    if (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function' && readingMode === 'flip') {
-      flipBookRef.current.pageFlip().flipNext();
-    } else {
-      const maxPages = bookData?.bookType?.name === "Manga" 
-        ? pictureBookImages.length - 1
-        : typeof chapterContent === 'string' 
-          ? chapterContent.split("\n\n").length - 1
-          : Array.isArray(chapterContent) ? chapterContent.length - 1 : 0;
-        
-      if (currentPage < maxPages) {
-        setCurrentPage(prev => prev + 1);
-      } else if (next) {
-        // Go to next chapter if at the end of current chapter
-        router.push(`/books/${bookId}/read?chapter=${next.chapter}&id=${next.id}`);
-      }
-    }
-  };
-  
-  const goToPrevPage = () => {
-    if (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function' && readingMode === 'flip') {
-      flipBookRef.current.pageFlip().flipPrev();
-    } else {
-      if (currentPage > 0) {
-        setCurrentPage(prev => prev - 1);
-      } else if (prev) {
-        // Go to previous chapter if at the beginning of current chapter
-        router.push(`/books/${bookId}/read?chapter=${prev.chapter}&id=${prev.id}`);
-      }
-    }
-  };
-  
-  // Handle page change event from flipbook
-  const handlePageChange = (e: any) => {
-    setCurrentPage(e.data);
-  };
   
   // Measure window width for responsive design
   useEffect(() => {
@@ -745,58 +511,24 @@ export default function ReadPage() {
             <h1 className="text-base font-medium">{bookData.title}</h1>
             <p className="text-xs text-muted-foreground text-center">
               Chapter {chapterData.chapter}
-              {readingMode === 'flip' && ` • Page ${currentPage + 1}/${readingMode === 'flip' && bookType === 'Novel' ? paragraphs.length + 2 : totalPages}`}
             </p>
           </div>
           
           <div className="flex items-center gap-2">
-            {readingMode === 'flip' ? (
-              <div className="flex gap-4 items-center">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToPrevPage}
-                  disabled={readingMode === 'flip' 
-                    ? (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function' 
-                      ? flipBookRef.current.pageFlip().getCurrentPageIndex() === 0 && !prev
-                      : false) 
-                    : currentPage === 0 && !prev}
-                  className="h-8 w-8"
-                >
-                  <ChevronLeft className="h-4 w-4" />
+            {prev && (
+              <Link href={`/books/${bookId}/read?chapter=${prev.chapter}&id=${prev.id}`}>
+                <Button variant="ghost" size="icon">
+                  <ChevronLeft size={20} />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToNextPage}
-                  disabled={readingMode === 'flip' 
-                    ? (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function' 
-                      ? flipBookRef.current.pageFlip().getCurrentPageIndex() === totalPages - 1 && !next
-                      : false)
-                    : currentPage === totalPages - 1 && !next}
-                  className="h-8 w-8"
-                >
-                  <ChevronRight className="h-4 w-4" />
+              </Link>
+            )}
+            
+            {next && (
+              <Link href={`/books/${bookId}/read?chapter=${next.chapter}&id=${next.id}`}>
+                <Button variant="ghost" size="icon">
+                  <ChevronRight size={20} />
                 </Button>
-              </div>
-            ) : (
-              <>
-                {prev && (
-                  <Link href={`/books/${bookId}/read?chapter=${prev.chapter}&id=${prev.id}`}>
-                    <Button variant="ghost" size="icon">
-                      <ChevronLeft size={20} />
-                    </Button>
-                  </Link>
-                )}
-                
-                {next && (
-                  <Link href={`/books/${bookId}/read?chapter=${next.chapter}&id=${next.id}`}>
-                    <Button variant="ghost" size="icon">
-                      <ChevronRight size={20} />
-                    </Button>
-                  </Link>
-                )}
-              </>
+              </Link>
             )}
           </div>
         </div>
@@ -874,83 +606,21 @@ export default function ReadPage() {
         commentsOpen ? 'pr-[384px] sm:pr-96' : ''
       }`}>
         {bookType === "Manga" ? (
-          readingMode === 'scroll' ? (
-            <PictureBookReader 
-              images={pictureBookImages} 
-              captions={pictureBookImages.map((_, index) => `Chapter ${chapterData.chapter} - Page ${index + 1}`)}
-            />
-          ) : (
-            <FlipBook 
-              bookData={{
-                ...bookData,
-                type: 'picture',
-                chapters: [{
-                  id: chapterData.id,
-                  images: pictureBookImages,
-                  title: `Chapter ${chapterData.chapter}`
-                }]
-              }} 
-              currentChapterIndex={0} 
-              width={width} 
-              height={height} 
-            />
-          )
+          <PictureBookReader 
+            images={pictureBookImages}
+            captions={pictureBookImages.map((_, index) => `Chapter ${chapterData.chapter} - Page ${index + 1}`)}
+            isFlipMode={readingMode === 'flip'}
+          />
         ) : (
-          readingMode === 'scroll' ? (
-            <div className="prose prose-sm sm:prose-base dark:prose-invert mx-auto">
-              <NovelContent 
-                content={typeof chapterContent === 'string' ? chapterContent : ''}
-                className="mx-auto"
-              />
-            </div>
-          ) : (
-            <FlipBook 
-              bookData={{
-                ...bookData,
-                type: 'text',
-                chapters: [{
-                  id: chapterData.id,
-                  content: chapterContent,
-                  title: `Chapter ${chapterData.chapter}`
-                }]
-              }} 
-              currentChapterIndex={0} 
-              width={width} 
-              height={height} 
-            />
-          )
-        )}
-        
-        {/* Chapter navigation - only show for scroll mode */}
-        {readingMode === 'scroll' && (
-          <div className="flex justify-between items-center mt-3 mb-8">
-            {prev ? (
-              <Link href={`/books/${bookId}/read?chapter=${prev.chapter}&id=${prev.id}`}>
-                <Button variant="link" className="flex items-center gap-2 py-1">
-                  <ChevronLeft size={16} />
-                  Previous Chapter
-                </Button>
-              </Link>
-            ) : (
-              <div />
-            )}
-            
-            {next && (
-              <Link href={`/books/${bookId}/read?chapter=${next.chapter}&id=${next.id}`}>
-                <Button className="flex items-center gap-2">
-                  Next Chapter
-                  <ChevronRight size={16} />
-                </Button>
-              </Link>
-            )}
-          </div>
-        )}
-        
-        {/* Page navigation instructions for flip mode */}
-        {readingMode === 'flip' && (
-          <div className="text-center mt-6 text-xs text-muted-foreground">
-            <p>Click or swipe edges to turn pages, or use arrow buttons above</p>
-          </div>
+          <NovelBookReader
+            content={typeof chapterContent === 'string' ? chapterContent : ''}
+            title={bookData.title}
+            author={bookData.author?.name || "Unknown Author"}
+            chapterNumber={chapterData.chapter}
+            defaultMode="scroll"
+            onPageChange={(pageNumber) => setCurrentPage(pageNumber)}
+            className="mx-auto"
+          />
         )}
       </div>
 
