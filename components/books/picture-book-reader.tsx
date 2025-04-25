@@ -3,26 +3,34 @@
 import React, { useState } from "react";
 import { FlipBook } from "@/components/books/flip-book";
 import { PictureImage } from "@/components/books/picture-image";
-import { Button } from "@/components/ui/button";
-import { BookOpen, Book } from "lucide-react";
+import { Book, Chapter } from "@/models/book";
 
 interface PictureBookReaderProps {
+  bookData: Book;
+  currentChapter: Chapter;
+  nextChapter?: Chapter;
   images: string[];
   captions?: string[];
   isFlipMode?: boolean;
 }
 
 export function PictureBookReader({
+  bookData,
+  currentChapter,
+  nextChapter,
   images,
   captions = [],
   isFlipMode = false,
 }: PictureBookReaderProps) {
-
   return (
     <div className="w-full">
       {isFlipMode ? (
         // Flip Book Mode
         <FlipBook 
+          bookData={bookData}
+          currentChapter={currentChapter}
+          nextChapter={nextChapter}
+          bookType="manga"
           pages={images}
           captions={captions}
         />

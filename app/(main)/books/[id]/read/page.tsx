@@ -73,7 +73,7 @@ export default function ReadPage() {
   
   // Fetch chapter list to know the next and previous chapter
   const {
-    data: chapterList,
+    data: chapterList = [],
     isLoading: isLoadingChapterList,
     error: chapterListError
   } = useQuery({
@@ -147,7 +147,6 @@ export default function ReadPage() {
   const [readingMode, setReadingMode] = useState<ReadingMode>('scroll');
   
   // Current page for flip mode
-  const [currentPage, setCurrentPage] = useState(0);
   const [windowWidth, setWindowWidth] = useState(0);
   
   // State for sidebar visibility
@@ -169,27 +168,6 @@ export default function ReadPage() {
     setCommentsOpen(!commentsOpen);
     if (sidebarOpen) setSidebarOpen(false);
   };
-  
-  // Calculate appropriate dimensions for the flipbook
-  const getFlipbookDimensions = () => {
-    // Base dimensions for the book
-    const baseWidth = 400;
-    const baseHeight = 600;
-    
-    // Adjust based on screen size
-    if (windowWidth < 640) {
-      return { width: 280, height: 420 };
-    } else if (windowWidth < 768) {
-      return { width: 320, height: 480 };
-    } else {
-      return { width: baseWidth, height: baseHeight };
-    }
-  };
-  
-  const { width, height } = getFlipbookDimensions();
-
-  // Use totalChapters from book data or fallback to a default
-  const totalChapters = bookData?.totalChapters || 1;
 
   // Update chapter content when chapter data changes
   useEffect(() => {
@@ -220,6 +198,12 @@ export default function ReadPage() {
       }
     }
   }, [bookData, chapterData, chapterNumber]);
+  useEffect(() => {
+    if (bookData?.bookType) {
+      // Set the book type from the book data
+      setBookType(bookData.bookType.name);
+    }
+  }, [bookData, chapterNumber, chapterId]);
   
   // Measure window width for responsive design
   useEffect(() => {
@@ -238,16 +222,6 @@ export default function ReadPage() {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
-  
-  useEffect(() => {
-    if (bookData?.bookType) {
-      // Set the book type from the book data
-      setBookType(bookData.bookType.name);
-    }
-    
-    // Reset the current page when changing chapters
-    setCurrentPage(0);
-  }, [bookData, chapterNumber, chapterId]);
   
   // Check for chapter mismatch
   const isChapterMismatch = () => {
@@ -607,18 +581,20 @@ export default function ReadPage() {
       }`}>
         {bookType === "Manga" ? (
           <PictureBookReader 
+            bookData={bookData}
+            currentChapter={chapterData}
+            nextChapter={chapterList?.find(chapter => chapter.chapter === chapterData.chapter + 1)}
             images={pictureBookImages}
             captions={pictureBookImages.map((_, index) => `Chapter ${chapterData.chapter} - Page ${index + 1}`)}
             isFlipMode={readingMode === 'flip'}
           />
         ) : (
           <NovelBookReader
+            bookData={bookData}
+            currentChapter={chapterData}
+            nextChapter={chapterList?.find(chapter => chapter.chapter === chapterData.chapter + 1)}
             content={typeof chapterContent === 'string' ? chapterContent : ''}
-            title={bookData.title}
-            author={bookData.author?.name || "Unknown Author"}
-            chapterNumber={chapterData.chapter}
-            defaultMode="scroll"
-            onPageChange={(pageNumber) => setCurrentPage(pageNumber)}
+            isFlipMode={readingMode === 'flip'}
             className="mx-auto"
           />
         )}

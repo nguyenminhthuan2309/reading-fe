@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import '@/styles/rich-text.css';
 
 interface NovelContentProps {
-  content: string;
+  content?: string;
   className?: string;
 }
 

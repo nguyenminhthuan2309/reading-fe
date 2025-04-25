@@ -3,10 +3,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import HTMLFlipBook from "react-pageflip";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
+import NovelContent from "../novel/NovelContent";
+import { Book, Chapter } from "@/models/book";
+import Link from "next/link";
 // Type definitions for react-pageflip
 interface PageFlipProps {
   width: number;
@@ -49,42 +51,48 @@ interface PageRef {
 }
 
 interface PageProps {
-  pageNumber: number;
-  image: string;
-  caption?: string;
+  content: string;
+  caption: string;
 }
 
-interface BookCoverProps extends PageProps {
-  chapterTitle: string;
-  chapterNumber: number;
+interface BookCoverProps {
+    bookData: Book;
+    currentChapter: Chapter;
 }
 
-interface BookEndProps extends PageProps {
-  chapterTitle: string;
-  chapterNumber: number;
+interface BookEndProps  {
+  bookData: Book;
+  nextChapter?: Chapter;
 }
 
 // Book Cover component for react-pageflip
-const BookCover = React.forwardRef<HTMLDivElement, BookCoverProps>(({ chapterTitle, chapterNumber, pageNumber, image = null, caption = null }, ref) => {
+const BookCover = React.forwardRef<HTMLDivElement, BookCoverProps>(({ bookData, currentChapter }, ref) => {
   return (
     <div
       className="relative bg-white shadow-md overflow-hidden"
       ref={ref}
     >
       <div className="w-full h-full flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold">{chapterTitle}</h1>
-        <p className="text-sm text-muted-foreground">{chapterNumber}</p>
+        {/* Book Title */}
+        <h1 className="text-2xl font-bold">{bookData.title}</h1>
+        {/* Author */}
+        <p className="text-sm text-muted-foreground">By: {bookData.author.name}</p>
+        {/* Chapter Title */}
+        <p className="text-sm text-muted-foreground">Chapter: {currentChapter.chapter} - {currentChapter.title}</p>
       </div>
     </div>
   );
 });
 
 // Book End component for react-pageflip
-const BookEnd = React.forwardRef<HTMLDivElement, BookEndProps>(({ chapterTitle, chapterNumber, pageNumber = null, image = null, caption = null }, ref) => {
+const BookEnd = React.forwardRef<HTMLDivElement, BookEndProps>(({ bookData, nextChapter }, ref) => {
   return (
     <div className="relative bg-white shadow-md overflow-hidden" ref={ref}>
       <div className="w-full h-full flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold">The End</h1>
+
+        {/* next chapter button */}
+         { nextChapter && <Link className="flex items-center gap-2" href={`/books/${bookData.id}/read?chapter=${nextChapter.chapter}&id=${nextChapter.id}`}>Next Chapter <ArrowRight className="w-4 h-4" /></Link> }  
       </div>
     </div>
   );
@@ -92,7 +100,7 @@ const BookEnd = React.forwardRef<HTMLDivElement, BookEndProps>(({ chapterTitle, 
 
 
 // Page component for react-pageflip
-const Page = React.forwardRef<HTMLDivElement, PageProps>(({ pageNumber, image, caption }, ref) => {
+const Page = React.forwardRef<HTMLDivElement, PageProps>(({ content, caption }, ref) => {
   return (
     <div
       className="relative bg-white shadow-md overflow-hidden"
@@ -100,13 +108,15 @@ const Page = React.forwardRef<HTMLDivElement, PageProps>(({ pageNumber, image, c
     >
       <div className="w-full h-full">
         <div className="relative w-full h-full aspect-[3/4]">
-          <Image
-            src={image}
-            alt={`Page ${pageNumber}`}
-            fill
-            className="object-cover"
-            priority
-          />
+           {content && (
+            <Image
+              src={content}
+              alt={content}
+              fill
+              className="object-cover"
+              priority
+            />
+          )}
         </div>
         {caption && (
           <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-md p-2 text-white text-sm text-center">
@@ -118,10 +128,27 @@ const Page = React.forwardRef<HTMLDivElement, PageProps>(({ pageNumber, image, c
   );
 });
 
+// Custom Page component for text content in flip book
+const TextPage = React.forwardRef<HTMLDivElement, PageProps>(({ content }, ref) => {
+  return (
+    <div className="relative bg-white shadow-md overflow-hidden p-8" ref={ref}>
+        <NovelContent 
+              content={content}
+              className="mx-auto"
+            />
+    </div>
+      );
+    }
+);
+
 Page.displayName = "Page";
 
 interface FlipBookProps {
+  bookType: 'manga' | 'novel';
   pages: string[]; // Array of image URLs for pages
+  bookData: Book;
+  currentChapter: Chapter;
+  nextChapter?: Chapter;
   captions?: string[]; // Optional captions for each page
   className?: string;
   initialPage?: number;
@@ -129,7 +156,11 @@ interface FlipBookProps {
 }
 
 export function FlipBook({
+  bookType = 'manga',
   pages,
+  bookData,
+  currentChapter ,
+  nextChapter,
   captions = [],
   className,
   initialPage = 0,
@@ -149,7 +180,7 @@ export function FlipBook({
   useEffect(() => {
     // Update total pages if pages array changes
     setTotalPages(pages.length + 2);
-  }, [pages]);
+}, [pages]);
 
   // Handle page change
   const handlePageFlip = (e: { data: number }) => {
@@ -223,29 +254,32 @@ export function FlipBook({
           >
             {/* Book Cover */}
             <BookCover 
-              chapterTitle="TEST"
-              chapterNumber={1}
-              pageNumber={0}
-              image=""
-              caption=""
+                bookData={bookData}
+                currentChapter={currentChapter}
             />
             
-            {pages.map((page, index) => (
-              <Page 
-                key={index} 
-                pageNumber={index + 2} 
-                image={page} 
-                caption={captions[index]}
+            {bookType === 'manga' ? (
+              pages.map((page, index) => (
+                <Page 
+                    key={index} 
+                    content={page} 
+                    caption={captions[index]}
               />
-            ))}
+            ))) : (
+              pages.map((page, index) => (
+                <TextPage    
+                    key={index} 
+                    content={page}
+                    caption={captions[index]}
+                    
+                />
+              ))
+            )}
 
             {/* Book End */}
             <BookEnd 
-              chapterTitle="TEST"
-              chapterNumber={1}
-              pageNumber={pages.length + 1}
-              image=""
-              caption=""
+                bookData={bookData}
+                nextChapter={nextChapter}
             />
 
           </HTMLFlipBook>
