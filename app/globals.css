@@ -123,6 +123,7 @@
   body {
     @apply bg-background text-foreground font-oswald;
   }
+
   :root {
     /* Existing variables */
 
@@ -162,6 +163,4 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari and Opera */
   }
-  
- 
 }

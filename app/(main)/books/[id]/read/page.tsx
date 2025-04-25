@@ -21,6 +21,7 @@ import { ChapterComments } from "@/components/books/chapter-comments";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
+import NovelContent, { extractTextContent } from "@/components/novel/NovelContent";
 
 // Define reading mode type for type safety
 type ReadingMode = 'scroll' | 'flip';
@@ -94,10 +95,10 @@ const FlipBook = ({
   const currentChapter = bookData.chapters[currentChapterIndex];
   const isPictureBook = bookData.type === 'picture';
   
-  // Generate content for the current chapter - explicitly type as string[]
+  // Generate content for the current chapter
   const content: string[] = isPictureBook 
     ? (currentChapter.images || [])
-    : (currentChapter.content || '').split("\n\n");
+    : extractTextContent(currentChapter.content || '');
     
   useEffect(() => {
     if (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function') {
@@ -143,20 +144,40 @@ const FlipBook = ({
       >
         <BookCover title={bookData.title} author={bookData.author} />
         
-        {content.map((item, index) => (
-          <Page key={index} pageNumber={index + 1}>
-            {isPictureBook ? (
+        {isPictureBook ? (
+          // Render picture book pages
+          content.map((item, index) => (
+            <Page key={index} pageNumber={index + 1}>
               <div className="h-full flex flex-col items-center justify-between">
                 <img src={item} alt={`Page ${index + 1}`} className="max-h-[75%] w-auto object-contain mx-auto" />
                 <p className="text-center mt-4">Chapter {currentChapterIndex + 1} - Page {index + 1}</p>
               </div>
-            ) : (
-              <div className="text-base">
-                {item}
+            </Page>
+          ))
+        ) : (
+          // For text content, check if it's JSON format and render proper flip pages
+          content.length > 0 ? (
+            // Original approach for simple text content split by paragraphs
+            content.map((item, index) => (
+              <Page key={index} pageNumber={index + 1}>
+                <div className="text-base prose-sm">
+                  {item}
+                </div>
+              </Page>
+            ))
+          ) : (
+            // Fallback approach when content isn't properly paginated
+            // This happens with complex content like tables that don't split well
+            <Page pageNumber={1}>
+              <div className="text-base prose-sm overflow-hidden" style={{ maxHeight: height - 40 }}>
+                <NovelContent 
+                  content={currentChapter.content || ''} 
+                  className="flip-page-content text-sm scale-90 origin-top-left"
+                />
               </div>
-            )}
-          </Page>
-        ))}
+            </Page>
+          )
+        )}
         
         <BookCover title={bookData.title} author={bookData.author} isBackCover={true} />
       </HTMLFlipBook>
@@ -877,9 +898,10 @@ export default function ReadPage() {
         ) : (
           readingMode === 'scroll' ? (
             <div className="prose prose-sm sm:prose-base dark:prose-invert mx-auto">
-              {paragraphs.map((paragraph: string, index: number) => (
-                <p key={index} className="mb-4">{paragraph}</p>
-              ))}
+              <NovelContent 
+                content={typeof chapterContent === 'string' ? chapterContent : ''}
+                className="mx-auto"
+              />
             </div>
           ) : (
             <FlipBook 

@@ -1,0 +1,233 @@
+/* 
+ * Rich Text Styling - Global styles for rich text content
+ * Used by both the TipTap editor and novel content display
+ */
+
+/* Base content styling */
+.rich-text {
+  font-family: var(--font-sans);
+  line-height: 1.3;
+  color: inherit;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Paragraph styling */
+.rich-text p {
+  margin-bottom: 0;
+}
+
+.rich-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings styling */
+.rich-text h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.rich-text h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.rich-text h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+/* List styling (shared between bullet and ordered) */
+.rich-text ul,
+.rich-text ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.rich-text ul li,
+.rich-text ol li {
+  margin-bottom: 0.5rem;
+}
+
+/* Bullet list specific */
+.rich-text ul {
+  list-style-type: disc;
+}
+
+/* Ordered list specific */
+.rich-text ol {
+  list-style-type: decimal;
+}
+
+/* Blockquote styling */
+.rich-text blockquote {
+  border-left: 3px solid;
+  border-color: #aaaaaa;
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 1rem;
+  font-style: italic;
+  margin-left: 2rem;
+}
+
+.rich-text blockquote p {
+  margin: 0;
+}
+
+/* Text formatting */
+.rich-text strong {
+  font-weight: bold;
+}
+
+.rich-text em {
+  font-style: italic;
+}
+
+.rich-text code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Text alignment */
+.rich-text [style*="text-align: center"] {
+  text-align: center;
+}
+
+.rich-text [style*="text-align: right"] {
+  text-align: right;
+}
+
+.rich-text [style*="text-align: justify"] {
+  text-align: justify;
+}
+
+/* Text alignment in TipTap editor */
+.ProseMirror .is-editor-empty[style*="text-align: center"]::before,
+.ProseMirror .is-editor-empty[style*="text-align: right"]::before,
+.ProseMirror .is-editor-empty[style*="text-align: justify"]::before {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Table styling */
+.rich-text table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.rich-text th {
+  background-color: rgba(0, 0, 0, 0.05);
+  font-weight: bold;
+}
+
+.rich-text td, 
+.rich-text th {
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem;
+  position: relative;
+  vertical-align: top;
+  box-sizing: border-box;
+  min-width: 100px;
+}
+
+.rich-text .tiptap-table {
+  position: relative;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Flip book specific table styles */
+.flip-page-content {
+  font-size: 0.9em;
+}
+
+.flip-page-content table {
+  font-size: 0.85em;
+  margin: 0.5rem 0;
+}
+
+.flip-page-content th,
+.flip-page-content td {
+  padding: 0.25rem;
+  min-width: auto;
+}
+
+.flip-page-content .table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* TipTap table resize handle */
+.rich-text .tableWrapper .resize-cursor {
+  cursor: col-resize;
+  position: absolute;
+  right: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background-color: rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+}
+
+.rich-text .tableWrapper .resize-cursor.dragging {
+  background-color: rgba(59, 130, 246, 0.5);
+  pointer-events: none;
+}
+
+/* TipTap editor specific styles */
+.tiptap-editor .ProseMirror {
+  padding: 0.5em 0;
+}
+
+.tiptap-editor .ProseMirror:focus {
+  outline: none;
+}
+
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .rich-text blockquote {
+    border-color: #4b5563;
+  }
+  
+  .rich-text code {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .rich-text th {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .rich-text td,
+  .rich-text th {
+    border-color: #4b5563;
+  }
+
+  .rich-text .tableWrapper .resize-cursor {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+} 

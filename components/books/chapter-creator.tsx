@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PictureImage } from "@/components/books/picture-image";
 import { BOOK_TYPES } from "@/models";
+import TiptapEditor from "@/components/editor/TiptapEditor";
+import { DocumentUploader } from "@/components/books/DocumentUploader";
 
 // Add Dialog components for confirmation
 import {
@@ -54,7 +56,7 @@ export type LocalChapter = {
   id: string;
   chapter: number;
   title: string;
-  content: string;
+  content: string; // Now can contain stringified JSON from WYSIWYG editor
   isLocked: boolean;
   price?: string;
   createdAt: string;
@@ -495,100 +497,68 @@ export default function ChapterCreator({
                               {/* Option 1: Write content directly */}
                               {!chapter.documentUrl && (
                                 <div className="border rounded-md p-4">
-                                  <Textarea 
-                                    id={`chapter-content-${chapter.id}`}
-                                    value={chapter.content}
-                                    onChange={(e) => {
+                                  <TiptapEditor 
+                                    content={chapter.content}
+                                    onChange={(newContent) => {
                                       const updatedChapters = chapters.map(ch => 
                                         ch.id === chapter.id ? {
                                           ...ch, 
-                                          content: e.target.value
+                                          content: newContent
                                         } : ch
                                       );
                                       setChapters(updatedChapters);
                                       
                                       // Only remove from empty chapters if content is added
-                                      if (e.target.value.trim() !== "" && emptyChapters.includes(chapter.id)) {
+                                      if (newContent.trim() !== "" && emptyChapters.includes(chapter.id)) {
                                         setEmptyChapters(emptyChapters.filter(id => id !== chapter.id));
                                       }
                                     }}
-                                    placeholder="Write your chapter content here..."
-                                    className={`min-h-[200px] ${emptyChapters.includes(chapter.id) ? 'border-destructive focus-visible:ring-destructive/40' : ''}`}
+                                    className={emptyChapters.includes(chapter.id) ? 'border-destructive focus-visible:ring-destructive/40' : ''}
                                   />
-                                  
                                 </div>
                               )}
                               
                               {/* Option 2: Upload document */}
                               {chapter.documentUrl && (
                                 <div className="border rounded-md p-4">
-                                  <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${emptyChapters.includes(chapter.id) && chapter.documentUrl === 'pending' ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
-                                    {chapter.documentUrl && chapter.documentUrl !== 'pending' ? (
-                                      <div className="flex items-center gap-2 text-sm">
-                                        <FileText size={16} className="text-primary" />
-                                        <span className="font-medium">Document uploaded</span>
-                                        <Button 
-                                          type="button" 
-                                          variant="ghost" 
-                                          size="sm" 
-                                          className="ml-auto h-8"
-                                          onClick={() => {
-                                            const updatedChapters = chapters.map(ch => 
-                                              ch.id === chapter.id ? {...ch, documentUrl: undefined, content: ''} : ch
-                                            );
-                                            setChapters(updatedChapters);
-                                          }}
-                                        >
-                                          Remove
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <div className="py-4 flex flex-col items-center">
-                                          <Upload size={24} className="mb-2 text-muted-foreground" />
-                                          <p className="text-sm text-muted-foreground">
-                                            Click or drag to upload document
-                                          </p>
-                                          <p className="text-xs text-muted-foreground mt-1">
-                                            Word or PDF documents
-                                          </p>
-                                          {emptyChapters.includes(chapter.id) && (
-                                            <p className="text-xs text-destructive mt-3 font-medium">
-                                              No document uploaded yet
-                                            </p>
-                                          )}
-                                        </div>
-                                        <Input
-                                          id={`chapter-document-${chapter.id}`}
-                                          type="file"
-                                          accept=".doc,.docx,.pdf"
-                                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                          onChange={(e) => {
-                                            if (e.target.files && e.target.files[0]) {
-                                              // In a real app, you would upload this file to storage
-                                              // Here we'll just simulate it with a fake URL
-                                              const fileName = e.target.files[0].name;
-                                              const fakeUrl = `uploaded:/${fileName}`;
-                                              
-                                              const updatedChapters = chapters.map(ch => 
-                                                ch.id === chapter.id ? {
-                                                  ...ch, 
-                                                  documentUrl: fakeUrl, 
-                                                  content: 'Document content: ' + fileName
-                                                } : ch
-                                              );
-                                              setChapters(updatedChapters);
-                                              
-                                              // Remove from empty chapters list if document is uploaded
-                                              if (emptyChapters.includes(chapter.id)) {
-                                                setEmptyChapters(emptyChapters.filter(id => id !== chapter.id));
-                                              }
-                                            }
-                                          }}
-                                        />
-                                      </>
-                                    )}
-                                  </div>
+                                  {chapter.documentUrl === 'pending' ? (
+                                    <DocumentUploader 
+                                      onContentConverted={(jsonContent) => {
+                                        const updatedChapters = chapters.map(ch => 
+                                          ch.id === chapter.id ? {
+                                            ...ch, 
+                                            documentUrl: 'converted',  // Mark as converted instead of using a fake URL
+                                            content: jsonContent
+                                          } : ch
+                                        );
+                                        setChapters(updatedChapters);
+                                        
+                                        // Remove from empty chapters list if document was converted successfully
+                                        if (emptyChapters.includes(chapter.id)) {
+                                          setEmptyChapters(emptyChapters.filter(id => id !== chapter.id));
+                                        }
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="flex items-center gap-2 text-sm p-2">
+                                      <FileText size={16} className="text-primary" />
+                                      <span className="font-medium">Document converted to editor format</span>
+                                      <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="ml-auto h-8"
+                                        onClick={() => {
+                                          const updatedChapters = chapters.map(ch => 
+                                            ch.id === chapter.id ? {...ch, documentUrl: undefined, content: ''} : ch
+                                          );
+                                          setChapters(updatedChapters);
+                                        }}
+                                      >
+                                        Remove
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -26,7 +26,16 @@ module.exports = {
           "100%": { height: "0", opacity: 0 },
         },
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: '100%',
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 } 
