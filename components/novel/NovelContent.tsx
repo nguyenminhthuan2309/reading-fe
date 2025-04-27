@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import '@/styles/rich-text.css';
 
 interface NovelContentProps {
   content?: string;
   className?: string;
+  highlightParagraph?: number;
+  highlightWordStart?: number;
+  highlightWordEnd?: number;
+  onParagraphClick?: (index: number) => void;
 }
 
 /**
@@ -87,13 +91,27 @@ export function extractTextContent(content: string): string[] {
  * 
  * @param content The content to render (JSON string, HTML, or plain text)
  * @param className Additional CSS classes to apply
+ * @param highlightParagraph Index of paragraph to highlight (for text-to-speech)
+ * @param highlightWordStart Start index of word to highlight
+ * @param highlightWordEnd End index of word to highlight
+ * @param onParagraphClick Callback when a paragraph is clicked
  */
-export default function NovelContent({ content, className = '' }: NovelContentProps) {
+export default function NovelContent({ 
+  content, 
+  className = '',
+  highlightParagraph = -1,
+  highlightWordStart = -1,
+  highlightWordEnd = -1,
+  onParagraphClick
+}: NovelContentProps) {
   const [renderedContent, setRenderedContent] = useState<string>('');
+  const [paragraphIds, setParagraphIds] = useState<string[]>([]);
   
+  // Process content for rendering, adding IDs to paragraphs for highlighting
   useEffect(() => {
     if (!content) {
       setRenderedContent('');
+      setParagraphIds([]);
       return;
     }
     
@@ -104,7 +122,7 @@ export default function NovelContent({ content, className = '' }: NovelContentPr
       // If it's a Tiptap JSON structure
       if (jsonContent.type === 'doc' && jsonContent.content) {
         const html = renderJsonContent(jsonContent);
-        setRenderedContent(html);
+        processAndSetContent(html);
         return;
       }
     } catch (e) {
@@ -119,8 +137,8 @@ export default function NovelContent({ content, className = '' }: NovelContentPr
          content.includes('</ul>') || 
          content.includes('</ol>') ||
          content.includes('</table>'))) {
-      // It's already HTML, use as is
-      setRenderedContent(content);
+      // It's already HTML, process it
+      processAndSetContent(content);
       return;
     }
     
@@ -130,8 +148,37 @@ export default function NovelContent({ content, className = '' }: NovelContentPr
       .map(para => `<p>${para.replace(/\n/g, '<br/>')}</p>`)
       .join('');
     
-    setRenderedContent(html);
+    processAndSetContent(html);
   }, [content]);
+  
+  /**
+   * Process HTML content to add unique IDs to paragraphs for highlighting
+   */
+  const processAndSetContent = (html: string) => {
+    if (typeof window === 'undefined') {
+      setRenderedContent(html);
+      return;
+    }
+    
+    // Create temporary div to manipulate the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Find all paragraph-like elements to add IDs
+    const elements = Array.from(tempDiv.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li'));
+    const ids: string[] = [];
+    
+    elements.forEach((el, index) => {
+      const id = `para-${index}`;
+      el.setAttribute('id', id);
+      el.setAttribute('data-paragraph-index', index.toString());
+      el.setAttribute('class', (el.getAttribute('class') || '') + ' novel-paragraph');
+      ids.push(id);
+    });
+    
+    setParagraphIds(ids);
+    setRenderedContent(tempDiv.innerHTML);
+  };
   
   /**
    * Converts Tiptap JSON structure to HTML
@@ -241,10 +288,170 @@ export default function NovelContent({ content, className = '' }: NovelContentPr
     return contentHtml;
   };
   
+  // Scroll highlighted paragraph into view
+  useEffect(() => {
+    if (highlightParagraph >= 0 && highlightParagraph < paragraphIds.length && typeof window !== 'undefined') {
+      const paraId = paragraphIds[highlightParagraph];
+      const element = document.getElementById(paraId);
+      
+      if (element) {
+        // Add highlight class and scroll into view
+        document.querySelectorAll('.novel-paragraph-highlight').forEach(el => {
+          el.classList.remove('novel-paragraph-highlight');
+        });
+        
+        element.classList.add('novel-paragraph-highlight');
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [highlightParagraph, paragraphIds]);
+  
+  // Add CSS for word highlighting
+  useEffect(() => {
+    if (highlightWordStart >= 0 && highlightWordEnd > highlightWordStart) {
+      // Find all words in the content
+      if (typeof window !== 'undefined') {
+        // Create a style tag for the highlighting
+        let styleTag = document.getElementById('word-highlight-style');
+        if (!styleTag) {
+          styleTag = document.createElement('style');
+          styleTag.id = 'word-highlight-style';
+          document.head.appendChild(styleTag);
+        }
+
+        // Define the CSS for word highlighting
+        styleTag.innerHTML = `
+          .highlight-word {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-radius: 2px;
+            padding: 0 2px;
+            margin: 0 -2px;
+          }
+        `;
+
+        // Get all paragraphs and process them
+        const allParas = document.querySelectorAll('.novel-paragraph');
+        
+        // Reset any previous highlighting
+        document.querySelectorAll('.highlight-word').forEach(el => {
+          const text = el.textContent || '';
+          el.outerHTML = text;
+        });
+        
+        // We only care about the active paragraph for now
+        if (highlightParagraph >= 0 && highlightParagraph < allParas.length) {
+          // Only get the words in the highlighted paragraph
+          // This is a simplified approach - more complex texts with nested tags 
+          // would need a more sophisticated solution
+          const targetParagraph = allParas[highlightParagraph];
+          
+          // Get the text content, then split into words
+          const textContent = targetParagraph.textContent || '';
+          const words = textContent.split(' ');
+          
+          // Only highlight if we have valid word indices
+          if (highlightWordStart < words.length) {
+            // Create a temporary container to handle the HTML
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = targetParagraph.innerHTML;
+            
+            // Approach: Replace text nodes with highlighted versions
+            // This is complex but possible with DOM manipulation
+            // For now, we'll implement a simplified version
+            
+            // Create a walker to traverse all text nodes
+            const walker = document.createTreeWalker(
+              tempContainer,
+              NodeFilter.SHOW_TEXT,
+              null
+            );
+            
+            // Get all text nodes
+            const textNodes: Text[] = [];
+            let currentNode = walker.nextNode();
+            while (currentNode) {
+              textNodes.push(currentNode as Text);
+              currentNode = walker.nextNode();
+            }
+            
+            // Mark the target words in text nodes
+            let wordCount = 0;
+            textNodes.forEach(textNode => {
+              const nodeText = textNode.textContent || '';
+              const nodeWords = nodeText.split(/\s+/);
+              
+              // Check if this node contains our target words
+              for (let i = 0; i < nodeWords.length; i++) {
+                const currentIndex = wordCount + i;
+                
+                if (currentIndex >= highlightWordStart && currentIndex < highlightWordEnd) {
+                  // This word should be highlighted
+                  // We replace it in the DOM
+                  const word = nodeWords[i];
+                  const beforeText = nodeWords.slice(0, i).join(' ');
+                  const afterText = nodeWords.slice(i + 1).join(' ');
+                  
+                  // Create highlighted span
+                  const span = document.createElement('span');
+                  span.className = 'highlight-word';
+                  span.textContent = word;
+                  
+                  // Replace the text node with our new structure
+                  const parent = textNode.parentNode;
+                  if (parent) {
+                    if (beforeText) {
+                      parent.insertBefore(document.createTextNode(beforeText + ' '), textNode);
+                    }
+                    parent.insertBefore(span, textNode);
+                    if (afterText) {
+                      parent.insertBefore(document.createTextNode(' ' + afterText), textNode);
+                    }
+                    parent.removeChild(textNode);
+                    break; // Break after replacement
+                  }
+                }
+              }
+              
+              wordCount += nodeWords.length;
+            });
+            
+            // Update the paragraph with our highlighted content
+            targetParagraph.innerHTML = tempContainer.innerHTML;
+          }
+        }
+      }
+    } else {
+      // Remove highlighting if indices are invalid
+      if (typeof window !== 'undefined') {
+        document.querySelectorAll('.highlight-word').forEach(el => {
+          const text = el.textContent || '';
+          el.outerHTML = text;
+        });
+      }
+    }
+  }, [highlightWordStart, highlightWordEnd, highlightParagraph]);
+  
+  // Handle paragraph click
+  const handleClick = (e: React.MouseEvent) => {
+    if (!onParagraphClick) return;
+    
+    // Find the clicked paragraph
+    const target = e.target as HTMLElement;
+    const paragraph = target.closest('.novel-paragraph');
+    
+    if (paragraph) {
+      const index = parseInt(paragraph.getAttribute('data-paragraph-index') || '-1');
+      if (index >= 0) {
+        onParagraphClick(index);
+      }
+    }
+  };
+  
   return (
     <div 
       className={`rich-text ${className}`}
       dangerouslySetInnerHTML={{ __html: renderedContent }}
+      onClick={onParagraphClick ? handleClick : undefined}
     />
   );
 } 

@@ -2,9 +2,9 @@
 
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Menu, X, Volume2, VolumeX, Volume1, MessageCircle, Plus, Minus, Maximize2, ScrollText, BookOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, X, Volume2, VolumeX, Volume1, MessageCircle, Plus, Minus, Maximize2, ScrollText, BookOpen, SlidersHorizontal, Square, SkipForward } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { PictureBookReader } from "@/components/books/picture-book-reader";
 import {
   Tooltip,
@@ -159,6 +159,42 @@ export default function ReadPage() {
   const [isVoiceReading, setIsVoiceReading] = useState<boolean>(false);
   const [voiceVolume, setVoiceVolume] = useState<number>(70); // 0-100 scale
   
+  // Speech synthesis states
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [currentVoice, setCurrentVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [currentSpeechRate, setCurrentSpeechRate] = useState<number>(1);
+  const [currentPitch, setCurrentPitch] = useState<number>(1);
+  const [currentReadingParagraph, setCurrentReadingParagraph] = useState<number>(-1);
+  const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const paragraphsRef = useRef<string[]>([]);
+  
+  // Text to be read aloud - now we'll keep paragraphs separate
+  const textParagraphs = useMemo(() => {
+    if (typeof chapterContent === 'string') {
+      const paragraphs = extractTextContent(chapterContent);
+      paragraphsRef.current = paragraphs;
+      return paragraphs;
+    }
+    return [];
+  }, [chapterContent]);
+  
+  // Update the text to read - merge all paragraphs into one
+  const fullText = useMemo(() => {
+    if (textParagraphs.length === 0) return "";
+    // Join all paragraphs with spaces between them
+    return textParagraphs.join(" ");
+  }, [textParagraphs]);
+  
+  // Add a ref to remember the last read paragraph
+  const lastReadParagraphRef = useRef<number>(0);
+  
+  // Add a state to track if there's a saved position to resume from
+  const [hasResumePosition, setHasResumePosition] = useState<boolean>(false);
+  
+  // Add a ref to track the last word position
+  const lastReadWordPositionRef = useRef<number>(0);
+  
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
     if (commentsOpen) setCommentsOpen(false);
@@ -169,6 +205,268 @@ export default function ReadPage() {
     if (sidebarOpen) setSidebarOpen(false);
   };
 
+  // Initialize speech synthesis
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      speechSynthesisRef.current = window.speechSynthesis;
+      
+      // Get available voices
+      const loadVoices = () => {
+        const voices = speechSynthesisRef.current?.getVoices() || [];
+        setAvailableVoices(voices);
+        
+        // Set default voice (prefer Google US English voices)
+        if (voices.length > 0) {
+          // Look for Google US English voice first
+          const googleUSVoice = voices.find(
+            voice => voice.name.includes('Google US English') || 
+                    (voice.name.includes('Google') && voice.lang.includes('en-US'))
+          );
+          
+          // Next preference is any US English voice
+          const usEnglishVoice = voices.find(
+            voice => voice.lang.includes('en-US')
+          );
+          
+          // Then any English voice
+          const englishVoice = voices.find(
+            voice => voice.lang.includes('en-')
+          );
+          
+          // Set the voice in order of preference
+          setCurrentVoice(googleUSVoice || usEnglishVoice || englishVoice || voices[0]);
+        }
+      };
+      
+      // Chrome loads voices asynchronously
+      if (speechSynthesisRef.current.onvoiceschanged !== undefined) {
+        speechSynthesisRef.current.onvoiceschanged = loadVoices;
+      }
+      
+      loadVoices();
+    }
+    
+    return () => {
+      stopSpeech();
+    };
+  }, []);
+  
+  // Add a function to get text starting from a specific word
+  const getTextFromPosition = (text: string, startWordPosition: number): string => {
+    if (!text || startWordPosition <= 0) return text;
+    
+    const words = text.split(' ');
+    if (startWordPosition >= words.length) return "";
+    
+    return words.slice(startWordPosition).join(' ');
+  };
+  
+  // Keep the function to get paragraph index from global word position
+  const getWordPosition = (globalWordIndex: number): { paragraphIndex: number, localWordIndex: number } => {
+    if (!textParagraphs || textParagraphs.length === 0 || globalWordIndex < 0) {
+      return { paragraphIndex: -1, localWordIndex: -1 };
+    }
+    
+    let wordCount = 0;
+    for (let i = 0; i < textParagraphs.length; i++) {
+      const paragraph = textParagraphs[i];
+      const paragraphWordCount = paragraph.split(' ').length;
+      
+      // If the global word index falls within this paragraph
+      if (globalWordIndex < wordCount + paragraphWordCount) {
+        return {
+          paragraphIndex: i,
+          localWordIndex: globalWordIndex - wordCount
+        };
+      }
+      
+      wordCount += paragraphWordCount;
+      // Add 1 for the space between paragraphs that we added when joining
+      wordCount += 1;
+    }
+    
+    // If we get here, the index is beyond our text
+    return { 
+      paragraphIndex: textParagraphs.length - 1, 
+      localWordIndex: textParagraphs[textParagraphs.length - 1].split(' ').length - 1 
+    };
+  };
+  
+  // Modify startSpeech to ensure it uses the most current settings
+  const startSpeech = (resumeFromLastPosition: boolean = false) => {
+    if (!speechSynthesisRef.current || !fullText || !currentVoice) {
+      console.error('Cannot start speech: missing requirements', {
+        synthesisAvailable: !!speechSynthesisRef.current,
+        textAvailable: !!fullText,
+        voiceAvailable: !!currentVoice
+      });
+      return;
+    }
+    
+    console.log('Starting speech with settings:', {
+      voice: currentVoice.name,
+      rate: currentSpeechRate,
+      pitch: currentPitch,
+      volume: voiceVolume,
+      fromPosition: resumeFromLastPosition ? lastReadWordPositionRef.current : 0
+    });
+    
+    // Stop any existing speech
+    if (speechSynthesisRef.current) {
+      speechSynthesisRef.current.cancel();
+    }
+    
+    // Determine the text to read - either full text or from last position
+    const startWordPosition = resumeFromLastPosition ? lastReadWordPositionRef.current : 0;
+    const textToRead = getTextFromPosition(fullText, startWordPosition);
+    
+    // Calculate which paragraph we're in based on the word position
+    const { paragraphIndex } = getWordPosition(startWordPosition);
+    
+    // Create a new utterance for the text to read
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    
+    // Apply current settings from state
+    utterance.voice = currentVoice;
+    utterance.volume = voiceVolume / 100;
+    utterance.rate = currentSpeechRate;
+    utterance.pitch = currentPitch;
+    
+    // Store global position for tracking
+    let wordsSoFar = startWordPosition;
+    
+    // Track word position during speech
+    utterance.onboundary = (event) => {
+      // Only track word boundaries
+      if (event.name === 'word') {
+        wordsSoFar++;
+        lastReadWordPositionRef.current = wordsSoFar;
+        
+        // Determine which paragraph contains this word
+        const wordPosition = getWordPosition(wordsSoFar);
+        
+        // Update current reading paragraph if needed
+        if (wordPosition.paragraphIndex !== -1) {
+          setCurrentReadingParagraph(wordPosition.paragraphIndex);
+        }
+      }
+    };
+    
+    // Add event handlers
+    utterance.onend = () => {
+      console.log("Speech complete");
+      setIsVoiceReading(false);
+      setCurrentReadingParagraph(-1);
+      lastReadWordPositionRef.current = 0; // Reset on complete reading
+    };
+    
+    utterance.onpause = () => {
+      console.log("Speech paused at word:", lastReadWordPositionRef.current);
+    };
+    
+    utterance.onerror = (event) => {
+      if (event.error === "interrupted") {
+        console.warn("Speech interrupted intentionally.");
+      } else {
+        console.error("Speech synthesis error:", event.error || event);
+      }
+      setIsVoiceReading(false);
+      setCurrentReadingParagraph(-1);
+    };
+    
+    // Store reference to current utterance
+    utteranceRef.current = utterance;
+    
+    // Update UI state before starting
+    setIsVoiceReading(true);
+    setCurrentReadingParagraph(paragraphIndex);
+    
+    // Start speaking
+    speechSynthesisRef.current.speak(utterance);
+  };
+  
+  // Update the existing updateVoiceSettings function 
+  const updateVoiceSettings = (
+    newVoice?: SpeechSynthesisVoice,
+    newRate?: number,
+    newPitch?: number,
+    newVolume?: number
+  ) => {
+    // Log the current values before changes
+    console.log('BEFORE update - Current settings:', {
+      voice: currentVoice?.name,
+      rate: currentSpeechRate,
+      pitch: currentPitch,
+      volume: voiceVolume
+    });
+    
+    console.log('Updating to:', {
+      voice: newVoice?.name || 'unchanged',
+      rate: newRate !== undefined ? newRate : 'unchanged',
+      pitch: newPitch !== undefined ? newPitch : 'unchanged',
+      volume: newVolume !== undefined ? newVolume : 'unchanged'
+    });
+
+    // First update all state variables immediately for UI
+    if (newVoice) setCurrentVoice(newVoice);
+    if (newRate !== undefined) setCurrentSpeechRate(newRate);
+    if (newPitch !== undefined) setCurrentPitch(newPitch);
+    if (newVolume !== undefined) setVoiceVolume(newVolume);
+    
+    // If not reading, we're done
+    if (!isVoiceReading || !speechSynthesisRef.current) {
+      return;
+    }
+    
+    // Decide if we need to restart speech
+    // For voice changes we always need to restart
+    const needRestart = newVoice !== undefined;
+    
+    // Capture the current position before any changes
+    const currentPosition = lastReadWordPositionRef.current;
+    
+    // If we can update directly without restarting, do so
+    if (!needRestart && utteranceRef.current) {
+      // Apply changes directly to the active utterance
+      if (newRate !== undefined) {
+        utteranceRef.current.rate = newRate;
+        console.log('Directly applied rate change to:', newRate);
+      }
+      if (newPitch !== undefined) utteranceRef.current.pitch = newPitch;
+      if (newVolume !== undefined) utteranceRef.current.volume = newVolume / 100;
+      
+      // We're done - no need to restart
+      return;
+    }
+    
+    // For changes requiring restart:
+    // 1. Stop current speech
+    speechSynthesisRef.current.cancel();
+    
+    // 2. Clear the current utterance ref to prevent confusion
+    utteranceRef.current = null;
+    
+    // 3. Store the reading state flag but don't change UI yet
+    const wasReading = isVoiceReading;
+    
+    // 4. Start new speech with updated settings
+    // Use a small timeout to ensure state updates have propagated
+    setTimeout(() => {
+      if (wasReading) {
+        // Log right before starting with new settings
+        console.log('AFTER update - Current settings before restart:', {
+          voice: currentVoice?.name,
+          rate: currentSpeechRate, 
+          pitch: currentPitch,
+          volume: voiceVolume
+        });
+        
+        // Create fresh utterance with current state values
+        startSpeech(true);
+      }
+    }, 50);
+  };
+  
   // Update chapter content when chapter data changes
   useEffect(() => {
     if (chapterData) {
@@ -250,6 +548,44 @@ export default function ReadPage() {
       });
     }
   }, [bookId, chapterId, isLoadingChapter, chapterData]);
+  
+  // In the effect for chapter changes, update to clear resume state
+  useEffect(() => {
+    stopSpeech();
+    resetSpeechPosition();
+    setIsVoiceReading(false);
+    setCurrentReadingParagraph(-1);
+  }, [chapterId, chapterNumber]);
+  
+  // Restore the stopSpeech function
+  const stopSpeech = () => {
+    console.log("stopSpeech", speechSynthesisRef);
+    if (speechSynthesisRef.current) {
+      speechSynthesisRef.current.cancel();
+    }
+    utteranceRef.current = null;
+    setIsVoiceReading(false);
+    setCurrentReadingParagraph(-1);
+    // Don't reset word position to allow resuming
+  };
+
+  // Restore the resetSpeechPosition function
+  const resetSpeechPosition = () => {
+    lastReadWordPositionRef.current = 0;
+    setCurrentReadingParagraph(-1);
+  };
+
+  // Restore the toggleVoiceReading function
+  const toggleVoiceReading = () => {
+    console.log("toggleVoiceReading", isVoiceReading);
+    if (isVoiceReading) {
+      stopSpeech();
+    } else {
+      // Check if we should resume from last position
+      const hasLastPosition = lastReadWordPositionRef.current > 0;
+      startSpeech(hasLastPosition);
+    }
+  };
   
   // If loading, show a skeleton UI
   if (isLoadingBook || isLoadingChapter || isLoadingChapterList) {
@@ -464,7 +800,7 @@ export default function ReadPage() {
   const totalPages = bookType === "Manga" 
     ? pictureBookImages.length 
     : paragraphs.length;
-  
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation bar */}
@@ -596,6 +932,19 @@ export default function ReadPage() {
             content={typeof chapterContent === 'string' ? chapterContent : ''}
             isFlipMode={readingMode === 'flip'}
             className="mx-auto"
+            highlightParagraph={currentReadingParagraph}
+            onParagraphClick={(index) => {
+              // Save clicked paragraph position regardless of reading state
+              lastReadParagraphRef.current = index;
+              
+              if (isVoiceReading) {
+                // If already reading, start from the clicked paragraph
+                startSpeech();
+              } else {
+                // If not reading, just save the position for future use
+                setCurrentReadingParagraph(index);
+              }
+            }}
           />
         )}
       </div>
@@ -681,73 +1030,152 @@ export default function ReadPage() {
         
         {/* Voice reading button - Only for novels */}
         {bookType === "Novel" && (
-          <div className={`flex flex-col gap-2 items-center ${commentsOpen ? 'mr-[384px] sm:mr-96' : ''} transition-all duration-300`}>
-            {/* Reserve space for volume controls to prevent flickering */}
-            <div className={`${isVoiceReading ? 'opacity-100' : 'opacity-0 pointer-events-none'} transition-opacity duration-200 bg-background/80 backdrop-blur-sm shadow-lg rounded-full p-2 border`} style={{height: isVoiceReading ? 'auto' : '0'}}>
-              <div className="flex flex-col gap-2 items-center py-1">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={() => setVoiceVolume(Math.min(100, voiceVolume + 10))}
+          <div className={`${commentsOpen ? 'mr-[384px] sm:mr-96' : ''} transition-all duration-300`}>
+            <div className="group relative">
+              {/* TTS options popover - positioned to the left side with a corridor for mouse movement */}
+              <div className="absolute bottom-[-30px] right-[calc(100%)] pb-3 pr-3 pt-3 w-[calc(64px+16rem)] flex justify-end opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-50 group-hover:pointer-events-auto pointer-events-none">
+                <div className="bg-background/95 backdrop-blur-sm shadow-xl rounded-lg p-4 border relative w-64">
+                  {/* Directional arrow pointing to button - centered with the button */}
+                  <div className="absolute bottom-[25px] right-[-8px] h-4 w-4 rotate-45 border-r border-t bg-background/95 border-border transform -translate-y-1/2"></div>
+                  
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h4 className="text-sm font-medium">Text-to-Speech Options</h4>
+                    </div>
+                    
+                    {/* Voice selection dropdown */}
+                    <div className="space-y-1.5">
+                      <label htmlFor="voice-select" className="text-xs font-medium">Voice</label>
+                      <select 
+                        id="voice-select"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs shadow-sm focus:ring-1 focus:ring-primary"
+                        value={currentVoice?.name || ''}
+                        onChange={(e) => {
+                          const selected = availableVoices.find(voice => voice.name === e.target.value);
+                          if (selected) {
+                            updateVoiceSettings(selected);
+                          }
+                        }}
                       >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      <p>Increase Volume</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                
-                <div className="text-xs font-medium">{voiceVolume}%</div>
-                
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={() => setVoiceVolume(Math.max(0, voiceVolume - 10))}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      <p>Decrease Volume</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                        {availableVoices.map(voice => (
+                          <option key={voice.name} value={voice.name}>
+                            {voice.name.length > 30 ? `${voice.name.substring(0, 30)}...` : voice.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Speech rate control */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <label htmlFor="speed-range" className="text-xs font-medium">Reading Speed</label>
+                        <span className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded-md">
+                          {currentSpeechRate}x
+                        </span>
+                      </div>
+                      <input 
+                        id="speed-range"
+                        type="range" 
+                        min="0.5" 
+                        max="2" 
+                        step="0.1" 
+                        value={currentSpeechRate}
+                        className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                        onChange={(e) => {
+                          const rate = parseFloat(e.target.value);
+                          console.log(`Slider changed to: ${rate}`);
+                          updateVoiceSettings(undefined, rate);
+                        }}
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground px-0.5">
+                        <span>Slow</span>
+                        <span>Normal</span>
+                        <span>Fast</span>
+                      </div>
+                    </div>
+                    
+                    {/* Volume control */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <label htmlFor="volume-range" className="text-xs font-medium">Volume</label>
+                        <span className="text-xs bg-secondary/50 px-1.5 py-0.5 rounded-md">
+                          {voiceVolume}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground transition-colors" 
+                          aria-label="Mute"
+                          onClick={() => updateVoiceSettings(undefined, undefined, undefined, 0)}
+                        >
+                          <VolumeX size={14} />
+                        </button>
+                        <input 
+                          id="volume-range"
+                          type="range" 
+                          min="0" 
+                          max="100" 
+                          step="5" 
+                          value={voiceVolume}
+                          className="flex-1 h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                          onChange={(e) => {
+                            const volume = parseInt(e.target.value);
+                            updateVoiceSettings(undefined, undefined, undefined, volume);
+                          }}
+                        />
+                        <button 
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground transition-colors" 
+                          aria-label="Maximum volume"
+                          onClick={() => updateVoiceSettings(undefined, undefined, undefined, 100)}
+                        >
+                          <Volume2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Current paragraph indicator if reading */}
+                    {isVoiceReading && currentReadingParagraph >= 0 && (
+                      <div className="text-xs text-muted-foreground text-center mt-1 border-t pt-2">
+                        Reading entire chapter ({textParagraphs.length} paragraphs)
+                      </div>
+                    )}
+                    
+                    {/* Resume indicator */}
+                    {!isVoiceReading && lastReadWordPositionRef.current > 0 && (
+                      <div className="text-xs text-muted-foreground text-center mt-1 border-t pt-2">
+                        Will resume from word {lastReadWordPositionRef.current}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant={isVoiceReading ? "default" : "secondary"} 
-                    size="icon"
-                    className="h-12 w-12 rounded-full shadow-lg"
-                    onClick={() => setIsVoiceReading(!isVoiceReading)}
-                  >
-                    {voiceVolume === 0 ? (
+              
+              {/* TTS control buttons */}
+              <div className="flex gap-2 flex-col">
+                {/* Play/Pause button */}
+                <Button 
+                  variant={isVoiceReading ? "default" : "secondary"} 
+                  size="icon"
+                  className="h-12 w-12 rounded-full shadow-lg hover:shadow-md transition-all"
+                  onClick={toggleVoiceReading}
+                  aria-label={isVoiceReading ? "Stop Voice Reading" : "Start Voice Reading"}
+                >
+                  {isVoiceReading ? (
+                    <Square className="h-4 w-4" /> // Use Square icon for Stop
+                  ) : (
+                    voiceVolume === 0 ? (
                       <VolumeX className="h-5 w-5" />
                     ) : voiceVolume < 50 ? (
                       <Volume1 className="h-5 w-5" />
                     ) : (
                       <Volume2 className="h-5 w-5" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  <p>{isVoiceReading ? "Stop Voice Reading" : "Start Voice Reading"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                    )
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>

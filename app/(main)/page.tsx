@@ -9,7 +9,9 @@ import { getUserReadingHistory, getBooks, getTrendingBooks, getRecommendedBooks 
 import { ReadingHistoryItem, SortDirectionEnum, AccessStatusEnum, Book } from "@/models/book";
 import { useQuery } from "@tanstack/react-query";
 import { BOOK_KEYS } from "@/lib/constants/query-keys";
+import { useUserStore } from "@/lib/store/useUserStore";
 export default function Home() {
+  const { isLoggedIn } = useUserStore();
   // Fetch reading history using React Query
   const { data: readingHistoryData, isLoading } = useQuery({
     queryKey: BOOK_KEYS.RECENTLY_READ,
@@ -127,7 +129,7 @@ export default function Home() {
       <div className="h-8"></div>
       
       {/* Recent Read Section */}
-      {!!readingHistoryData && readingHistoryData?.length > 0 && 
+      {isLoggedIn && !!readingHistoryData && readingHistoryData?.length > 0 && 
         (<div>
           <SectionCarousel 
             title="Recent Read" 

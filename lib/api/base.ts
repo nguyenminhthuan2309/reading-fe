@@ -23,9 +23,18 @@ interface RequestOptions {
 const handle401Error = () => {
   // Get the logout function from Zustand store
   const logout = useUserStore.getState().logout;
+
+  const token = useUserStore.getState().token;
+
   
   // Show error and redirect to login for all 401 errors
-  toast.error("Your session has expired. Please log in again.");
+  if (token) {
+    toast.error("Your session has expired. Please log in again.");
+    
+    // Clear the token and user from the store
+    useUserStore.getState().setToken(null);
+    useUserStore.getState().setUser(null);
+  }
   
   // Logout and redirect to login page
   logout();
@@ -58,10 +67,7 @@ const configureRequest = (options: RequestOptions = {}): AxiosRequestConfig => {
   };
   
   // For protected routes, get token from store if not provided
-  
-    const token = options.token || useUserStore.getState().token;
-
-
+  const token = options.token || useUserStore.getState().token;
     
   if (token) {
     config.headers = {
@@ -104,6 +110,7 @@ const handleApiError = <T>(error: any): ApiResponse<T> => {
       data: null as T,
       msg: error.message || 'Unknown error occurred',
       status: 500,
+      success: false,
   };
 };
 

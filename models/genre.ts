@@ -1,5 +1,6 @@
 // Genre union type generated from all available genres in the application
-export type Genre = 
+export type Genre =
+  | "Action"
   | "Adventure"
   | "Comedy"
   | "Drama"
@@ -39,50 +40,120 @@ export type Genre =
   | "Cooking"
   | "Game"
   | "Virtual Reality"
-  | "Politics"
+  | "Space"
   | "Science";
 
-// Export the genre options for reuse across the application
-export const GENRE_OPTIONS = [
-  { label: "Adventure", value: "Adventure" }, // Phiêu lưu
-  { label: "Comedy", value: "Comedy" }, // Hài hước
-  { label: "Drama", value: "Drama" }, // Chính kịch
-  { label: "Fantasy", value: "Fantasy" }, // Giả tưởng
-  { label: "Historical", value: "Historical" }, // Lịch sử
-  { label: "Horror", value: "Horror" }, // Kinh dị
-  { label: "Mystery", value: "Mystery" }, // Bí ẩn
-  { label: "Romance", value: "Romance" }, // Lãng mạn
-  { label: "Sci-fi", value: "Sci-fi" }, // Khoa học viễn tưởng
-  { label: "Slice of Life", value: "Slice of Life" }, // Đời thường
-  { label: "Thriller", value: "Thriller" }, // Gay cấn
-  { label: "Tragedy", value: "Tragedy" }, // Bi kịch
-  { label: "Crime", value: "Crime" }, // Tội phạm
-  { label: "Supernatural", value: "Supernatural" }, // Siêu nhiên
-  { label: "Psychological", value: "Psychological" }, // Tâm lý
-  { label: "Martial Arts", value: "Martial Arts" }, // Võ thuật
-  { label: "Post-Apocalyptic", value: "Post-Apocalyptic" }, // Hậu tận thế
-  { label: "Survival", value: "Survival" }, // Sinh tồn
-  { label: "Reincarnation", value: "Reincarnation" }, // Luân hồi
-  { label: "Time Travel", value: "Time Travel" }, // Du hành thời gian
-  { label: "Steampunk", value: "Steampunk" }, // Steampunk
-  { label: "Cyberpunk", value: "Cyberpunk" }, // Cyberpunk
-  { label: "Magic", value: "Magic" }, // Ma thuật
-  { label: "Military", value: "Military" }, // Quân sự
-  { label: "Philosophical", value: "Philosophical" }, // Triết lý
-  { label: "Wuxia", value: "Wuxia" }, // Võ hiệp (Wuxia)
-  { label: "Xianxia", value: "Xianxia" }, // Tiên hiệp (Xianxia)
-  { label: "Xuanhuan", value: "Xuanhuan" }, // Huyền huyễn (Xuanhuan)
-  { label: "Sports", value: "Sports" }, // Thể thao
-  { label: "Mecha", value: "Mecha" }, // Robot khổng lồ (Mecha)
-  { label: "Vampires", value: "Vampires" }, // Ma cà rồng
-  { label: "Zombies", value: "Zombies" }, // Xác sống
-  { label: "Detective", value: "Detective" }, // Trinh thám
-  { label: "School Life", value: "School Life" }, // Học đường
-  { label: "Medical", value: "Medical" }, // Y khoa
-  { label: "Music", value: "Music" }, // Âm nhạc
-  { label: "Cooking", value: "Cooking" }, // Ẩm thực
-  { label: "Game", value: "Game" }, // Trò chơi
-  { label: "Virtual Reality", value: "Virtual Reality" }, // Thực tế ảo
-  { label: "Politics", value: "Politics" }, // Chính trị
-  { label: "Science", value: "Science" } // Khoa học
-] as const; 
+ 
+    export const DEFAULT_GENRES = [
+      { id: 1, name: "Action" },
+      { id: 2, name: "Adventure" },
+      { id: 3, name: "Comedy" },
+      { id: 4, name: "Drama" },
+      { id: 5, name: "Fantasy" },
+      { id: 6, name: "Historical" },
+      { id: 7, name: "Horror" },
+      { id: 8, name: "Mystery" },
+      { id: 9, name: "Romance" },
+      { id: 10, name: "Sci-fi" },
+      { id: 11, name: "Slice of Life" },
+      { id: 12, name: "Thriller" },
+      { id: 13, name: "Tragedy" },
+      { id: 14, name: "Crime" },
+      { id: 15, name: "Supernatural" },
+      { id: 16, name: "Psychological" },
+      { id: 17, name: "Martial Arts" },
+      { id: 18, name: "Post-Apocalyptic" },
+      { id: 19, name: "Survival" },
+      { id: 20, name: "Reincarnation" },
+      { id: 21, name: "Time Travel" },
+      { id: 22, name: "Steampunk" },
+      { id: 23, name: "Cyberpunk" },
+      { id: 24, name: "Magic" },
+      { id: 25, name: "Military" },
+      { id: 26, name: "Philosophical" },
+      { id: 27, name: "Wuxia" },
+      { id: 28, name: "Xianxia" },
+      { id: 29, name: "Xuanhuan" },
+      { id: 30, name: "Sports" },
+      { id: 31, name: "Mecha" },
+      { id: 32, name: "Vampires" },
+      { id: 33, name: "Zombies" },
+      { id: 34, name: "Detective" },
+      { id: 35, name: "School Life" },
+      { id: 36, name: "Medical" },
+      { id: 37, name: "Music" },
+      { id: 38, name: "Cooking" },
+      { id: 39, name: "Game" },
+      { id: 40, name: "Virtual Reality" },
+      { id: 41, name: "Space" },
+      { id: 42, name: "Science" }
+    ] as const;
+  
+  export const GENRE_GROUP_NAMES_MAPING = {
+    actionAdventure: "Action & Adventure",
+    fantasySupernatural: "Fantasy & Supernatural",
+    psychologicalDrama: "Psychological & Drama",
+    mysteryCrime: "Mystery & Crime",
+    romanceSliceOfLife: "Romance & Slice of Life",
+    sciFiFuturistic: "Sci-Fi & Futuristic",
+    survivalApocalyptic: "Survival & Apocalyptic",
+  }
+
+export const GENRE_GROUPS = {
+    actionAdventure: [
+      "Action",
+      "Adventure",
+      "Martial Arts",
+      "Military",
+      "Sports"
+    ],
+    fantasySupernatural: [
+      "Fantasy",
+      "Magic",
+      "Supernatural",
+      "Wuxia",
+      "Xianxia",
+      "Xuanhuan",
+      "Vampires",
+      "Zombies"
+    ],
+    psychologicalDrama: [
+      "Psychological",
+      "Philosophical",
+      "Tragedy",
+      "Drama",
+      "Thriller",
+      "Historical",
+      "Science"
+    ],
+    mysteryCrime: [
+      "Mystery",
+      "Detective",
+      "Crime",
+      "Horror"
+    ],
+    romanceSliceOfLife: [
+      "Romance",
+      "Slice of Life",
+      "School Life",
+      "Music",
+      "Cooking",
+      "Medical",
+      "Comedy"
+    ],
+    sciFiFuturistic: [
+      "Sci-fi",
+      "Cyberpunk",
+      "Steampunk",
+      "Space",
+      "Virtual Reality",
+      "Time Travel",
+      "Reincarnation",
+      "Mecha"
+    ],
+    survivalApocalyptic: [
+      "Post-Apocalyptic",
+      "Survival",
+      "Game"
+    ]
+  };

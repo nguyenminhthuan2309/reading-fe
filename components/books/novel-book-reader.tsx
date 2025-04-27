@@ -24,6 +24,10 @@ interface NovelBookReaderProps {
   className?: string;
   isFlipMode?: boolean;
   onPageChange?: (pageNumber: number) => void;
+  highlightParagraph?: number;
+  highlightWordStart?: number;
+  highlightWordEnd?: number;
+  onParagraphClick?: (index: number) => void;
 }
 
 export function NovelBookReader({
@@ -34,6 +38,10 @@ export function NovelBookReader({
   className = '',
   isFlipMode = false,
   onPageChange,
+  highlightParagraph = -1,
+  highlightWordStart,
+  highlightWordEnd,
+  onParagraphClick,
 }: NovelBookReaderProps) {
   // Extract text content for flip book pages
   const textPages = React.useMemo(() => {
@@ -72,6 +80,10 @@ export function NovelBookReader({
           <NovelContent 
             content={content}
             className="mx-auto"
+            highlightParagraph={highlightParagraph}
+            highlightWordStart={highlightWordStart}
+            highlightWordEnd={highlightWordEnd}
+            onParagraphClick={onParagraphClick}
           />
         </div>
       )}

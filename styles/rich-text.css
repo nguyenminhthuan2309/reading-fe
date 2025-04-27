@@ -230,4 +230,24 @@
   .rich-text .tableWrapper .resize-cursor {
     background-color: rgba(255, 255, 255, 0.1);
   }
+}
+
+/* Add CSS for paragraph highlighting during text-to-speech */
+.novel-paragraph {
+  position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  padding: 0.25rem;
+  border-radius: 4px;
+  margin: -0.25rem;
+}
+
+.novel-paragraph-highlight {
+  background-color: rgba(99, 102, 241, 0.15);
+  border-left: 3px solid rgba(99, 102, 241, 0.8);
+  padding-left: 0.5rem;
+}
+
+/* In dark mode, adjust the highlight colors */
+.dark .novel-paragraph-highlight {
+  background-color: rgba(99, 102, 241, 0.25);
 } 

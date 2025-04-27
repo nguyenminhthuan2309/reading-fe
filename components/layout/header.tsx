@@ -29,21 +29,14 @@ import { cn, formatNotificationTime, generateUsername } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
 import { useLanguage } from "@/lib/providers/LanguageProvider";
 import * as React from "react";
-import { Genre, GENRE_OPTIONS } from "@/models/genre";
+import { Genre } from "@/models/genre";
 import { UserRoleEnum } from "@/models/user";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { useSocket } from '@/lib/hooks';
-
-// Define genre categories with typed Genre arrays
-const genreColumns: Record<string, Genre[]> = {
-  "Popular Genres": ["Fantasy", "Romance", "Mystery", "Adventure", "Sci-fi"],
-  "Eastern": ["Wuxia", "Xianxia", "Xuanhuan", "Martial Arts", "Philosophical"],
-  "Speculative": ["Supernatural", "Horror", "Time Travel", "Cyberpunk", "Magic"],
-  "Contemporary": ["Drama", "Slice of Life", "School Life", "Comedy", "Crime"]
-};
+import { useGenres } from "@/lib/hooks/useGenres";
 
 // Custom Link component for NavigationMenu
 const ListItem = React.forwardRef<
@@ -98,14 +91,7 @@ export default function Header() {
   const { theme, setTheme } = useTheme();
   const { language, setLanguage, languageLabels } = useLanguage();
   
-  
-  // Get all genre names that aren't already in the genreColumns
-  const moreGenres = React.useMemo(() => {
-    const includedGenres = Object.values(genreColumns).flat();
-    return GENRE_OPTIONS
-      .filter(option => !includedGenres.includes(option.value as Genre))
-      .slice(0, 5); // Take only 5 additional genres for the "More" section
-  }, []);
+  const { genres, genreGroups, isLoading: isLoadingGenres } = useGenres();
   
   // Use our custom notifications hook
   const { 
@@ -170,42 +156,25 @@ export default function Header() {
               <NavigationMenuItem>
                 <NavigationMenuTrigger className="text-black bg-white hover:bg-gray-100 hover:text-black focus:bg-gray-100 dark:text-white dark:bg-gray-950 dark:hover:bg-gray-800 dark:hover:text-white dark:focus:bg-gray-800">Browse</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="p-4 w-[600px] md:w-[700px] bg-white text-black dark:bg-gray-900 dark:text-white">
+                  <div className="p-4 w-[600px] md:w-[1000px] bg-white text-black dark:bg-gray-900 dark:text-white">
                     <div className="flex gap-3">
-                      {Object.entries(genreColumns).map(([category, genreList]) => (
-                        <div key={category} className="flex-1">
-                          <div className="text-sm font-medium mb-1 border-b pb-1 dark:border-gray-700">{category}</div>
+                      {Object.entries(genreGroups).map(([name, genres]) => (
+                        <div key={name} className="flex-1">
+                          <div className="text-sm font-medium mb-1 border-b pb-1 dark:border-gray-700">{name}</div>
                           <div className="flex flex-col gap-1">
-                            {genreList.map((genre) => (
-                              <NavigationMenuLink key={genre} asChild>
+                            {genres.map((genre) => (
+                              <NavigationMenuLink key={genre.id} asChild>
                                 <Link
-                                  href={`/books?filter=${genre.toLowerCase().replace(/\s+/g, '-')}`}
+                                  href={`/books?filter=${genre.name.toLowerCase().replace(/\s+/g, '-')}`}
                                   className="text-sm hover:text-black cursor-pointer dark:hover:text-gray-300"
                                 >
-                                  {genre}
+                                  {genre.name}
                                 </Link>
                               </NavigationMenuLink>
                             ))}
                           </div>
                         </div>
                       ))}
-                      
-                      {/* More Genres column */}
-                      <div className="flex-1">
-                        <div className="text-sm font-medium mb-1 border-b pb-1 dark:border-gray-700">More Genres</div>
-                        <div className="flex flex-col gap-1">
-                          {moreGenres.map((genre) => (
-                            <NavigationMenuLink key={genre.value} asChild>
-                              <Link
-                                href={`/books?filter=${genre.value.toLowerCase().replace(/\s+/g, '-')}`}
-                                className="text-sm hover:text-black cursor-pointer dark:hover:text-gray-300"
-                              >
-                                {genre.label}
-                              </Link>
-                            </NavigationMenuLink>
-                          ))}
-                        </div>
-                      </div>
                     </div>
                     
                     <div className="mt-4 pt-2 border-t text-center dark:border-gray-700">
@@ -240,6 +209,7 @@ export default function Header() {
             size="icon" 
             className="h-9 w-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Toggle theme"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />

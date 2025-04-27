@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getBooks, getGenres } from "@/lib/api/books";
-import { Author, BookFilters, Category, SortDirectionEnum } from "@/models/book";
+import {  BookFilters, Category, SortDirectionEnum } from "@/models/book";
 import { BookCard } from "@/components/books/book-card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Filter, PlusCircle, Search, SlidersHorizontal, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -21,36 +21,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GENRE_OPTIONS } from "@/models/genre";
 import React from "react";
 import { useUserStore } from "@/lib/store";
 import { BOOK_KEYS, CATEGORY_KEYS } from "@/lib/constants/query-keys";
-// Define a string-based genre type for the UI
-type UIGenre = string;
+import { GENRE_GROUP_NAMES_MAPING } from "@/models/genre";
+import { useGenres } from "@/lib/hooks/useGenres";
+import { Author } from "@/models";
 
-// Define genre categories with predefined mappings
-const GENRE_CATEGORIES: Record<string, string[]> = {
-  "Popular Genres": [
-    "Fantasy", "Romance", "Mystery", "Adventure", "Sci-fi", 
-    "Drama", "Comedy", "Thriller", "Horror"
-  ],
-  "Eastern": [
-    "Wuxia", "Xianxia", "Xuanhuan", "Martial Arts", 
-    "Philosophical", "Historical"
-  ],
-  "Speculative": [
-    "Supernatural", "Horror", "Time Travel", "Cyberpunk", 
-    "Magic", "Post-Apocalyptic", "Steampunk", "Virtual Reality"
-  ],
-  "Contemporary": [
-    "Drama", "Slice of Life", "School Life", "Comedy", 
-    "Crime", "Detective", "Psychological", "Tragedy"
-  ],
-  "Other Genres": [] // This will be populated dynamically with any uncategorized genres
-};
-
-// Default genre categories used before API data is loaded
-const defaultGenreCategories: Record<string, UIGenre[]> = GENRE_CATEGORIES;
 
 // Page size options
 const PAGE_SIZE_OPTIONS = [16, 24, 36];
@@ -82,6 +59,7 @@ export default function BooksPage() {
   const searchDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUserStore();
+  const { genres, genreGroups, isLoading: isLoadingGenres } = useGenres();
   
   // Parse query parameters
   const currentPage = Number(searchParams.get("page")) || 1;
@@ -92,13 +70,13 @@ export default function BooksPage() {
   
   // Parse selectedGenres from URL (comma-separated list of genres)
   const selectedGenresParam = searchParams.get("genres") || "";
-  const selectedGenres = selectedGenresParam ? selectedGenresParam.split(",") as UIGenre[] : [];
+  const selectedGenres = selectedGenresParam ? selectedGenresParam.split(",") as string[] : [];
   
   // UI state
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(
-    Object.keys(GENRE_CATEGORIES) // Initialize with predefined categories
+    Object.values(GENRE_GROUP_NAMES_MAPING) // Initialize with predefined categories
   );
 
   // Clear the timer on component unmount
@@ -109,76 +87,6 @@ export default function BooksPage() {
       }
     };
   }, []);
-
-  // Fetch genres from the API
-  const { 
-    data: genresData,
-    isLoading: isLoadingGenres
-  } = useQuery({
-    queryKey: CATEGORY_KEYS.CATEGORIES,
-    queryFn: async () => {
-      const response = await getGenres();
-      if (response.status !== 200) {
-        throw new Error(response.msg || 'Failed to fetch genres');
-      }
-      return response.data as Category[];
-    },
-    staleTime: Infinity, // Never mark data as stale
-    refetchOnWindowFocus: false, // Don't refetch when window regains focus
-    refetchOnMount: false, // Don't refetch when component remounts
-    refetchOnReconnect: false // Don't refetch when network reconnects
-  });
-  
-  // Transform genres data into categories
-  const genreCategories: Record<string, UIGenre[]> = useMemo(() => {
-    if (!genresData || genresData.length === 0) {
-      return defaultGenreCategories;
-    }
-    
-    // Create a copy of our category definition to populate
-    const categorizedGenres: Record<string, UIGenre[]> = {};
-    
-    // Track which genres have been categorized
-    const categorizedGenreNames = new Set<string>();
-    
-    // Populate each category with matching genres from the API
-    Object.entries(GENRE_CATEGORIES).forEach(([category, genreList]) => {
-      // Skip "Other Genres" as we'll handle it separately
-      if (category !== "Other Genres") {
-        // Filter API genres that match this category's predefined genres
-        const matchingGenres = genresData
-          .filter(apiGenre => genreList.includes(apiGenre.name))
-          .map(apiGenre => {
-            categorizedGenreNames.add(apiGenre.name); // Mark as categorized
-            return apiGenre.name;
-          });
-        
-        // Only add the category if it has matching genres
-        if (matchingGenres.length > 0) {
-          categorizedGenres[category] = matchingGenres;
-        }
-      }
-    });
-    
-    // Add "Other Genres" category with any remaining uncategorized genres
-    const otherGenres = genresData
-      .filter(apiGenre => !categorizedGenreNames.has(apiGenre.name))
-      .map(apiGenre => apiGenre.name);
-    
-    if (otherGenres.length > 0) {
-      categorizedGenres["Other Genres"] = otherGenres;
-    }
-    
-    return categorizedGenres;
-  }, [genresData]);
-  
-  // Update expanded categories when genre categories change
-  useEffect(() => {
-    if (genresData && genresData.length > 0) {
-      // Expand categories by default
-      setExpandedCategories(Object.keys(genreCategories));
-    }
-  }, [genreCategories, genresData]);
 
   // Helper function to update URL with new query parameters
   const updateUrlParams = (updates: Record<string, string | null>) => {
@@ -251,9 +159,9 @@ export default function BooksPage() {
     if (searchQuery) queryFilters.search = searchQuery;
     if (selectedGenres.length > 0) {
       // Map selected genres to categoryIds using the genresData
-      if (genresData) {
+      if (genres) {
         const categoryIds = selectedGenres.map(genreName => {
-          const category = genresData.find(g => g.name === genreName);
+          const category = genres.find(g => g.name === genreName);
           return category ? category.id : 0;
         }).filter(id => id !== 0);
         
@@ -262,9 +170,9 @@ export default function BooksPage() {
         }
       }
     }
-    
+
     return queryFilters;
-  }, [currentPage, pageSize, sortByParam, sortDirectionParam, searchQuery, selectedGenres, genresData]);
+  }, [currentPage, pageSize, sortByParam, sortDirectionParam, searchQuery, selectedGenres, genres]);
   
   // Fetch books data with React Query - now with request cancellation
   const { 
@@ -350,6 +258,7 @@ export default function BooksPage() {
 
   // Toggle category expansion
   const toggleCategory = (category: string) => {
+    console.log(category);
     setExpandedCategories(prev => 
       prev.includes(category) 
         ? prev.filter(c => c !== category) 
@@ -358,7 +267,7 @@ export default function BooksPage() {
   };
 
   // Handlers for filtering
-  const handleGenreToggle = (genre: UIGenre) => {
+  const handleGenreToggle = (genre: string) => {
     const newSelectedGenres = selectedGenres.includes(genre)
       ? selectedGenres.filter(g => g !== genre)
       : [...selectedGenres, genre];
@@ -410,12 +319,6 @@ export default function BooksPage() {
   // Handle sort change
   const handleSortChange = (value: string) => {
     updateUrlParams({ 'sortBy': value });
-  };
-  
-  // Get genre display name from options
-  const getGenreDisplayName = (genreValue: UIGenre): string => {
-    const option = GENRE_OPTIONS.find(opt => opt.value === genreValue);
-    return option?.label || genreValue;
   };
   
   // Determine if we should show loading states
@@ -534,9 +437,6 @@ export default function BooksPage() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">All Books</h1>
-            <p className="text-muted-foreground">
-              Discover {filteredBooks.length} {selectedGenres.length === 1 ? getGenreDisplayName(selectedGenres[0]) : ""} books in our collection
-            </p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -616,42 +516,38 @@ export default function BooksPage() {
             </div>
             
             <div className="space-y-3" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
-              {Object.entries(genreCategories).map(([category, categoryGenres]) => {
-                // Get all genres from the category
-                const availableGenres = categoryGenres as UIGenre[];
-                
+              {Object.entries(genreGroups).map(([group, genres]) => {
                 return (
                   <Collapsible 
-                    key={category}
-                    open={expandedCategories.includes(category)}
-                    onOpenChange={() => toggleCategory(category)}
-                    className="border-b border-border pb-2 last:border-0 last:pb-0"
+                  key={group}
+                  open={expandedCategories.includes(group)}
+                  onOpenChange={() => toggleCategory(group)}
+                  className="border-b border-border pb-2 last:border-0 last:pb-0"
                   >
                     <CollapsibleTrigger className="flex justify-between items-center w-full text-left py-1 hover:text-primary group">
                       <div className="flex items-center">
-                        <h4 className="text-sm font-medium leading-none">{category}</h4>
-                        <span className={`text-xs inline-flex items-center ml-1.5 ${availableGenres.length === 0 ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
-                          ({genreCategories[category]?.reduce((total, genre) => {
-                            const genreObj = genresData?.find(g => g.name === genre);
+                        <h4 className="text-sm font-medium leading-none">{group}</h4>
+                        <span className={`text-xs inline-flex items-center ml-1.5 ${genres.length === 0 ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+                          ({genreGroups[group]?.reduce((total, genre) => {
+                            const genreObj = genres?.find(g => g.name === genre.name);
                             return total + (genreObj?.totalBooks || 0);
                           }, 0)})
                         </span>
                       </div>
-                      <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-primary ${expandedCategories.includes(category) ? 'rotate-90' : ''}`} />
+                      <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-primary ${expandedCategories.includes(group) ? 'rotate-90' : ''}`} />
                     </CollapsibleTrigger>
                     
                     <CollapsibleContent className="mt-1 pl-2 space-y-1">
-                      {availableGenres.map((genre: string) => {
-                        const count = filteredBooks.filter(book => book.genre.find(g => g.name === genre)).length;
-                        const isSelected = selectedGenres.includes(genre);
-                        const genreObj = genresData?.find(g => g.name === genre);
+                      {genres.map((genre: Category) => {
+                        const isSelected = selectedGenres.includes(genre.name);
+                        const genreObj = genres?.find(g => g.name === genre.name);
                         
                         return (
-                          <div key={genre} className="flex items-center space-x-2 py-1">
+                          <div key={genre.name} className="flex items-center space-x-2 py-1">
                             <Checkbox 
                               id={`genre-${genre}`} 
                               checked={isSelected}
-                              onCheckedChange={() => handleGenreToggle(genre as UIGenre)}
+                              onCheckedChange={() => handleGenreToggle(genre.name)}
                               disabled={genreObj?.totalBooks === 0}
                               className={isSelected ? "text-red-500 border-red-500" : ""}
                             />
@@ -660,7 +556,7 @@ export default function BooksPage() {
                               className={`text-sm cursor-pointer flex-1 flex justify-between items-center 
                                 ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/50' : isSelected ? 'text-red-600 font-medium' : ''}`}
                             >
-                              <span className="leading-none">{GENRE_OPTIONS.find(opt => opt.value === genre)?.label || genre}</span>
+                              <span className="leading-none">{genre.name}</span>
                               <span className={`text-xs inline-flex items-center px-1 
                                 ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/30' : 
                                 isSelected ? 'text-red-600' : 'text-muted-foreground'}`}
