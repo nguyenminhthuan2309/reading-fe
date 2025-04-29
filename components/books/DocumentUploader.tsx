@@ -9,9 +9,10 @@ import TiptapEditor from '@/components/editor/TiptapEditor';
 
 interface DocumentUploaderProps {
   onContentConverted: (jsonContent: string) => void;
+  disabled?: boolean;
 }
 
-export function DocumentUploader({ onContentConverted }: DocumentUploaderProps) {
+export function DocumentUploader({ onContentConverted, disabled = false }: DocumentUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { convertFileToJson, isConverting, lastResult } = useDocumentConverter();
@@ -31,10 +32,12 @@ export function DocumentUploader({ onContentConverted }: DocumentUploaderProps) 
   };
 
   const handleUploadClick = () => {
+    if (disabled) return;
     fileInputRef.current?.click();
   };
 
   const handleConvert = async (fileToConvert: File | null = null) => {
+    if (disabled) return;
     const fileToUse = fileToConvert || file;
     
     if (!fileToUse) {
@@ -59,10 +62,12 @@ export function DocumentUploader({ onContentConverted }: DocumentUploaderProps) 
   };
 
   const handleContentChange = (newContent: string) => {
+    if (disabled) return;
     setPreviewContent(newContent);
   };
 
   const handleConfirm = () => {
+    if (disabled) return;
     onContentConverted(previewContent);
   };
 
@@ -91,7 +96,11 @@ export function DocumentUploader({ onContentConverted }: DocumentUploaderProps) 
         
         <div 
           onClick={handleUploadClick}
-          className="border-2 border-dashed rounded-md p-8 hover:bg-muted/50 transition-colors cursor-pointer"
+          className={`border-2 border-dashed rounded-md p-8 transition-colors ${
+            disabled 
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'hover:bg-muted/50 cursor-pointer'
+          }`}
         >
           <div className="flex flex-col items-center gap-2">
             {getFileIcon()}
@@ -127,11 +136,12 @@ export function DocumentUploader({ onContentConverted }: DocumentUploaderProps) 
             <TiptapEditor 
               content={previewContent}
               onChange={handleContentChange}
+              editable={!disabled}
             />
           </div>
           
           <div className="flex justify-end">
-            <Button onClick={handleConfirm}>
+            <Button onClick={handleConfirm} disabled={disabled}>
               Confirm and Use Content
             </Button>
           </div>

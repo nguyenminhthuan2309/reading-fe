@@ -23,12 +23,12 @@ export default function AdminLayout({
     {
       title: "Book Management",
       path: "/admin/books",
-      icon: <BookOpenText className="mr-2 h-5 w-5" />,
+      icon: <BookOpenText className="h-5 w-5" />,
     },
     {
       title: "Analytics",
       path: "/admin/analytics",
-      icon: <BarChart3 className="mr-2 h-5 w-5" />,
+      icon: <BarChart3 className="h-5 w-5" />,
     },
   ];
 
@@ -62,40 +62,43 @@ export default function AdminLayout({
         {/* Sidebar */}
         <aside
           className={cn(
-            "bg-card border-r border-border w-64 transition-all duration-300 ease-in-out flex flex-col",
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            "bg-card border-r border-border transition-all duration-300 ease-in-out flex flex-col",
+            isSidebarOpen ? "w-64" : "w-16"
           )}
         >
-          <nav className="p-4 space-y-2 flex-1">
+          <nav className={cn("flex-1", isSidebarOpen ? "p-4 space-y-2" : "p-2 space-y-2")}>
             {navItems.map((item) => (
               <Link
                 key={item.path}
                 href={item.path}
+                title={!isSidebarOpen ? item.title : undefined}
                 className={cn(
-                  "flex items-center px-4 py-3 rounded-md transition-colors cursor-pointer",
+                  "flex items-center rounded-md transition-colors cursor-pointer",
+                  isSidebarOpen ? "px-4 py-3" : "p-2 justify-center",
                   pathname === item.path || pathname.startsWith(`${item.path}/`)
                     ? "bg-primary text-primary-foreground"
                     : "text-foreground hover:bg-secondary"
                 )}
               >
-                {item.icon}
-                <span>{item.title}</span>
+                <div className={isSidebarOpen ? "mr-2" : ""}>
+                  {item.icon}
+                </div>
+                {isSidebarOpen && <span>{item.title}</span>}
               </Link>
             ))}
           </nav>
-          <div className="p-4 border-t border-border">
-            <div className="text-sm text-muted-foreground">
-              <div>Admin Portal</div>
-              <div>Version 1.0.0</div>
+          {isSidebarOpen && (
+            <div className="p-4 border-t border-border">
+              <div className="text-sm text-muted-foreground">
+                <div>Admin Portal</div>
+                <div>Version 1.0.0</div>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
 
         {/* Main Content */}
-        <main className={cn(
-          "flex-1 overflow-auto p-6 transition-all duration-300 ease-in-out",
-          isSidebarOpen ? "ml-0" : "ml-0 md:ml-0"
-        )}>
+        <main className="flex-1 overflow-auto p-6 transition-all duration-300 ease-in-out">
           {children}
         </main>
       </div>

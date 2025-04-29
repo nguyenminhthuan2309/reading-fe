@@ -1,5 +1,3 @@
-
-
 export interface OpenAIRequest {
   prompt: string;
   model?: string;
@@ -18,6 +16,21 @@ export interface OpenAIResponse {
 export interface ModerationRequest {
   input: string;
   model?: string;
+}
+
+export interface EnhancedModerationRequest {
+  title?: string;
+  description?: string;
+  chaptersContent?: string;
+  coverImage?: string;
+  chapterImages?: string[];
+  model?: 'omni-moderation-latest' | 'gpt-4o' | 'o4-mini';
+  chapters?: Array<{
+    id?: string | number;
+    chapter: number;
+    title: string;
+    content: string | string[];
+  }>;
 }
 
 export interface ModerationResult {
@@ -55,12 +68,59 @@ export interface ModerationResult {
   category_applied_input_types: Record<string, string[]>;
 }
 
+export interface ShortenModerationResult{
+  reason?: string;
+  sexual?: number;
+  'sexual/minors'?: number;
+  harassment?: number;
+  'harassment/threatening'?: number;
+  hate?: number;
+  'hate/threatening'?: number;
+  illicit?: number;
+  'illicit/violent'?: number;
+  'self-harm'?: number;
+  'self-harm/intent'?: number;
+  'self-harm/instructions'?: number;
+  violence?: number;
+  'violence/graphic'?: number;
+}
+
+export interface EnhancedModerationResult {
+  model: string;
+  flagged?: boolean;
+  categories?: Record<string, boolean>;
+  category_scores?: Record<string, number>;
+  contentResults?: {
+    title?: ShortenModerationResult;
+    description?: ShortenModerationResult;
+    coverImage?: ShortenModerationResult;
+    chapters?: (ShortenModerationResult & {chapter: number})[];
+  };
+  timestamp: string;
+}
+
 export interface ModerationResponse {
   id: string;
   model: string;
   results: ModerationResult[];
 }
 
+export interface EnhancedModerationResponse extends EnhancedModerationResult {}
+
 export interface OpenAIError {
   error: string;
 }
+
+export interface TextModerationInput {
+  type: "text";
+  text: string;
+}
+
+export interface ImageModerationInput {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+}
+
+export type ModerationInput = TextModerationInput | ImageModerationInput;

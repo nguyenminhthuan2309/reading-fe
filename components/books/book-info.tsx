@@ -54,6 +54,8 @@ interface BookInfoProps {
   isEnhancingDescription: boolean;
   enhanceDescription: () => void;
   isEditing?: boolean;
+  canEdit?: boolean;
+  reasonIfDenied?: string;
 }
 
 export default function BookInfo({
@@ -76,7 +78,9 @@ export default function BookInfo({
   enhanceTitle,
   isEnhancingDescription,
   enhanceDescription,
-  isEditing = false
+  isEditing = false,
+  canEdit = false,
+  reasonIfDenied = ""
 }: BookInfoProps) {
   return (
     <div className={`w-full md:w-[30%] relative transition-all duration-300 ${isCollapsed ? 'md:w-[48px]' : ''}`}>
@@ -142,13 +146,14 @@ export default function BookInfo({
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                 onChange={handleImageUpload}
+                disabled={!canEdit}
               />
             </div>
             {errors.coverImage ? (
               <ErrorMessage message={errors.coverImage} />
             ) : (
               <p className="text-xs text-muted-foreground mt-1">
-                {isEditing && coverImagePreview ? 'Click image to update cover' : 'Upload a cover image for your book'}
+                {isEditing && coverImagePreview ? (canEdit ? 'Click image to update cover' : 'Cover image cannot be updated') : 'Upload a cover image for your book'}
               </p>
             )}
           </div>
@@ -163,6 +168,7 @@ export default function BookInfo({
               value={bookType}
               onValueChange={handleBookTypeChange}
               className={`space-y-3 ${errors.bookType ? 'border-destructive' : ''}`}
+              disabled={!canEdit}
             >
               <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
                 bookType === BOOK_TYPES.NOVEL 
@@ -203,51 +209,33 @@ export default function BookInfo({
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="flex items-center">
-              Title
-              <span className="text-destructive ml-1">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="title" className="flex items-center">
+                Book Title
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-5 w-5 rounded-md"
+                onClick={enhanceTitle}
+                disabled={isEnhancingTitle || !canEdit}
+                title="Enhance title with AI"
+              >
+                <Sparkles size={12} />
+              </Button>
+            </div>
             <div className="relative">
               <Input
                 id="title"
-                name="title"
                 ref={titleInputRef}
+                className={errors.title ? 'border-destructive' : ''}
                 placeholder="Enter book title"
-                className={`pr-12 ${errors.title ? 'border-destructive' : ''}`}
-                maxLength={100}
-                onChange={() => {
-                  if (errors.title) {
-                    // We can't directly update the errors object since it's passed as a prop
-                    // This would normally be handled by the parent component
-                  }
-                }}
+                disabled={!canEdit}
               />
-              <div className="absolute inset-y-0 right-0 flex items-center">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-full rounded-l-none rounded-r-md text-xs flex items-center justify-center w-10 text-primary"
-                  onClick={enhanceTitle}
-                  disabled={isEnhancingTitle}
-                  title="AI Enhance"
-                >
-                  {isEnhancingTitle ? 
-                    <div className="animate-pulse">
-                      <Sparkles size={16} />
-                    </div> : 
-                    <Sparkles size={16} />
-                  }
-                </Button>
-              </div>
             </div>
-            {errors.title ? (
-              <ErrorMessage message={errors.title} />
-            ) : (
-              <p className="text-xs text-muted-foreground mt-1">
-                Maximum 100 characters
-              </p>
-            )}
+            {errors.title && <ErrorMessage message={errors.title} />}
           </div>
 
           {/* Genres */}
@@ -267,6 +255,7 @@ export default function BookInfo({
               }}
               placeholder="Select genres (multiple)"
               className={`w-full ${errors.genres ? 'border-destructive' : ''}`}
+              disabled={!canEdit}
             />
             {errors.genres ? (
               <ErrorMessage message={errors.genres} />
@@ -311,57 +300,32 @@ export default function BookInfo({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="flex items-center">
-              Description
-              <span className="text-destructive ml-1">*</span>
-            </Label>
-            <div className="relative">
-              <Textarea
-                id="description"
-                name="description"
-                ref={descriptionTextareaRef}
-                placeholder="Enter book description"
-                rows={6}
-                className={`resize-none pr-12 ${errors.description ? 'border-destructive' : ''}`}
-                maxLength={1000}
-                onChange={() => {
-                  if (errors.description) {
-                    // We can't directly update the errors object since it's passed as a prop
-                    // This would normally be handled by the parent component
-                  }
-                }}
-              />
-              <div className="absolute right-2 top-2">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-background/70 hover:bg-background"
-                  onClick={enhanceDescription}
-                  disabled={isEnhancingDescription}
-                  title="AI Enhance"
-                >
-                  {isEnhancingDescription ? 
-                    <div className="animate-pulse">
-                      <Sparkles size={16} />
-                    </div> : 
-                    <Sparkles size={16} />
-                  }
-                </Button>
-              </div>
-              {errors.description ? (
-                <ErrorMessage message={errors.description} />
-              ) : (
-                <div className="flex justify-between">
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Describe your book's plot and themes
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Maximum 1000 characters
-                  </p>
-                </div>
-              )}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="description" className="flex items-center">
+                Description
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-5 w-5 rounded-md"
+                onClick={enhanceDescription}
+                disabled={isEnhancingDescription || !canEdit}
+                title="Enhance description with AI"
+              >
+                <Sparkles size={12} />
+              </Button>
             </div>
+            <Textarea
+              id="description"
+              ref={descriptionTextareaRef}
+              className={errors.description ? 'border-destructive' : ''}
+              placeholder="Enter book description"
+              rows={5}
+              disabled={!canEdit}
+            />
+            {errors.description && <ErrorMessage message={errors.description} />}
           </div>
         </div>
       )}

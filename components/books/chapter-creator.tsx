@@ -144,8 +144,12 @@ interface ChapterCreatorProps {
   chapters: LocalChapter[];
   setChapters: (chapters: LocalChapter[]) => void;
   emptyChapters: string[];
-  setEmptyChapters: (ids: string[]) => void;
+  errors?: Record<string, string>;
+  isLoadingChapters?: boolean;
   onDeleteChapter?: (chapterId: string, chapterNumber: number) => Promise<void>;
+  canEditExistingChapters?: boolean;
+  canAddNewChapters?: boolean;
+  reasonIfDenied?: string;
 }
 
 export default function ChapterCreator({
@@ -153,8 +157,12 @@ export default function ChapterCreator({
   chapters,
   emptyChapters,
   setChapters,
-  setEmptyChapters,
-  onDeleteChapter
+  errors = {},
+  isLoadingChapters = false,
+  onDeleteChapter,
+  canEditExistingChapters = true,
+  canAddNewChapters = true,
+  reasonIfDenied = ""
 }: ChapterCreatorProps) {
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
@@ -271,7 +279,7 @@ export default function ChapterCreator({
 
     // Remove this chapter from empty chapters if it now has images
     if (updatedChapter.images && updatedChapter.images.length > 0 && emptyChapters.includes(chapterId)) {
-      setEmptyChapters(emptyChapters.filter((id) => id !== chapterId));
+      // No longer calling setEmptyChapters as it's handled in parent
     }
 
     setChapters(updatedChapters);
@@ -342,413 +350,467 @@ export default function ChapterCreator({
     
     // Only remove from empty chapters list if images are added, not adding to it when removed
     if (updatedImages.length > 0 && emptyChapters.includes(chapterId)) {
-      setEmptyChapters(emptyChapters.filter(id => id !== chapterId));
+      // No longer calling setEmptyChapters as it's handled in parent
+    }
+  };
+
+  // Handle document upload
+  const handleDocumentUpload = async (
+    docUrl: string, 
+    docContent: string | null,
+    fileName: string,
+    chapterId: string
+  ) => {
+    // Update the chapter with the document URL and content
+    const updatedChapters = chapters.map(ch => {
+      if (ch.id === chapterId) {
+        return {
+          ...ch,
+          documentUrl: docUrl,
+          content: docContent || ch.content
+        };
+      }
+      return ch;
+    });
+    
+    setChapters(updatedChapters);
+    
+    // If this chapter was in the empty chapters list, remove it since it now has content
+    if (emptyChapters.includes(chapterId)) {
+      // No longer calling setEmptyChapters as it's handled in parent
+    }
+  };
+
+  // Update chapter content
+  const handleContentChange = (chapterId: string, content: string) => {
+    const updatedChapters = chapters.map(ch => {
+      if (ch.id === chapterId) {
+        return {
+          ...ch,
+          content: content || "",
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return ch;
+    });
+    
+    setChapters(updatedChapters);
+    
+    // If the chapter now has content, remove it from the empty chapters list
+    if (content && emptyChapters.includes(chapterId)) {
+      // No longer calling setEmptyChapters as it's handled in parent
     }
   };
 
   return (
-    <div>
-      {chapters.length > 0 ? (
-        <div className="pr-2 mb-3">
-          <Accordion 
-            type="single" 
-            collapsible 
-            value={expandedChapter || undefined}
-            className="space-y-3"
-          >
-            {chapters.map((chapter, index) => (
-              <AccordionItem 
-                key={chapter.id} 
-                value={chapter.id}
-                className={`border rounded-md overflow-hidden ${
-                  emptyChapters.includes(chapter.id) ? 'border-destructive bg-destructive/5' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between pr-2">
-                  <div 
-                    className="flex items-center flex-1 px-4 py-3 cursor-pointer hover:bg-muted/50"
-                    onClick={() => toggleChapter(chapter.id)}
-                  >
-                    <ChevronDown 
-                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 mr-2 ${
-                        expandedChapter === chapter.id ? 'transform rotate-180' : ''
-                      }`}
-                    />
-                    
-                    {editingChapterId === chapter.id ? (
-                      // Editing mode
-                      <div 
-                        className="flex-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Input
-                          ref={editableInputRef}
-                          defaultValue={chapter.title}
-                          autoFocus
-                          className="h-7 px-2 py-1 font-medium"
-                          onBlur={(e) => handleChapterTitleUpdate(chapter.id, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleChapterTitleUpdate(chapter.id, e.currentTarget.value);
-                            } else if (e.key === 'Escape') {
-                              setEditingChapterId(null);
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      // Display mode
-                      <span className="font-medium truncate max-w-[400px] text-left flex items-center">
-                        <span>
-                          {chapter.title || `Chapter ${index + 1}`}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 ml-2 text-muted-foreground hover:text-primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingChapterId(chapter.id);
-                          }}
+    <div className="ChapterCreator">
+      <div className="px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between">
+        <h3 className="text-lg font-medium flex items-center gap-3">
+          Chapters
+          {chapters.length > 0 && (
+            <span className="text-sm bg-secondary text-secondary-foreground rounded-full px-3 py-1 font-medium">
+              {chapters.length}
+            </span>
+          )}
+        </h3>
+        {errors.chapters && (
+          <div className="text-xs p-1.5 bg-destructive/10 border border-destructive rounded-md flex-shrink-0">
+            <p className="flex items-center text-destructive">
+              <Trash2 size={12} className="mr-1.5 flex-shrink-0" />
+              <span className="line-clamp-1">{errors.chapters}</span>
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="p-6">
+        {isLoadingChapters ? (
+          <div className="text-center py-8">
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
+              <span className="text-muted-foreground">Loading chapters...</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Chapter list with accordion */}
+            {chapters.length > 0 && (
+              <div className="mb-6">
+                <Accordion type="single" value={expandedChapter || undefined} className="mb-6">
+                  {chapters.map((chapter, index) => (
+                    <AccordionItem 
+                      key={chapter.id} 
+                      value={chapter.id}
+                      className={`bg-white border rounded-lg mb-3 overflow-hidden ${emptyChapters.includes(chapter.id) ? 'border-destructive' : 'border-border'}`}
+                    >
+                      <div className="px-4 py-3 flex items-center border-b">
+                        <h3 
+                          className={`text-md font-medium flex-1 ${
+                            chapter.id === editingChapterId 
+                              ? 'hidden' 
+                              : 'block'
+                          }`}
+                          onClick={() => toggleChapter(chapter.id)}
                         >
-                          <Pencil size={12} />
-                        </Button>
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Content status indicator */}
-                  <div className="flex items-center mr-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          {emptyChapters.includes(chapter.id) || chapter.content.trim() === '' ? (
-                            <CheckCircle2 size={16} className="text-gray-400" aria-label="No content added" />
-                          ) : (
-                            <CheckCircle2 size={16} className="text-green-500" aria-label="Content added" />
-                          )}
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            {emptyChapters.includes(chapter.id) || chapter.content.trim() === '' 
-                              ? "No content added yet" 
-                              : "Content has been added"}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10 mr-2"
-                    onClick={() => confirmDeleteChapter(chapter.id)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-                {expandedChapter === chapter.id && (
-                  <div className="px-4 py-3 border-t">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor={`chapter-content-${chapter.id}`}>Chapter Content</Label>
-                        {bookType === BOOK_TYPES.NOVEL ? (
+                          {`Chapter ${chapter.chapter}: ${chapter.title}`}
+                        </h3>
+                        
+                        {/* Editable title field */}
+                        {chapter.id === editingChapterId && (
+                          <Input
+                            ref={editableInputRef}
+                            defaultValue={chapter.title}
+                            className="flex-1 mr-2"
+                            onBlur={(e) => {
+                              handleChapterTitleUpdate(chapter.id, e.target.value);
+                              setEditingChapterId(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleChapterTitleUpdate(chapter.id, (e.target as HTMLInputElement).value);
+                                setEditingChapterId(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingChapterId(null);
+                              }
+                            }}
+                            disabled={!canEditExistingChapters}
+                          />
+                        )}
+                        
+                        <div className="flex items-center gap-1">
+                          {/* Edit button */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingChapterId(chapter.id);
+                              setTimeout(() => {
+                                editableInputRef.current?.focus();
+                              }, 0);
+                            }}
+                            disabled={!canEditExistingChapters}
+                          >
+                            <Pencil size={16} />
+                          </Button>
+                          
+                          {/* Delete button */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmDeleteChapter(chapter.id);
+                            }}
+                            disabled={!canEditExistingChapters}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                          
+                          {/* Expand/collapse button */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => toggleChapter(chapter.id)}
+                          >
+                            <ChevronDown 
+                              size={16} 
+                              className={`transform transition-transform ${
+                                expandedChapter === chapter.id ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </Button>
+                        </div>
+                      </div>
+                      {expandedChapter === chapter.id && (
+                        <div className="px-4 py-3 border-t">
                           <div className="space-y-4">
-                            <div className="flex flex-col gap-2">
-                              <div className="inline-flex w-full border-b">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updatedChapters = chapters.map(ch => 
-                                      ch.id === chapter.id ? {...ch, documentUrl: undefined} : ch
-                                    );
-                                    setChapters(updatedChapters);
-                                  }}
-                                  className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
-                                    !chapter.documentUrl 
-                                      ? 'border-primary text-primary' 
-                                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                                  }`}
-                                >
-                                  Write Content
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Always allow switching to document upload tab
-                                    const updatedChapters = chapters.map(ch => 
-                                      ch.id === chapter.id ? {...ch, documentUrl: 'pending'} : ch
-                                    );
-                                    setChapters(updatedChapters);
-                                  }}
-                                  className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
-                                    chapter.documentUrl 
-                                      ? 'border-primary text-primary' 
-                                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                                  }`}
-                                >
-                                  Upload Document
-                                </button>
-                              </div>
-                              
-                              {/* Option 1: Write content directly */}
-                              {!chapter.documentUrl && (
-                                <div className="border rounded-md p-4">
-                                  <TiptapEditor 
-                                    content={chapter.content}
-                                    onChange={(newContent) => {
-                                      const updatedChapters = chapters.map(ch => 
-                                        ch.id === chapter.id ? {
-                                          ...ch, 
-                                          content: newContent
-                                        } : ch
-                                      );
-                                      setChapters(updatedChapters);
-                                      
-                                      // Only remove from empty chapters if content is added
-                                      if (newContent.trim() !== "" && emptyChapters.includes(chapter.id)) {
-                                        setEmptyChapters(emptyChapters.filter(id => id !== chapter.id));
-                                      }
-                                    }}
-                                    className={emptyChapters.includes(chapter.id) ? 'border-destructive focus-visible:ring-destructive/40' : ''}
-                                  />
-                                </div>
-                              )}
-                              
-                              {/* Option 2: Upload document */}
-                              {chapter.documentUrl && (
-                                <div className="border rounded-md p-4">
-                                  {chapter.documentUrl === 'pending' ? (
-                                    <DocumentUploader 
-                                      onContentConverted={(jsonContent) => {
-                                        const updatedChapters = chapters.map(ch => 
-                                          ch.id === chapter.id ? {
-                                            ...ch, 
-                                            documentUrl: 'converted',  // Mark as converted instead of using a fake URL
-                                            content: jsonContent
-                                          } : ch
-                                        );
-                                        setChapters(updatedChapters);
-                                        
-                                        // Remove from empty chapters list if document was converted successfully
-                                        if (emptyChapters.includes(chapter.id)) {
-                                          setEmptyChapters(emptyChapters.filter(id => id !== chapter.id));
-                                        }
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="flex items-center gap-2 text-sm p-2">
-                                      <FileText size={16} className="text-primary" />
-                                      <span className="font-medium">Document converted to editor format</span>
-                                      <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="ml-auto h-8"
+                            <div className="space-y-2">
+                              <Label htmlFor={`chapter-content-${chapter.id}`}>Chapter Content</Label>
+                              {bookType === BOOK_TYPES.NOVEL ? (
+                                <div className="space-y-4">
+                                  <div className="flex flex-col gap-2">
+                                    <div className="inline-flex w-full border-b">
+                                      <button
+                                        type="button"
                                         onClick={() => {
                                           const updatedChapters = chapters.map(ch => 
-                                            ch.id === chapter.id ? {...ch, documentUrl: undefined, content: ''} : ch
+                                            ch.id === chapter.id ? {...ch, documentUrl: undefined} : ch
                                           );
                                           setChapters(updatedChapters);
                                         }}
+                                        className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
+                                          !chapter.documentUrl 
+                                            ? 'border-primary text-primary' 
+                                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                                        }`}
                                       >
-                                        Remove
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          /* Picture Book UI */
-                          <div className="space-y-4">
-                            <div className="border rounded-md p-4">
-                              <h4 className="text-sm font-medium mb-4 flex justify-between items-center">
-                                <span>Chapter Images</span>
-                                <span className="text-xs text-muted-foreground">{chapter.images?.length || 0} images</span>
-                              </h4>
-                              
-                              {/* Image gallery with drag-and-drop */}
-                              {chapter.images?.length ? (
-                                <div className="space-y-2 mb-4">
-                                  <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragEnd={(event: DragEndEvent) => {
-                                      const { active, over } = event;
-                                      
-                                      if (over && active.id !== over.id) {
-                                        // Extract indices from IDs
-                                        const activeId = active.id.toString();
-                                        const overId = over.id.toString();
-                                        
-                                        const activeMatch = activeId.match(/-(\d+)$/);
-                                        const overMatch = overId.match(/-(\d+)$/);
-                                        
-                                        if (activeMatch && overMatch) {
-                                          const activeIndex = parseInt(activeMatch[1]);
-                                          const overIndex = parseInt(overMatch[1]);
-                                          
-                                          reorderImages(
-                                            chapter.id,
-                                            activeIndex,
-                                            overIndex
+                                        Write Content
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          // Always allow switching to document upload tab
+                                          const updatedChapters = chapters.map(ch => 
+                                            ch.id === chapter.id ? {...ch, documentUrl: 'pending'} : ch
                                           );
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    <SortableContext
-                                      items={chapter.images?.map((_, index) => `image-${chapter.id}-${index}`) || []}
-                                      strategy={verticalListSortingStrategy}
-                                    >
-                                      {chapter.images?.map((img, imgIndex) => (
-                                        <SortableImageItem
-                                          key={`image-${chapter.id}-${imgIndex}`}
-                                          chapter={chapter}
-                                          imgUrl={img}
-                                          imgIndex={imgIndex}
-                                          onRemoveImage={(index) => {
-                                            handleRemoveImage(chapter.id, index);
+                                          setChapters(updatedChapters);
+                                        }}
+                                        className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
+                                          chapter.documentUrl 
+                                            ? 'border-primary text-primary' 
+                                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                                        }`}
+                                      >
+                                        Upload Document
+                                      </button>
+                                    </div>
+                                    
+                                    {/* Option 1: Write content directly */}
+                                    {!chapter.documentUrl && (
+                                      <div className="border rounded-md p-4">
+                                        <TiptapEditor 
+                                          content={chapter.content}
+                                          onChange={(newContent) => {
+                                            const updatedChapters = chapters.map(ch => 
+                                              ch.id === chapter.id ? {
+                                                ...ch, 
+                                                content: newContent
+                                              } : ch
+                                            );
+                                            setChapters(updatedChapters);
+                                            
+                                            // Only remove from empty chapters if content is added
+                                            if (newContent.trim() !== "" && emptyChapters.includes(chapter.id)) {
+                                              // No longer calling setEmptyChapters as it's handled in parent
+                                            }
                                           }}
+                                          className={emptyChapters.includes(chapter.id) ? 'border-destructive focus-visible:ring-destructive/40' : ''}
+                                          editable={canEditExistingChapters}
                                         />
-                                      ))}
-                                    </SortableContext>
-                                  </DndContext>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Option 2: Upload document */}
+                                    {chapter.documentUrl && (
+                                      <div className="border rounded-md p-4">
+                                        {chapter.documentUrl === 'pending' ? (
+                                          <DocumentUploader 
+                                            onContentConverted={(jsonContent) => {
+                                              const updatedChapters = chapters.map(ch => 
+                                                ch.id === chapter.id ? {
+                                                  ...ch, 
+                                                  documentUrl: 'converted',  // Mark as converted instead of using a fake URL
+                                                  content: jsonContent
+                                                } : ch
+                                              );
+                                              setChapters(updatedChapters);
+                                              
+                                              // Remove from empty chapters list if document was converted successfully
+                                              if (emptyChapters.includes(chapter.id)) {
+                                                // No longer calling setEmptyChapters as it's handled in parent
+                                              }
+                                            }}
+                                            disabled={!canEditExistingChapters}
+                                          />
+                                        ) : (
+                                          <div className="flex items-center gap-2 text-sm p-2">
+                                            <FileText size={16} className="text-primary" />
+                                            <span className="font-medium">Document converted to editor format</span>
+                                            <Button 
+                                              type="button" 
+                                              variant="ghost" 
+                                              size="sm" 
+                                              className="ml-auto h-8"
+                                              onClick={() => {
+                                                const updatedChapters = chapters.map(ch => 
+                                                  ch.id === chapter.id ? {...ch, documentUrl: undefined, content: ''} : ch
+                                                );
+                                                setChapters(updatedChapters);
+                                              }}
+                                            >
+                                              Remove
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               ) : (
-                                <div className="text-center mb-4 text-sm text-muted-foreground py-4">
-                                  No images added yet
+                                /* Picture Book UI */
+                                <div className="space-y-4">
+                                  <div className="border rounded-md p-4">
+                                    <h4 className="text-sm font-medium mb-4 flex justify-between items-center">
+                                      <span>Chapter Images</span>
+                                      <span className="text-xs text-muted-foreground">{chapter.images?.length || 0} images</span>
+                                    </h4>
+                                    
+                                    {/* Image gallery with drag-and-drop */}
+                                    {chapter.images?.length ? (
+                                      <div className="space-y-2 mb-4">
+                                        <DndContext
+                                          sensors={sensors}
+                                          collisionDetection={closestCenter}
+                                          onDragEnd={(event: DragEndEvent) => {
+                                            const { active, over } = event;
+                                            
+                                            if (over && active.id !== over.id) {
+                                              // Extract indices from IDs
+                                              const activeId = active.id.toString();
+                                              const overId = over.id.toString();
+                                              
+                                              const activeMatch = activeId.match(/-(\d+)$/);
+                                              const overMatch = overId.match(/-(\d+)$/);
+                                              
+                                              if (activeMatch && overMatch) {
+                                                const activeIndex = parseInt(activeMatch[1]);
+                                                const overIndex = parseInt(overMatch[1]);
+                                                
+                                                reorderImages(
+                                                  chapter.id,
+                                                  activeIndex,
+                                                  overIndex
+                                                );
+                                              }
+                                            }
+                                          }}
+                                        >
+                                          <SortableContext
+                                            items={chapter.images?.map((_, index) => `image-${chapter.id}-${index}`) || []}
+                                            strategy={verticalListSortingStrategy}
+                                          >
+                                            {chapter.images?.map((img, imgIndex) => (
+                                              <SortableImageItem
+                                                key={`image-${chapter.id}-${imgIndex}`}
+                                                chapter={chapter}
+                                                imgUrl={img}
+                                                imgIndex={imgIndex}
+                                                onRemoveImage={(index) => {
+                                                  handleRemoveImage(chapter.id, index);
+                                                }}
+                                              />
+                                            ))}
+                                          </SortableContext>
+                                        </DndContext>
+                                      </div>
+                                    ) : (
+                                      <div className="text-center mb-4 text-sm text-muted-foreground py-4">
+                                        No images added yet
+                                      </div>
+                                    )}
+                                    
+                                    {/* For manga books, upload images */}
+                                    <div className={`border-2 border-dashed rounded-lg ${emptyChapters.includes(chapter.id) ? 'border-destructive bg-destructive/5' : 'border-border'} p-6 text-center relative`}>
+                                      <div className="flex flex-col items-center">
+                                        <Upload size={16} className="mb-2 text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground">
+                                          Click to upload images
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          JPG, PNG or WebP (max 5MB each)
+                                        </p>
+                                        {emptyChapters.includes(chapter.id) && (
+                                          <p className="text-xs text-destructive mt-3 font-medium">
+                                            Please add at least one image to this chapter
+                                          </p>
+                                        )}
+                                      </div>
+                                      
+                                      <Input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        onChange={(e) => handleImageUpload(e, chapter.id)}
+                                        disabled={!canEditExistingChapters}
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                               
-                              {/* For manga books, upload images */}
-                              <div className={`border-2 border-dashed rounded-lg ${emptyChapters.includes(chapter.id) ? 'border-destructive bg-destructive/5' : 'border-border'} p-6 text-center relative`}>
-                                <div className="flex flex-col items-center">
-                                  <Upload size={16} className="mb-2 text-muted-foreground" />
-                                  <p className="text-sm text-muted-foreground">
-                                    Click to upload images
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    JPG, PNG or WebP (max 5MB each)
-                                  </p>
-                                  {emptyChapters.includes(chapter.id) && (
-                                    <p className="text-xs text-destructive mt-3 font-medium">
-                                      Please add at least one image to this chapter
-                                    </p>
-                                  )}
-                                </div>
-                                
-                                <Input
-                                  type="file"
-                                  accept="image/*"
-                                  multiple
-                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                  onChange={(e) => handleImageUpload(e, chapter.id)}
-                                />
-                              </div>
+                              {emptyChapters.includes(chapter.id) && (
+                                <ErrorMessage message={
+                                  bookType === BOOK_TYPES.NOVEL ? 
+                                    "Please add content or upload a document" : 
+                                    "Please upload at least one image"
+                                } />
+                              )}
                             </div>
                           </div>
-                        )}
-                        
-                        {emptyChapters.includes(chapter.id) && (
-                          <ErrorMessage message={
-                            bookType === BOOK_TYPES.NOVEL ? 
-                              "Please add content or upload a document" : 
-                              "Please upload at least one image"
-                          } />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <div className="bg-white border border-dashed border-secondary/90 p-6 rounded-lg hover:border-secondary/80 transition-colors">
-            <p className="text-sm mb-3 text-muted-foreground">Start by creating your first chapter</p>
-            
-            <div className="flex gap-2 max-w-md mx-auto">
-              <Input
-                placeholder="Chapter title"
-                value={newChapterTitle}
-                onChange={(e) => setNewChapterTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddChapter();
-                  }
-                }}
-                ref={newChapterInputRef}
-              />
-              <Button 
-                type="button" 
-                onClick={handleAddChapter} 
-                className="flex-shrink-0"
-              >
-                <Plus size={16} className="mr-2" />
-                Add
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {chapters.length > 0 && (
-        <div className="bg-white border border-dashed border-secondary/90 p-4 rounded-lg mt-4 hover:border-secondary/80 transition-colors">
-          <div className="flex gap-2">
-            <Input
-              placeholder="New chapter title"
-              value={newChapterTitle}
-              onChange={(e) => setNewChapterTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddChapter();
-                }
-              }}
-              ref={newChapterInputRef}
-            />
-            <Button 
-              type="button" 
-              onClick={handleAddChapter} 
-              className="flex-shrink-0"
-            >
-              <Plus size={16} className="mr-2" />
-              Add Chapter
-            </Button>
-          </div>
-        </div>
-      )}
+                        </div>
+                      )}
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
+            )}
 
-      {/* Delete Confirmation Dialog */}
+            {/* Add new chapter */}
+            <div className="pt-4 pb-2 border-t border-secondary/50">
+              {!canAddNewChapters && reasonIfDenied && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="flex items-center text-blue-600 text-sm">
+                    <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+                    <span>{reasonIfDenied}</span>
+                  </p>
+                </div>
+              )}
+            
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Input 
+                    type="text"
+                    ref={newChapterInputRef}
+                    placeholder="Enter chapter title (optional)"
+                    value={newChapterTitle}
+                    onChange={(e) => setNewChapterTitle(e.target.value)}
+                    className="w-full"
+                    disabled={!canAddNewChapters}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleAddChapter}
+                  className="gap-1.5"
+                  disabled={!canAddNewChapters}
+                >
+                  <Plus size={16} />
+                  Add Chapter
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      
+      {/* Delete confirmation dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Chapter</DialogTitle>
+            <DialogTitle>Delete this chapter?</DialogTitle>
             <DialogDescription>
-              This chapter contains content that will be permanently deleted. Are you sure you want to continue?
+              This action cannot be undone. The chapter will be permanently deleted.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex justify-between sm:justify-between">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setShowDeleteDialog(false)}
-            >
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
             <Button 
-              type="button" 
               variant="destructive" 
-              onClick={() => chapterToDelete && handleRemoveChapter(chapterToDelete)}
+              onClick={() => {
+                if (chapterToDelete) {
+                  handleRemoveChapter(chapterToDelete);
+                }
+              }}
             >
               Delete Chapter
             </Button>

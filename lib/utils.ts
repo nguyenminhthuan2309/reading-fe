@@ -44,3 +44,23 @@ export const generateUsername = (email: string, name: string): string => {
     .toLowerCase();
 }
 
+export function extractChapterContent(content: string): string {
+ 
+    let result = "";
+  
+    const walk = (node: any) => {
+      if (node.type === "text" && node.text) {
+        result += node.text + " ";
+      }
+      if (node.content) {
+        node.content.forEach((child: any) => walk(child));
+      }
+    };
+  
+    const json = JSON.parse(content);
+    console.log(json);
+    json.content.forEach((node: any) => walk(node));
+
+    return result.trim();
+  
+}

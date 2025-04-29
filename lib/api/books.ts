@@ -1,4 +1,4 @@
-import { get, post, put, del, delWithBody, uploadFile } from '../api';
+import { get, post, put, del, delWithBody, uploadFile, patch } from '../api';
 import { ApiResponse, PaginatedData } from '@/models/api';
 import { Book, Chapter, BookFilters,  ReadingHistoryItem, ReadingHistoryFilters, BookUpdatePayload, BookCreatePayload, BookReview, BookReviewFilters, Category, ChaptersBatchPayload } from '@/models/book';
 
@@ -26,7 +26,12 @@ export async function getBooks(filters: BookFilters): Promise<ApiResponse<Pagina
   if (filters.userId) queryParams.append('userId', filters.userId.toString());
   if (filters.bookTypeId) queryParams.append('bookTypeId', filters.bookTypeId.toString());
   if (filters.progressStatusId) queryParams.append('progressStatusId', filters.progressStatusId.toString());
-  if (filters.accessStatusId) queryParams.append('accessStatusId', filters.accessStatusId.toString());
+  
+  // Add accessStatusId only if provided
+  if (filters.accessStatusId !== undefined) {
+    queryParams.append('accessStatusId', filters.accessStatusId.toString());
+  }
+  
   if (filters.hasChapter !== undefined) queryParams.append('hasChapter', filters.hasChapter.toString());
   if (filters.sortDirection) queryParams.append('sortDirection', filters.sortDirection);
   if (filters.ageRating) queryParams.append('ageRating', filters.ageRating.toString());
@@ -75,6 +80,13 @@ export async function createBook(bookData: BookCreatePayload): Promise<ApiRespon
  */
 export async function updateBook(bookId: number, bookData: BookUpdatePayload): Promise<ApiResponse<Book>> {
   return put<Book>(`/book/${bookId}`, bookData);
+}
+
+/**
+ * Update an existing book
+ */
+export async function updateBookPatch(bookId: number, bookData: BookUpdatePayload): Promise<ApiResponse<Book>> {
+  return patch<Book>(`/book/${bookId}`, bookData);
 }
 
 /**

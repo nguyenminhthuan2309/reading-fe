@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Save, Trash2, BookOpen, Loader2, Eye, Home } from "lucide-react";
+import { ChevronLeft, Save, Trash2, BookOpen, Loader2, Eye, Home, AlertCircle, Shield, CheckCircle2, Info, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as yup from "yup";
 import { createBook, updateBook, getGenres, getChaptersByBookId, createChapters, updateChapter, addChapter, deleteChapter } from "@/lib/api/books";
@@ -12,9 +12,46 @@ import { BOOK_TYPES, AgeRatingEnum, ProgressStatusEnum, AccessStatusEnum, Chapte
 import { toast } from "sonner";
 import { useUserStore } from "@/lib/store";
 import { useNavigationGuard } from "@/lib/hooks/useUnsavedChangesWarning";
+import { useBookEditPermissions } from "@/lib/hooks/useBookEditPermissions";
 import BookInfo from "@/components/books/book-info";
 import ChapterCreator, { LocalChapter } from "@/components/books/chapter-creator";
 import { CATEGORY_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useOpenAI, MODERATION_MODELS, ModerationModelType } from "@/lib/hooks/useOpenAI";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { extractChapterContent } from "@/lib/utils";
+import { ModerationResults, ModerateButton } from "@/components/moderation";
+
 // Basic error message component
 const ErrorMessage = ({ message }: { message: string }) => (
   <p className="text-sm text-destructive mt-1 flex items-center gap-1">
@@ -60,12 +97,31 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   const [chapterUploadFailed, setChapterUploadFailed] = useState(false);
   const [chaptersToDelete, setChaptersToDelete] = useState<number[]>([]);
   
+  // Moderation state
+  const [moderationResults, setModerationResults] = useState<any | null>(null);
+  const [selectedModel, setSelectedModel] = useState<ModerationModelType>(MODERATION_MODELS.OMNI);
+  const [moderationDialogOpen, setModerationDialogOpen] = useState(false);
+  const [moderationStatus, setModerationStatus] = useState<'pending' | 'passed' | 'flagged' | null>(null);
+  
+  // Get edit permissions
+  const { canEditBasicInfo, canEditExistingChapters, canAddNewChapters, canDelete, reasonIfDenied } = useBookEditPermissions(initialData);
+  
+  // Alert dialog states
+  const [showNoModerationDialog, setShowNoModerationDialog] = useState(false);
+  const [showModerationIssuesDialog, setShowModerationIssuesDialog] = useState(false);
+  const [pendingPublishAction, setPendingPublishAction] = useState(false);
+  
+  // Use the OpenAI hook
+  const { moderateContent, isLoading: isModeratingContent } = useOpenAI();
+  
   // Use our custom hook to warn users when navigating away with unsaved changes
   useNavigationGuard({ when: hasUnsavedChanges });
   
   // Form refs
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   
   useEffect(() => {
     // Initialize form with initial data if editing
@@ -325,6 +381,15 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         }
       }
       
+      // Validate that the book has at least one chapter when publishing
+      if (chapters.length === 0 && !isDraft) {
+        setErrors(prev => ({
+          ...prev,
+          chapters: "You must create at least one chapter before publishing your book."
+        }));
+        return null;
+      }
+      
       // Validate chapters - check for empty content only during form submission
       const chaptersWithNoContent = chapters.filter(chapter => 
         (!chapter.content || chapter.content.trim() === '') && 
@@ -456,7 +521,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         ageRating: ageRating,
         bookTypeId: bookType === BOOK_TYPES.NOVEL ? 1 : 2,
         progressStatusId: ProgressStatusEnum.ONGOING,
-        accessStatusId: isDraft ? AccessStatusEnum.PRIVATE : AccessStatusEnum.PUBLISHED,
+        accessStatusId: isDraft ? AccessStatusEnum.PRIVATE : AccessStatusEnum.PENDING,
         categoryIds: selectedGenres.map(id => parseInt(id)),
         isDraft
       };
@@ -525,9 +590,24 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   // Form submission handler
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Check if content has been moderated
+    if (!moderationResults) {
+      // Show alert dialog to run moderation first
+      setShowNoModerationDialog(true);
+      return;
+    } else if (moderationResults && moderationStatus === 'flagged') {
+      // Content has been moderated but has issues
+      setShowModerationIssuesDialog(true);
+      return;
+    }
+    
+    // Continue with submission
+    setPendingPublishAction(true);
     setIsSubmitting(true);
     await handleBookSubmission(false);
     setIsSubmitting(false);
+    setPendingPublishAction(false);
   };
   
   // Save as draft handler
@@ -589,50 +669,43 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             
             // Process each image - some might be strings (already uploaded URLs) and some might be objects
             for (const image of chapter.images) {
-              try {
-                // If the image is already a string (URL), just add it to our collection
-                if (typeof image === 'string') {
-                  imageUrls.push(image);
-                  continue;
-                }
-                
-                // If the image is an object with a URL that starts with http or blob, it's already a URL or local preview
-                if (typeof image === 'object' && 'url' in image) {
-                  const url = image.url;
-                  
-                  // If it's a blob URL or an already uploaded URL, just store it 
-                  if (url.startsWith('http') || url.startsWith('blob')) {
-                    // For blob URLs, we need to get the actual file and upload it
-                    if (url.startsWith('blob:')) {
-                      // This is a local preview URL created with URL.createObjectURL()
-                      // We need to find the corresponding file and upload it
-                      try {
-                        // Fetch the image as a blob and create a file from it
-                        const response = await fetch(url);
-                        const blob = await response.blob();
-                        const file = new File([blob], image.fileName || 'image.jpg', { type: blob.type });
-                        
-                        // Upload the file
-                        const uploadResponse = await uploadFile<string>('/upload/image', file);
-                        if (uploadResponse.status !== 200 && uploadResponse.status !== 201) {
-                          throw new Error(uploadResponse.msg || 'Failed to upload image');
-                        }
-                        
-                        // Add the returned URL to our collection
-                        imageUrls.push(uploadResponse.data);
-                      } catch (error) {
-                        console.error("Error converting blob URL to file:", error);
-                        throw new Error(`Failed to process image for chapter ${chapter.chapter}`);
-                      }
-                    } else {
-                      // It's a regular HTTP URL, just include it as is
-                      imageUrls.push(url);
-                    }
+              let imageUrl = '';
+              
+              if (typeof image === 'string') {
+                // Direct string URL or base64
+                imageUrl = image;
+              } else if (typeof image === 'object' && 'url' in image) {
+                // Get URL from image object
+                imageUrl = image.url;
+              }
+              
+              // Add the processed image URL to our collection
+              if (imageUrl) {
+                // If it's an unsaved image (blob URL), we need to convert it to base64
+                if (imageUrl.startsWith('blob:')) {
+                  try {
+                    // Fetch the blob URL
+                    const response = await fetch(imageUrl);
+                    const blob = await response.blob();
+                    
+                    // Create a promise to handle the async file reader
+                    const base64Data = await new Promise<string>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => resolve(reader.result as string);
+                      reader.onerror = reject;
+                      reader.readAsDataURL(blob);
+                    });
+                    
+                    imageUrls.push(base64Data);
+                  } catch (error) {
+                    console.error("Error converting image to base64:", error);
+                    // Still include the original URL if conversion fails
+                    imageUrls.push(imageUrl);
                   }
+                } else {
+                  // For already saved images (http URLs) or already base64 encoded
+                  imageUrls.push(imageUrl);
                 }
-              } catch (error) {
-                console.error("Error processing image:", error);
-                throw new Error(`Failed to process image for chapter ${chapter.chapter}: ${(error as Error).message}`);
               }
             }
             
@@ -746,50 +819,43 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             
             // Process each image - some might be strings (already uploaded URLs) and some might be objects
             for (const image of chapter.images) {
-              try {
-                // If the image is already a string (URL), just add it to our collection
-                if (typeof image === 'string') {
-                  imageUrls.push(image);
-                  continue;
-                }
-                
-                // If the image is an object with a URL that starts with http or blob, it's already a URL or local preview
-                if (typeof image === 'object' && 'url' in image) {
-                  const url = image.url;
-                  
-                  // If it's a blob URL or an already uploaded URL, just store it 
-                  if (url.startsWith('http') || url.startsWith('blob')) {
-                    // For blob URLs, we need to get the actual file and upload it
-                    if (url.startsWith('blob:')) {
-                      // This is a local preview URL created with URL.createObjectURL()
-                      // We need to find the corresponding file and upload it
-                      try {
-                        // Fetch the image as a blob and create a file from it
-                        const response = await fetch(url);
-                        const blob = await response.blob();
-                        const file = new File([blob], image.fileName || 'image.jpg', { type: blob.type });
-                        
-                        // Upload the file
-                        const uploadResponse = await uploadFile<string>('/upload/image', file);
-                        if (uploadResponse.status !== 200 && uploadResponse.status !== 201) {
-                          throw new Error(uploadResponse.msg || 'Failed to upload image');
-                        }
-                        
-                        // Add the returned URL to our collection
-                        imageUrls.push(uploadResponse.data);
-                      } catch (error) {
-                        console.error("Error converting blob URL to file:", error);
-                        throw new Error(`Failed to process image for chapter ${chapter.chapter}`);
-                      }
-                    } else {
-                      // It's a regular HTTP URL, just include it as is
-                      imageUrls.push(url);
-                    }
+              let imageUrl = '';
+              
+              if (typeof image === 'string') {
+                // Direct string URL or base64
+                imageUrl = image;
+              } else if (typeof image === 'object' && 'url' in image) {
+                // Get URL from image object
+                imageUrl = image.url;
+              }
+              
+              // Add the processed image URL to our collection
+              if (imageUrl) {
+                // If it's an unsaved image (blob URL), we need to convert it to base64
+                if (imageUrl.startsWith('blob:')) {
+                  try {
+                    // Fetch the blob URL
+                    const response = await fetch(imageUrl);
+                    const blob = await response.blob();
+                    
+                    // Create a promise to handle the async file reader
+                    const base64Data = await new Promise<string>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => resolve(reader.result as string);
+                      reader.onerror = reject;
+                      reader.readAsDataURL(blob);
+                    });
+                    
+                    imageUrls.push(base64Data);
+                  } catch (error) {
+                    console.error("Error converting image to base64:", error);
+                    // Still include the original URL if conversion fails
+                    imageUrls.push(imageUrl);
                   }
+                } else {
+                  // For already saved images (http URLs) or already base64 encoded
+                  imageUrls.push(imageUrl);
                 }
-              } catch (error) {
-                console.error("Error processing image:", error);
-                throw new Error(`Failed to process image for chapter ${chapter.chapter}: ${(error as Error).message}`);
               }
             }
             
@@ -982,9 +1048,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
 
   const handleBack = () => {
     if (hasUnsavedChanges) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
-        router.back();
-      }
+      setShowUnsavedChangesDialog(true);
     } else {
       router.back();
     }
@@ -1064,6 +1128,146 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
 
+  // Helper function to convert a blob URL to base64
+  const blobUrlToBase64 = async (blobUrl: string): Promise<string> => {
+    try {
+      const response = await fetch(blobUrl);
+      const blob = await response.blob();
+      
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error("Error converting blob URL to base64:", error);
+      return blobUrl; // Return original URL on error
+    }
+  };
+
+  // Update content moderation function to handle base64 images and proper content extraction
+  const handleModerateContent = async () => {
+    setModerationResults(null);
+    setModerationStatus('pending');
+    
+    try {
+      // Collect all content to moderate
+      const title = titleInputRef.current?.value || '';
+      const description = descriptionTextareaRef.current?.value || '';
+      
+      // Format chapters based on the new structure
+      const formattedChapters = await Promise.all(chapters.map(async (chapter) => {
+        let chapterContent: string | string[] = '';
+        
+        // For novel books with text content
+        if (bookType === BOOK_TYPES.NOVEL && chapter.content) {
+          try {
+            // Extract just the text content using the utility function
+            chapterContent = extractChapterContent(chapter.content);
+          } catch (error) {
+            console.error("Error extracting chapter content:", error);
+            // Fallback to raw content if extraction fails
+            chapterContent = chapter.content;
+          }
+        } 
+        // For manga books with images
+        else if (bookType === BOOK_TYPES.MANGA && chapter.images && chapter.images.length > 0) {
+          // Process all images in the chapter
+          const processedImages: string[] = [];
+          
+          // Process each image sequentially
+          for (const image of chapter.images) {
+            let imageUrl = '';
+            
+            if (typeof image === 'string') {
+              // Direct string URL or base64
+              imageUrl = image;
+            } else if (typeof image === 'object' && 'url' in image) {
+              // Get URL from image object
+              imageUrl = image.url;
+            }
+            
+            if (imageUrl) {
+              // If it's a blob URL, convert to base64
+              if (imageUrl.startsWith('blob:')) {
+                const base64Data = await blobUrlToBase64(imageUrl);
+                processedImages.push(base64Data);
+              } else {
+                // Already a URL or base64
+                const base64Data = await blobUrlToBase64(imageUrl);
+                processedImages.push(base64Data);
+              }
+            }
+          }
+          
+          chapterContent = processedImages;
+        }
+        
+        return {
+          chapter: chapter.chapter,
+          title: chapter.title || `Chapter ${chapter.chapter}`,
+          content: chapterContent
+        };
+      }));
+      
+      // Prepare cover image - use URL if saved, base64 if new
+      let coverImageData = '';
+      
+      if (coverImage) {
+        // If we have a direct file reference, convert it to base64
+        try {
+          const reader = new FileReader();
+          await new Promise<void>((resolve, reject) => {
+            reader.onload = () => {
+              coverImageData = reader.result as string;
+              resolve();
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(coverImage);
+          });
+        } catch (error) {
+          console.error("Error converting cover image to base64:", error);
+        }
+      } else if (coverImagePreview) {
+        // If it's a blob URL, convert to base64
+        if (coverImagePreview.startsWith('blob:')) {
+          coverImageData = await blobUrlToBase64(coverImagePreview);
+        } else {
+          // Use the preview URL directly (could be URL or base64)
+          coverImageData = coverImagePreview;
+        }
+      } else if (initialData?.cover) {
+        // Use the saved cover image URL
+        coverImageData = initialData.cover;
+      }
+      
+      console.log("Formatted chapters for moderation:", formattedChapters);
+      console.log("Cover image type:", typeof coverImageData, coverImageData?.substring(0, 30) + '...');
+      
+      // Use the hook to moderate content with the new structure
+      const result = await moderateContent({
+        title,
+        description,
+        coverImage: coverImageData,
+        chapters: formattedChapters,
+        model: selectedModel
+      });
+      
+      if (result) {
+        console.log("Moderation results:", result);
+        setModerationResults(result);
+        setModerationDialogOpen(true);
+      } else {
+        setModerationStatus(null);
+      }
+    } catch (error) {
+      console.error("Error moderating content:", error);
+      setModerationStatus(null);
+      toast.error("Failed to run content moderation. Please try again.");
+    }
+  };
+
   // Function to be passed to ChapterCreator for handling deletion
   const onDeleteChapter = async (chapterId: string, chapterNumber: number) => {
     try {
@@ -1115,6 +1319,31 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
 
+  // Add a publish book handler
+  const handlePublishBook = async () => {
+    try {
+      // Prepare book data with published status
+      const bookData = {
+        accessStatusId: AccessStatusEnum.PENDING, // Change from PRIVATE to PENDING
+      };
+      
+      // Update the book status
+      const updateResponse = await updateBook(initialData.id, bookData);
+      if (updateResponse.status !== 200 && updateResponse.status !== 201) {
+        throw new Error(updateResponse.msg || 'Failed to publish book');
+      }
+      
+      toast.success("Book submitted for review successfully");
+      
+      // Call the success callback if provided
+      if (onSuccess) {
+        onSuccess(initialData.id);
+      }
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to publish book');
+    }
+  };
+
   return (
     <div className="w-full">
       {/* Back button in its own container */}
@@ -1129,9 +1358,39 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-6 sticky top-0 z-10 transition-all duration-200 px-4 ${
         hasScrolled ? 'bg-white shadow-md px-4 py-3 -mx-4 rounded-b-lg' : ''
       }`}>
-        <h1 className="text-2xl font-semibold mb-4 md:mb-0">
-          {isEditing ? 'Edit Book' : 'Create Book'}
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold mb-4 md:mb-0">
+            {isEditing ? 'Edit Book' : 'Submit Book'}
+          </h1>
+          
+          {/* Moderation Status Badge */}
+          {moderationStatus && (
+            <div 
+              className={`px-2 py-1 text-xs rounded-full font-medium cursor-pointer ${
+                moderationStatus === 'pending' ? 'bg-blue-100 text-blue-700' : 
+                moderationStatus === 'passed' ? 'bg-green-100 text-green-700' : 
+                'bg-amber-100 text-amber-700'
+              }`}
+              onClick={() => setModerationDialogOpen(true)}
+            >
+              <div className="flex items-center gap-1">
+                {moderationStatus === 'pending' ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : moderationStatus === 'passed' ? (
+                  <CheckCircle2 className="h-3 w-3" />
+                ) : (
+                  <AlertCircle className="h-3 w-3" />
+                )}
+                <span>
+                  {moderationStatus === 'pending' ? 'Moderating...' : 
+                   moderationStatus === 'passed' ? 'Passed Moderation' : 
+                   'Review Required'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+        
         <div className="flex space-x-2">
           {successBookId ? (
             <>
@@ -1155,6 +1414,14 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             </>
           ) : (
             <>
+              {/* Moderation Button Group */}
+              <ModerateButton
+                selectedModel={selectedModel}
+                onModelSelect={setSelectedModel}
+                onModerate={handleModerateContent}
+                isLoading={isModeratingContent}
+              />
+              
               {!isEditing && (
                 <Button
                   type="button"
@@ -1180,31 +1447,74 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               <Button
                 type="submit"
                 form="book-form"
-                disabled={isSubmitting || isSavingDraft || (isEditing && !hasChanges)}
+                disabled={isSubmitting || isSavingDraft || (isEditing && !hasChanges) || !canEditBasicInfo}
                 className="gap-2"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    {isEditing ? 'Updating...' : 'Creating...'}
+                    {isEditing ? 'Updating...' : 'Submitting...'}
                   </>
                 ) : (
                   <>
                     <BookOpen size={16} />
-                    {isEditing ? 'Update Book' : 'Create Book'}
+                    {isEditing ? 'Update Book' : 'Submit for Review'}
                   </>
                 )}
               </Button>
+
+              {/* Publish button for draft books */}
+              {isEditing && initialData && initialData.accessStatus && initialData.accessStatus.id === AccessStatusEnum.PRIVATE && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="default"
+                        onClick={handlePublishBook}
+                        disabled={isSubmitting || isSavingDraft || !canEditBasicInfo}
+                        className="gap-2 bg-green-600 hover:bg-green-700"
+                      >
+                        <Shield size={16} />
+                        Publish
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Submit this draft for review and publishing</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </>
           )}
         </div>
       </div>
+      
+      {/* Moderation Results Dialog */}
+      <ModerationResults
+        open={moderationDialogOpen}
+        onOpenChange={setModerationDialogOpen}
+        results={moderationResults}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
+        onRecheck={handleModerateContent}
+        isLoading={isModeratingContent}
+      />
       
       {errors.form && (
         <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-md">
           <p className="flex items-center text-destructive">
             <Trash2 size={16} className="mr-2" />
             <span>{errors.form}</span>
+          </p>
+        </div>
+      )}
+
+      {!canEditBasicInfo && reasonIfDenied && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="flex items-center text-blue-600">
+            <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+            <span>{reasonIfDenied}</span>
           </p>
         </div>
       )}
@@ -1257,65 +1567,122 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               setSelectedGenres={setSelectedGenres}
               ageRating={ageRating}
               setAgeRating={setAgeRating}
-              genres={genresQuery.data}
+              genres={genresQuery.data || []}
               isEnhancingTitle={isEnhancingTitle}
               enhanceTitle={enhanceTitle}
               isEnhancingDescription={isEnhancingDescription}
               enhanceDescription={enhanceDescription}
               isEditing={isEditing}
+              canEdit={canEditBasicInfo}
+              reasonIfDenied={reasonIfDenied}
             />
             
             {/* Right column - Chapters using ChapterCreator Component */}
-            <div className={`w-full ${isBookInfoCollapsed ? 'md:w-[calc(100%-48px)]' : 'md:w-[70%]'} md:border-l border-secondary/90`}>
-              <div className="px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between">
-                <h3 className="text-lg font-medium flex items-center gap-3">
-                  Chapters
-                  {chapters.length > 0 && (
-                    <span className="text-sm bg-secondary text-secondary-foreground rounded-full px-3 py-1 font-medium">
-                      {chapters.length}
-                    </span>
-                  )}
-                </h3>
-                {errors.chapters && (
-                  <div className="text-xs p-1.5 bg-destructive/10 border border-destructive rounded-md flex-shrink-0">
-                    <p className="flex items-center text-destructive">
-                      <Trash2 size={12} className="mr-1.5 flex-shrink-0" />
-                      <span className="line-clamp-1">{errors.chapters}</span>
-                    </p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-6">
-                {chaptersQuery.isLoading ? (
-                  <div className="text-center py-8">
-                    <div className="flex items-center justify-center gap-2">
-                      <Loader2 size={20} className="animate-spin text-muted-foreground" />
-                      <span className="text-muted-foreground">Loading chapters...</span>
-                    </div>
-                  </div>
-                ) : (
-                  <ChapterCreator
-                    bookType={bookType}
-                    chapters={chapters}
-                    setChapters={(updatedChapters) => {
-                      setChapters(updatedChapters);
-                      // Update unsaved changes state when chapters are modified
-                      setHasUnsavedChanges(true);
-                      if (isEditing) {
-                        setHasChanges(true);
-                      }
-                    }}
-                    emptyChapters={emptyChapters}
-                    setEmptyChapters={setEmptyChapters}
-                    onDeleteChapter={onDeleteChapter}
-                  />
-                )}
-              </div>
+            <div className="w-full md:flex-1 lg:pl-6 border-t md:border-t-0 md:border-l border-secondary/90">
+              <ChapterCreator
+                bookType={bookType}
+                chapters={chapters}
+                setChapters={setChapters}
+                errors={errors}
+                emptyChapters={emptyChapters}
+                isLoadingChapters={isLoadingChapters}
+                onDeleteChapter={onDeleteChapter}
+                canEditExistingChapters={canEditExistingChapters}
+                canAddNewChapters={canAddNewChapters}
+                reasonIfDenied={reasonIfDenied}
+              />
             </div>
           </div>
         </div>
       </form>
+      
+      {/* Alert dialogs for moderation confirmations */}
+      <AlertDialog open={showNoModerationDialog} onOpenChange={setShowNoModerationDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Content Moderation Recommended</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your content hasn't been moderated yet. Running moderation before submission can improve approval chances. Would you like to run moderation now?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowNoModerationDialog(false);
+              if (pendingPublishAction) {
+                setPendingPublishAction(true);
+                setIsSubmitting(true);
+                handleBookSubmission(false).finally(() => {
+                  setIsSubmitting(false);
+                  setPendingPublishAction(false);
+                });
+              }
+            }}>
+              No, Submit Without Moderation
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowNoModerationDialog(false);
+              handleModerateContent();
+            }}>
+              Yes, Run Moderation First
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={showModerationIssuesDialog} onOpenChange={setShowModerationIssuesDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Moderation Issues Detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your content has moderation issues that may cause it to be rejected. Would you like to review these issues before submitting?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowModerationIssuesDialog(false);
+              if (pendingPublishAction) {
+                setPendingPublishAction(true);
+                setIsSubmitting(true);
+                handleBookSubmission(false).finally(() => {
+                  setIsSubmitting(false);
+                  setPendingPublishAction(false);
+                });
+              }
+            }}>
+              No, Submit Anyway
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowModerationIssuesDialog(false);
+              setModerationDialogOpen(true);
+            }}>
+              Yes, Review Issues
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showUnsavedChangesDialog} onOpenChange={setShowUnsavedChangesDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave this page?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay on Page</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowUnsavedChangesDialog(false);
+                router.back();
+              }}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Leave Page
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

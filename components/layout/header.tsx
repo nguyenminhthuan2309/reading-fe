@@ -126,7 +126,7 @@ export default function Header() {
   // Navigate to user profile when avatar is clicked
   const navigateToProfile = () => {
     if (user?.id) {
-      router.push(`/user/${user.id}`);
+      router.push(`/me`);
     }
   };
 
@@ -390,19 +390,19 @@ export default function Header() {
                     {/* Right side: Actions */}
                     <div className="w-3/5 pl-3">
                       <div className="grid grid-cols-1 gap-1.5">
-                        <Link href={`/user/${user.id}`} className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+                        <Link href={`/me`} className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
                           <User className="mr-2 h-4 w-4" />
                           <span>Profile</span>
                         </Link>
                         
-                        <Link href={`/user/${user.id}?section=shelf`} className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+                        <Link href={`/me?section=shelf`} className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
                           <BookIcon className="mr-2 h-4 w-4" />
                           <span>My Books</span>
                         </Link>
                         
                         <Link href="/books/create" className="flex items-center rounded-md px-3 py-1.5 text-sm hover:bg-muted transition-colors">
                           <PlusCircle className="mr-2 h-4 w-4" />
-                          <span>Create Book</span>
+                          <span>Publish Book</span>
                         </Link>
 
                         {isAdmin && (

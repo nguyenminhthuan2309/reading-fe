@@ -35,6 +35,7 @@ interface TiptapEditorProps {
   content: string
   onChange: (content: string) => void
   className?: string
+  editable?: boolean
 }
 
 // Simple menu button component
@@ -66,7 +67,7 @@ const MenuButton = ({
   )
 }
 
-export default function TiptapEditor({ content, onChange, className = '' }: TiptapEditorProps) {
+export default function TiptapEditor({ content, onChange, className = '', editable = true }: TiptapEditorProps) {
   // Initialize the editor with necessary extensions
   const editor = useEditor({
     extensions: [
@@ -93,6 +94,7 @@ export default function TiptapEditor({ content, onChange, className = '' }: Tipt
       }),
     ],
     content: parseContent(content),
+    editable: editable,
     onUpdate: ({ editor }) => {
       if (onChange) {
         // Get content as JSON and store as stringified JSON

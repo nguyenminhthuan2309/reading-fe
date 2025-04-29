@@ -143,6 +143,7 @@ export type Book = {
   chapters?: Chapter[];
   ageRating?: number;
   totalPurchases?: number;
+  moderated?: 'omni-moderation-latest' | 'gpt-4o' | 'o4-mini'
 };
 
 // For backward compatibility - will be gradually removed

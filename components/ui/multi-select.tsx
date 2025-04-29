@@ -25,6 +25,7 @@ interface MultiSelectProps {
   onChange: (selected: string[]) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function MultiSelect({
@@ -33,6 +34,7 @@ export function MultiSelect({
   onChange,
   placeholder = "Select options...",
   className,
+  disabled = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
@@ -64,19 +66,24 @@ export function MultiSelect({
 
   // Handle focus management
   const handleContainerClick = () => {
+    if (disabled) return;
     inputRef.current?.focus();
     setOpen(true);
   };
 
   // Prevent dropdown from closing when selecting an item
   const handleCommandMouseDown = (e: React.MouseEvent) => {
+    if (disabled) return;
     e.preventDefault();
   };
 
   return (
     <div className={cn("relative", className)}>
       <div
-        className="flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-text"
+        className={cn(
+          "flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          disabled ? "opacity-50 cursor-not-allowed" : "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-text"
+        )}
         onClick={handleContainerClick}
       >
         {selected.length > 0 && (
@@ -113,7 +120,7 @@ export function MultiSelect({
             ref={inputRef}
             value={inputValue}
             onValueChange={setInputValue}
-            onFocus={() => setOpen(true)}
+            onFocus={() => !disabled && setOpen(true)}
             onBlur={(e) => {
               // Only close if not clicking on the dropdown
               if (!e.relatedTarget?.closest('.command-wrapper')) {
@@ -122,6 +129,7 @@ export function MultiSelect({
             }}
             placeholder={selected.length > 0 ? '' : placeholder}
             className="bg-transparent outline-none border-none p-1 text-sm flex-1 min-w-[80px]"
+            disabled={disabled}
           />
         </CommandPrimitive>
       </div>

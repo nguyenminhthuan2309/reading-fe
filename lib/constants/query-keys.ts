@@ -30,8 +30,8 @@ export const BOOK_KEYS = {
     ['books', 'related', bookId, page, limit] as const,
   FOLLOWED: (page?: number, limit?: number) => 
     ['books', 'followed', page, limit] as const,
-  USER_BOOKS: (userId: string | number, page?: number, limit?: number, filter?: string) => 
-    ['books', 'user', userId, page, limit, filter] as const,
+  USER_BOOKS: (userId: string | number, page?: number, limit?: number, filter?: string, accessStatusId?: number) => 
+    ['books', 'user', userId, page, limit, filter, accessStatusId] as const,
 } as const;
 
 // Chapter related query keys
@@ -75,6 +75,21 @@ export const NOTIFICATION_KEYS = {
   NOTIFICATION_COUNT: ['notification', 'count'] as const,
   NOTIFICATION_READ: ['notification', 'read'] as const,
   NOTIFICATION_UNREAD: ['notification', 'unread'] as const,
+} as const;
+
+// Admin related query keys
+export const ADMIN_KEYS = {
+  BOOKS: {
+    ALL: ['admin', 'books'] as const,
+    LIST: (status: string, page: number, search?: string) => 
+      ['admin', 'books', 'list', status, page, search] as const,
+    PENDING: (page: number, search?: string) => 
+      ['admin', 'books', 'pending', page, search] as const,
+    PUBLISHED: (page: number, search?: string) => 
+      ['admin', 'books', 'published', page, search] as const,
+    BLOCKED: (page: number, search?: string) => 
+      ['admin', 'books', 'blocked', page, search] as const,
+  }
 } as const;
 
 

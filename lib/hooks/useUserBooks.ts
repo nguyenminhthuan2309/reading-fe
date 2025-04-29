@@ -6,22 +6,24 @@ import { BOOK_KEYS } from "@/lib/constants/query-keys";
 type BookFilter = "all" | "inProgress" | "created" | "completed";
 
 export function useUserBooks(
-  userId: string, 
+  userId: number, 
   page: number = 1, 
   limit: number = 10,
-  filter: BookFilter = "all"
+  filter: BookFilter = "all",
+  accessStatusId?: number
 ) {
   return useQuery({
-    queryKey: BOOK_KEYS.USER_BOOKS(userId, page, limit, filter),
+    queryKey: BOOK_KEYS.USER_BOOKS(userId, page, limit, filter, accessStatusId),
     queryFn: async () => {
       const response = await getBooks({
-        userId: parseInt(userId),
+        userId: userId,
         page,
         limit,
         // Add additional filters based on the selected filter type
         ...(filter === "inProgress" && { progressStatusId: 1 }), // In Progress status ID
         ...(filter === "completed" && { progressStatusId: 2 }), // Completed status ID
-        ...(filter === "created" && { authorId: parseInt(userId) }), // Books created by the user
+        ...(filter === "created" && { authorId: userId }), // Books created by the user
+        ...(accessStatusId && { accessStatusId }), // Add access status filter if provided
       });
       
       if (response.status !== 200) {

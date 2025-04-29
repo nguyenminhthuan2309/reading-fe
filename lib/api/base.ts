@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
   (response) => response, // Return successful responses as-is
   (error: AxiosError) => {
     // Handle 401 unauthorized errors
-    if (error.response?.status === 401) {
+    if ((error.response?.data as any).code === 401) {
       handle401Error();
     }
 

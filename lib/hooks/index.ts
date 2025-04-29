@@ -5,3 +5,4 @@ export * from './useUserBooks';
 export * from './useFollowedBooks';
 export * from './useFollowBook';
 export * from './useNotifications';
+export * from './useOpenAI';

@@ -3,10 +3,10 @@ import type { NextRequest } from 'next/server';
 
 // List of routes that require authentication
 const protectedRoutes = [
-  '/profile',
-  '/books/create',
-  '/books/my',
-  '/favorites',
+  '/me',
+  '/create',
+  '/edit',
+  '/admin',
 ];
 
 // List of authentication routes
@@ -22,7 +22,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')?.value;
   
   // If the user is not logged in and trying to access a protected route, redirect them to sign-in
-  if (!token && protectedRoutes.some(route => pathname.startsWith(route))) {
+  if (!token && (protectedRoutes.some(route => pathname.startsWith(route)) || protectedRoutes.some(route => pathname.endsWith(route)))) {
     return NextResponse.redirect(new URL('/signin', request.url));
   }
   

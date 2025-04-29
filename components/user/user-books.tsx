@@ -1,40 +1,136 @@
 import React, { useState } from "react";
 import { useUserBooks } from "@/lib/hooks/useUserBooks";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, BookOpen, Edit, Star, Calendar, Filter } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/lib/store";
-import { BookCard } from "@/components/books/book-card";
+import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { AccessStatusEnum } from "@/models/book";
 
 type BookFilter = "all" | "inProgress" | "created" | "completed";
+type AccessStatusFilter = "all" | "published" | "draft" | "blocked" | "pending";
 
 interface UserBooksProps {
-  userId: string;
+  userId: number;
   filter?: BookFilter;
+  limitPage?: number;
 }
 
-export function UserBooks({ userId, filter = "all" }: UserBooksProps) {
+export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
   const [page, setPage] = useState(1);
-  const [limit] = useState(12);
+  const [limit] = useState(limitPage);
+  const [accessStatusFilter, setAccessStatusFilter] = useState<AccessStatusFilter>("all");
   const { user } = useUserStore();
+  
+  // Map the access status filter to the actual accessStatusId
+  const getAccessStatusId = (filter: AccessStatusFilter) => {
+    switch (filter) {
+      case "published":
+        return AccessStatusEnum.PUBLISHED;
+      case "draft":
+        return AccessStatusEnum.PRIVATE;
+      case "blocked":
+        return AccessStatusEnum.BLOCKED;
+      case "pending":
+        return AccessStatusEnum.PENDING;
+      default:
+        return undefined;
+    }
+  };
   
   const { 
     data, 
     isLoading, 
     error 
-  } = useUserBooks(userId, page, limit, filter);
+  } = useUserBooks(
+    userId, 
+    page, 
+    limit, 
+    "all", // Always use "all" for the main filter 
+    getAccessStatusId(accessStatusFilter)
+  );
   
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <div key={index} className="space-y-3">
-            <Skeleton className="h-[200px] w-full rounded-md" />
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
-        ))}
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button
+            variant={accessStatusFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("all")}
+          >
+            All
+          </Button>
+          <Button
+            variant={accessStatusFilter === "published" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("published")}
+          >
+            Published
+          </Button>
+          <Button
+            variant={accessStatusFilter === "draft" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("draft")}
+          >
+            Draft
+          </Button>
+          <Button
+            variant={accessStatusFilter === "blocked" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("blocked")}
+          >
+            Blocked
+          </Button>
+          <Button
+            variant={accessStatusFilter === "pending" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("pending")}
+          >
+            Pending
+          </Button>
+        </div>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Chapters</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Updated</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-12 w-9 rounded-sm" />
+                      <Skeleton className="h-4 w-36" />
+                    </div>
+                  </TableCell>
+                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     );
   }
@@ -55,43 +151,166 @@ export function UserBooks({ userId, filter = "all" }: UserBooksProps) {
   
   if (!data?.data.length) {
     return (
-      <div className="text-center py-10">
-        <p className="text-muted-foreground">No books found.</p>
-        {filter !== "all" && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mt-4"
-            onClick={() => window.location.href = `?section=shelf`}
+      <div>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button
+            variant={accessStatusFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("all")}
           >
-            View All Books
+            All
           </Button>
-        )}
+          <Button
+            variant={accessStatusFilter === "published" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("published")}
+          >
+            Published
+          </Button>
+          <Button
+            variant={accessStatusFilter === "draft" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("draft")}
+          >
+            Draft
+          </Button>
+          <Button
+            variant={accessStatusFilter === "blocked" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("blocked")}
+          >
+            Blocked
+          </Button>
+          <Button
+            variant={accessStatusFilter === "pending" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAccessStatusFilter("pending")}
+          >
+            Pending
+          </Button>
+        </div>
+        <div className="text-center py-10">
+          <p className="text-muted-foreground">No books found.</p>
+        </div>
       </div>
     );
   }
   
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {data.data.map((book) => (
-          <div key={book.id} className="flex h-full w-full">
-            <BookCard
-              id={book.id}
-              title={book.title}
-              author={book.author}
-              description={book.description || ""}
-              coverImage={book.cover}
-              chapters={book.totalChapters || 0}
-              rating={book.rating || 0}
-              genres={book.categories || []}
-              progress={0}
-              isCreator={user?.id === book.author.id}
-              isFollowed={book.isFollowed}
-              className="w-full"
-            />
-          </div>
-        ))}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Button
+          variant={accessStatusFilter === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAccessStatusFilter("all")}
+        >
+          All
+        </Button>
+        <Button
+          variant={accessStatusFilter === "published" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAccessStatusFilter("published")}
+        >
+          Published
+        </Button>
+        <Button
+          variant={accessStatusFilter === "draft" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAccessStatusFilter("draft")}
+        >
+          Draft
+        </Button>
+        <Button
+          variant={accessStatusFilter === "blocked" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAccessStatusFilter("blocked")}
+        >
+          Blocked
+        </Button>
+        <Button
+          variant={accessStatusFilter === "pending" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setAccessStatusFilter("pending")}
+        >
+          Pending
+        </Button>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Chapters</TableHead>
+              <TableHead>Rating</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Last Updated</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.data.map((book) => (
+              <TableRow key={book.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-12 w-9 rounded overflow-hidden">
+                      <img 
+                        src={book.cover || "/placeholder-book.png"} 
+                        alt={book.title} 
+                        className="object-cover h-full w-full"
+                      />
+                    </div>
+                    <div>
+                      <div className="font-medium">{book.title}</div>
+                      <div className="text-xs text-muted-foreground">by {book.author.name}</div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>{book.totalChapters || 0}</TableCell>
+                <TableCell>
+                  <div className="flex items-center">
+                    <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 mr-1" />
+                    <span>{book.rating?.toFixed(1) || "N/A"}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {book.accessStatus?.id === 1 && (
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Published</Badge>
+                  )}
+                  {book.accessStatus?.id === 2 && (
+                    <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100">Draft</Badge>
+                  )}
+                  {book.accessStatus?.id === 3 && (
+                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Blocked</Badge>
+                  )}
+                  {book.accessStatus?.id === 4 && (
+                    <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pending</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {book.updatedAt ? format(new Date(book.updatedAt), 'MMM d, yyyy') : 'N/A'}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/books/${book.id}`}>
+                        <BookOpen className="h-4 w-4" />
+                        <span className="sr-only">View</span>
+                      </Link>
+                    </Button>
+                    {user?.id === book.author.id && (
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/books/${book.id}/edit`}>
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
       
       {data.totalPages > 1 && (
