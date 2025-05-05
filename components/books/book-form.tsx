@@ -138,8 +138,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   // Use our custom hook to warn users when navigating away with unsaved changes
   useNavigationGuard({ when: hasUnsavedChanges });
   
- 
-  
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   
   
@@ -217,54 +215,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    // Initialize chapters if available when editing
-    if (isEditing && initialData && initialData.chapters && initialData.chapters.length > 0) {
-      const mappedChapters = initialData.chapters.map((chapter: any) => {
-        // Determine if chapter has images (for manga books)
-        let images: Array<string | {url: string; fileName: string}> = [];
-        
-        if (bookData.bookType === BOOK_TYPES.MANGA) {
-          try {
-            // If the content is not a string, it's likely a JSON array of image URLs
-            if (typeof chapter.content !== 'string') {
-              if (Array.isArray(chapter.content)) {
-                images = chapter.content;
-              }
-            } else {
-              // Try to parse the content as JSON
-              try {
-                const parsedContent = JSON.parse(chapter.content);
-                if (Array.isArray(parsedContent)) {
-                  images = parsedContent.map((url: string) => typeof url === 'string' ? url : url);
-                }
-              } catch (e) {
-                // Content is not valid JSON, so it's probably just text content
-                console.log("Content is not a valid JSON array of images:", e);
-              }
-            }
-          } catch (error) {
-            console.error("Error processing chapter content as images:", error);
-          }
-        }
-        
-        return {
-          id: chapter.id.toString(),
-          title: chapter.title,
-          content: chapter.content || '',
-          images: images,
-          chapter: chapter.chapterNumber || chapter.chapter,
-          isLocked: chapter.isLocked || false,
-          price: chapter.price?.toString() || "0",
-          createdAt: chapter.createdAt || new Date().toISOString(),
-          updatedAt: chapter.updatedAt || new Date().toISOString(),
-        };
-      });
-      
-      setChapters(mappedChapters);
-    }
-  }, [isEditing, initialData, bookData.bookType]);
-
   // Process chapters data when it's available
   useEffect(() => {
     if (chaptersQuery.data) {
@@ -305,6 +255,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           isLocked: chapter.isLocked,
           createdAt: chapter.createdAt,
           updatedAt: chapter.updatedAt,
+          moderated: chapter.moderated || '',
           // Set images array for manga books
           images
         };
@@ -522,9 +473,54 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       }
       
       // Prepare moderation data if available
-      const moderationData = moderationResults && moderationStatus === 'passed' 
-        ? { moderated: selectedModel } 
-        : {};
+      let moderationData = {};
+
+      // For a book to be marked as moderated, both the book content and all chapters must pass moderation
+      if (moderationResults && moderationStatus === 'passed') {
+        // Make sure all chapters have been moderated too
+        let allContentModerated = true;
+        
+        // Check that we have chapter moderation results for all chapters
+        if (chapters.length > 0) {
+          // For each chapter, check if it has moderation data and passed
+          chapters.forEach(chapter => {
+            // Try to find moderation data for this chapter
+            let chapterPassed = false;
+            
+            if (moderationResults.contentResults?.chapters) {
+              const chapterModeration = moderationResults.contentResults.chapters.find(
+                (c: any) => {
+                  if ('index' in c && c.index == chapter.chapter) return true;
+                  if ('chapter' in c && c.chapter == chapter.chapter) return true;
+                  return false;
+                }
+              );
+              
+              if (chapterModeration) {
+                const result = 'result' in chapterModeration ? chapterModeration.result : chapterModeration;
+                chapterPassed = !result.flagged;
+              } else {
+                // No moderation data found for this chapter
+                chapterPassed = false;
+              }
+            }
+            
+            // If any chapter didn't pass moderation, the book can't be marked as moderated
+            if (!chapterPassed) {
+              allContentModerated = false;
+            }
+          });
+        }
+        
+        // Only mark as moderated if all content (including all chapters) passed moderation
+        if (allContentModerated) {
+          moderationData = { moderated: selectedModel };
+        }
+      } else if (isEditing && initialData?.moderated && !hasChanges) {
+        // If we're editing and the book was already moderated and no changes were made,
+        // preserve the existing moderation status
+        moderationData = { moderated: initialData.moderated };
+      }
       
       // Prepare book API data
       const bookApiData = {
@@ -1520,6 +1516,47 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       });
     }
   };
+
+  // Add this function to check for book moderation status when loading initial data
+  useEffect(() => {
+    // Check if we're in edit mode and have initial data
+    if (isEditing && initialData) {
+      // Check if the book has been moderated
+      if (initialData.moderated) {
+        // If the book is already moderated, we need to check if all chapters have moderation data too
+        if (chapters && chapters.length > 0) {
+          const allChaptersModerated = chapters.every(
+            (chapter: LocalChapter) => chapter.moderated
+          );
+          
+          if (allChaptersModerated) {
+            // Mark book as already moderated - we'll keep this status until content changes
+            setModerationStatus('passed');
+            
+            // Create a simplified version of moderation results to allow UI to show moderation status
+            setModerationResults({
+              flagged: false,
+              timestamp: new Date().toISOString(),
+              contentResults: {
+                title: { flagged: false },
+                description: { flagged: false },
+                coverImage: { flagged: false },
+                chapters: chapters.map((_) => ({
+                  result: { flagged: false }
+                }))
+              }
+            });
+            
+            // Infer the model that was used for moderation (default to OMNI if unknown)
+            if (typeof initialData.moderated === 'string' && 
+                Object.values(MODERATION_MODELS).includes(initialData.moderated as ModerationModelType)) {
+              setSelectedModel(initialData.moderated as ModerationModelType);
+            }
+          }
+        }
+      }
+    }
+  }, [isEditing, initialData, chapters]);
 
   return (
     <div className="w-full">

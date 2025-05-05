@@ -63,6 +63,7 @@ export type LocalChapter = {
   updatedAt: string;
   images?: Array<string | {url: string, fileName: string}>; // For picture books
   documentUrl?: string; // For uploaded .doc files
+  moderated?: string;
 };
 
 // Create a sortable item component for the images

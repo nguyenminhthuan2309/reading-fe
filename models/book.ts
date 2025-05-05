@@ -11,6 +11,7 @@ export type Chapter = {
   price: string;
   createdAt: string;
   updatedAt: string;
+  moderated?: string;
 };
 
 // Legacy chapter type for backward compatibility
