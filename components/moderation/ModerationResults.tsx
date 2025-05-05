@@ -15,21 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle2,
   Shield,
   AlertCircle,
   Loader2,
-  Info,
-  AlertTriangle,
-  Eye,
   FileText,
   Image,
   BookOpen,
-  BarChart,
-  ExternalLink,
-  Ban,
+  AlertTriangle,
   ShieldAlert,
   ChevronUp,
   ChevronDown,
@@ -37,7 +31,8 @@ import {
 
 import { MODERATION_MODELS, ModerationModelType } from "@/lib/hooks/useOpenAI";
 import { EnhancedModerationResult } from "@/models/openai";
-import { ContentResult, TopScoreSummary } from "./ContentResults";
+import { ContentResult } from "./ContentResults";
+import { AGE_RATING_THRESHOLDS } from "@/lib/api/openai";
 
 export type AgeRating = "ALL" | "13_PLUS" | "16_PLUS" | "18_PLUS";
 
@@ -49,15 +44,8 @@ export interface ModerationResultsProps {
   onModelChange: (model: ModerationModelType) => void;
   onRecheck?: () => void;
   isLoading?: boolean;
-  bookAgeRating?: AgeRating; // The book's intended age rating (optional)
+  bookAgeRating?: AgeRating;
 }
-
-// Age rating threshold constants
-const AGE_RATING = {
-  THRESHOLD_13_PLUS: 0.1,  // 13+ rating threshold
-  THRESHOLD_16_PLUS: 0.2,  // 16+ rating threshold
-  THRESHOLD_18_PLUS: 0.5   // 18+ rating threshold
-};
 
 // Helper function to format age rating for display
 const formatAgeRating = (rating: AgeRating | undefined): string => {
@@ -65,132 +53,29 @@ const formatAgeRating = (rating: AgeRating | undefined): string => {
   return rating.replace("_", " ");
 };
 
-// First fix the type definitions
-interface ContentModResult {
-  categoryScores?: Record<string, number>;
-  [key: string]: any;
+// Get color for score display based on age rating thresholds
+const getScoreColor = (score: number, ageRating: AgeRating = "ALL"): string => {
+  // Get threshold for chosen age rating
+  const threshold = AGE_RATING_THRESHOLDS[ageRating];
+  
+  // Color based on how far score exceeds threshold
+  if (score > threshold * 3) return 'bg-red-500';      // Severely exceeds threshold
+  if (score > threshold * 2) return 'bg-amber-500';    // Significantly exceeds threshold
+  if (score > threshold) return 'bg-yellow-500';       // Exceeds threshold
+  return 'bg-green-500';                              // Below threshold
 }
 
-interface ChapterModResult extends ContentModResult {
-  chapter?: number;
-}
-
-// Export utility functions
-export const extractScoresFromResult = (result: any): Record<string, number> => {
-  if (!result) return {};
+// Helper for text color display with age rating threshold
+const getTextColorClass = (score: number, ageRating: AgeRating = "ALL"): string => {
+  // Get threshold for chosen age rating
+  const threshold = AGE_RATING_THRESHOLDS[ageRating];
   
-  // Extract only the numeric score fields
-  const scores: Record<string, number> = {};
-  const moderationCategories = [
-    'sexual', 'sexual/minors', 'harassment', 'harassment/threatening',
-    'hate', 'hate/threatening', 'illicit', 'illicit/violent',
-    'self-harm', 'self-harm/intent', 'self-harm/instructions',
-    'violence', 'violence/graphic'
-  ];
-  
-  moderationCategories.forEach(category => {
-    if (typeof result[category] === 'number') {
-      scores[category] = result[category];
-    } else {
-      scores[category] = 0; // Default to 0 if missing
-    }
-  });
-  
-  return scores;
+  // Text color based on how far score exceeds threshold
+  if (score > threshold * 3) return "text-red-600 font-semibold";
+  if (score > threshold * 2) return "text-amber-600 font-semibold";
+  if (score > threshold) return "text-yellow-600";
+  return "text-green-600";
 };
-
-// Export getContentRating and related helper functions
-export const getContentRating = (scores: Record<string, number>, bookAgeRating?: AgeRating) => {
-  if (!scores || Object.keys(scores).length === 0) {
-    // Create default scores with 0 values for all moderation categories
-    scores = {
-      sexual: 0,
-      'sexual/minors': 0,
-      harassment: 0,
-      'harassment/threatening': 0,
-      hate: 0,
-      'hate/threatening': 0,
-      illicit: 0,
-      'illicit/violent': 0,
-      'self-harm': 0,
-      'self-harm/intent': 0,
-      'self-harm/instructions': 0,
-      violence: 0,
-      'violence/graphic': 0
-    };
-  }
-  
-  const highestScore = Math.max(...Object.values(scores));
-  
-  let rating: AgeRating, label: string;
-  
-  if (highestScore >= AGE_RATING.THRESHOLD_18_PLUS) {
-    rating = "18_PLUS";
-    label = "18+";
-  } else if (highestScore >= AGE_RATING.THRESHOLD_16_PLUS) {
-    rating = "16_PLUS";
-    label = "16+";
-  } else if (highestScore >= AGE_RATING.THRESHOLD_13_PLUS) {
-    rating = "13_PLUS";
-    label = "13+";
-  } else {
-    rating = "ALL";
-    label = "All Ages";
-  }
-  
-  const passes = !bookAgeRating || contentPassesForCategory(highestScore, bookAgeRating);
-  
-  return { rating, label, score: highestScore, passes };
-};
-
-// Export helper functions
-export const contentPassesForIntendedAudience = (contentRating: { rating: AgeRating, label: string, score: number } | null, bookAgeRating?: AgeRating) => {
-  if (!contentRating) return true;
-  if (!bookAgeRating) return contentRating.rating === "ALL";
-  
-  const ratingValues = {
-    "ALL": 0,
-    "13_PLUS": 1,
-    "16_PLUS": 2,
-    "18_PLUS": 3
-  };
-  
-  return ratingValues[contentRating.rating] <= ratingValues[bookAgeRating];
-};
-
-// Export helper for category checking
-export const contentPassesForCategory = (score: number, bookAgeRating?: AgeRating) => {
-  if (!bookAgeRating || bookAgeRating === "18_PLUS") return true;
-  if (bookAgeRating === "16_PLUS") return score < AGE_RATING.THRESHOLD_18_PLUS;
-  if (bookAgeRating === "13_PLUS") return score < AGE_RATING.THRESHOLD_16_PLUS;
-  return score < AGE_RATING.THRESHOLD_13_PLUS;
-};
-
-// Helper to determine if a result is flagged based on scores
-const isResultFlagged = (result: any, bookAgeRating: AgeRating): boolean => {
-  // If it has a flagged property, use that
-  if (result && typeof result.flagged === 'boolean') {
-    return result.flagged;
-  }
-  
-  // Otherwise determine based on scores
-  const scores = extractScoresFromResult(result);
-  const highestScore = Object.values(scores).length > 0 ? Math.max(...Object.values(scores)) : 0;
-  
-  if (bookAgeRating === "ALL") return highestScore >= AGE_RATING.THRESHOLD_13_PLUS;
-  if (bookAgeRating === "13_PLUS") return highestScore >= AGE_RATING.THRESHOLD_16_PLUS;
-  if (bookAgeRating === "16_PLUS") return highestScore >= AGE_RATING.THRESHOLD_18_PLUS;
-  return false; // For 18+ nothing is flagged
-};
-
-// A component to display the moderation status badge
-const StatusBadge = ({ passed, label }: { passed: boolean; label: string }) => (
-  <div className={`px-2.5 py-1 text-xs rounded-full font-medium ${
-    passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-  }`}>
-    {label}
-  </div>
-);
 
 // A component to display the rating badge
 const RatingBadge = ({ rating }: { rating: AgeRating }) => (
@@ -204,122 +89,6 @@ const RatingBadge = ({ rating }: { rating: AgeRating }) => (
   </div>
 );
 
-interface ContentSummaryCardProps {
-  title: string
-  icon: React.ReactNode
-  result: ContentModResult | ChapterModResult
-  bookAgeRating: AgeRating
-  onClick: () => void
-  showDetailedScores: boolean
-}
-
-// Fix the ContentSummaryCard component to handle type annotations
-const ContentSummaryCard = ({ 
-  title, 
-  icon, 
-  result, 
-  bookAgeRating,
-  onClick,
-  showDetailedScores 
-}: ContentSummaryCardProps) => {
-  const contentRating = getContentRating(result?.categoryScores || {}, bookAgeRating);
-  const passes = contentRating.passes;
-  
-  return (
-    <div 
-      className={`
-        rounded-lg border p-3 hover:shadow-sm transition-all cursor-pointer
-        ${passes ? 'bg-white' : 'bg-red-50 border-red-200'}
-      `}
-      onClick={onClick}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-slate-500">{icon}</span>
-          <h4 className="font-medium text-sm">{title}</h4>
-        </div>
-        
-        <div className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${
-          contentRating.rating === "ALL" ? 'bg-green-100 text-green-800' :
-          contentRating.rating === "13_PLUS" ? 'bg-yellow-100 text-yellow-800' :
-          contentRating.rating === "16_PLUS" ? 'bg-amber-100 text-amber-800' :
-          'bg-red-100 text-red-800'
-        }`}>
-          <div className={`w-2 h-2 rounded-full ${
-            contentRating.rating === "ALL" ? 'bg-green-500' :
-            contentRating.rating === "13_PLUS" ? 'bg-yellow-500' :
-            contentRating.rating === "16_PLUS" ? 'bg-amber-500' :
-            'bg-red-500'
-          }`}></div>
-          {contentRating.label}
-        </div>
-      </div>
-      
-      {showDetailedScores && result?.categoryScores && (
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 mt-3 text-xs">
-          {Object.entries(result.categoryScores)
-            .filter(([_, score]) => typeof score === 'number' && score > 0)
-            .sort(([_, a], [__, b]) => (Number(b) - Number(a)))
-            .slice(0, 4)
-            .map(([category, score]) => (
-              <div key={category} className="flex items-center gap-1.5">
-                <div className={`w-1.5 h-1.5 rounded-full ${getScoreColor(Number(score))}`}></div>
-                <span className="truncate capitalize">
-                  {category.replace('/', ' ')}
-                </span>
-                <span className="text-slate-400 ml-auto">{Number(score).toFixed(2)}</span>
-              </div>
-            ))}
-        </div>
-      )}
-      
-      {!showDetailedScores && (
-        <div className="flex justify-between items-center mt-2 text-xs text-slate-500">
-          <span>
-            {passes ? 'Content approved' : 'Needs review'}
-          </span>
-          <span className="text-primary flex items-center">
-            View details 
-            <ExternalLink size={12} className="ml-1" />
-          </span>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const getScoreColor = (score: number): string => {
-  if (score >= 0.7) return 'bg-red-500'
-  if (score >= 0.4) return 'bg-amber-500'
-  if (score >= 0.2) return 'bg-yellow-500'
-  return 'bg-green-500'
-}
-
-const getTextColorClass = (score: number, bookAgeRating: AgeRating): string => {
-  // If we're 18+, everything passes
-  if (bookAgeRating === "18_PLUS") {
-    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "text-red-600" : 
-           score >= AGE_RATING.THRESHOLD_16_PLUS ? "text-amber-600" : 
-           score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-yellow-600" : "text-green-600";
-  }
-  
-  // If we're 16+, content should be below 18+ threshold
-  if (bookAgeRating === "16_PLUS") {
-    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "text-red-600 font-semibold" : 
-           score >= AGE_RATING.THRESHOLD_16_PLUS ? "text-amber-600" : 
-           score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-yellow-600" : "text-green-600";
-  }
-  
-  // If we're 13+, content should be below 16+ threshold
-  if (bookAgeRating === "13_PLUS") {
-    return score >= AGE_RATING.THRESHOLD_16_PLUS ? "text-red-600 font-semibold" : 
-           score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-yellow-600" : "text-green-600";
-  }
-  
-  // If we're 'ALL', content should be below 13+ threshold
-  return score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-red-600 font-semibold" : "text-green-600";
-};
-
 export function ModerationResults({
   open,
   onOpenChange,
@@ -330,36 +99,12 @@ export function ModerationResults({
   isLoading = false,
   bookAgeRating = "ALL"
 }: ModerationResultsProps) {
-  const [showDetailedScores, setShowDetailedScores] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [selectedContent, setSelectedContent] = useState<{ type: string; data: any } | null>(null);
 
-  // Get content rating if results are available
-  const contentRating = results?.contentResults 
-    ? getContentRating(
-        Object.entries(results.contentResults)
-          .flatMap(([key, value]) => {
-            if (key === 'chapters' && Array.isArray(value)) {
-              return value.map(chapter => extractScoresFromResult(chapter));
-            } else if (value) {
-              return [extractScoresFromResult(value)];
-            }
-            return [];
-          })
-          .reduce((acc, scores) => {
-            Object.entries(scores).forEach(([category, score]) => {
-              if (typeof score === 'number' && (!acc[category] || score > acc[category])) {
-                acc[category] = score;
-              }
-            });
-            return acc;
-          }, {} as Record<string, number>)
-      )
-    : null;
+  // Use flagged property directly from results
+  const contentPasses = results ? !results.flagged : true;
 
-  // Check if content passes for the intended audience
-  const contentPasses = contentPassesForIntendedAudience(contentRating, bookAgeRating);
-  
   // Toggle expanded section
   const toggleSection = (id: string) => {
     setExpandedSections(prev => ({
@@ -368,51 +113,46 @@ export function ModerationResults({
     }));
   };
 
-  // Handle view detailed content (replaces tabs)
-  const handleViewContent = (type: string, data: any) => {
-    setSelectedContent(selectedContent?.type === type ? null : { type, data });
-  };
-
   // A component to display a content card with expand/collapse
   const ContentCard = ({ 
     title, 
-    icon, 
-    result, 
+    icon,
+    result,
     id,
-    bookAgeRating
   }: { 
     title: string; 
     icon: React.ReactNode;
-    result: ContentModResult;
+    result: any;
     id: string;
-    bookAgeRating: AgeRating;
   }) => {
-    const contentRating = getContentRating(result?.categoryScores || {}, bookAgeRating);
-    const passes = contentRating.passes;
+    // Use flagged property directly from result
+    const passes = !result.flagged;
     const isExpanded = expandedSections[id] || false;
     
-    // Get all moderation categories regardless of score
-    const moderationCategories = [
-      'sexual', 'sexual/minors', 'harassment', 'harassment/threatening',
-      'hate', 'hate/threatening', 'illicit', 'illicit/violent',
-      'self-harm', 'self-harm/intent', 'self-harm/instructions',
-      'violence', 'violence/graphic'
-    ];
+    // If no category scores exist, return early
+    if (!result.category_scores) {
+      return (
+        <div className="rounded-lg border p-3 bg-gray-50 text-slate-600">
+          <div className="flex items-center gap-2">
+            {icon}
+            <span>{title}</span>
+          </div>
+          <div className="text-xs mt-2">No moderation data available</div>
+        </div>
+      );
+    }
     
-    // Create scores map with all categories including zeros
-    const scores = extractScoresFromResult(result);
+    // Get scores for display
+    const sortedScores = Object.entries(result.category_scores)
+      .filter(([_, score]) => typeof score === 'number')
+      .sort(([_, a], [__, b]) => (Number(b) - Number(a)));
     
-    // Sort scores by value (highest first), but include all categories
-    const sortedScores = moderationCategories.map(category => [
-      category, 
-      scores[category] || 0
-    ]).sort(([_, a], [__, b]) => (Number(b) - Number(a)));
-
-    // Get highest scoring category for violation reason
-    const highestCategory = sortedScores[0];
-    const violationReason = highestCategory && Number(highestCategory[1]) > 0 ? 
-      `${String(highestCategory[0]).replace(/[-/]/g, ' ')} (${(Number(highestCategory[1]) * 100).toFixed(1)}%)` : 
-      'Content violation';
+    // Get reason from result or use highest score category
+    const violationReason = result.reason || (
+      sortedScores.length > 0 ? 
+      `${String(sortedScores[0][0]).replace(/[-/]/g, ' ')} (${(Number(sortedScores[0][1]) * 100).toFixed(2)}%)` : 
+      'Content violation'
+    );
     
     return (
       <div className={`
@@ -445,25 +185,6 @@ export function ModerationResults({
             </div>
             
             <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                passes ? (
-                  contentRating.rating === "ALL" ? 'bg-green-100 text-green-800' :
-                  contentRating.rating === "13_PLUS" ? 'bg-yellow-100 text-yellow-800' :
-                  contentRating.rating === "16_PLUS" ? 'bg-amber-100 text-amber-800' :
-                  'bg-red-100 text-red-800'
-                ) : 'bg-red-100 text-red-800'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  passes ? (
-                    contentRating.rating === "ALL" ? 'bg-green-500' :
-                    contentRating.rating === "13_PLUS" ? 'bg-yellow-500' :
-                    contentRating.rating === "16_PLUS" ? 'bg-amber-500' :
-                    'bg-red-500'
-                  ) : 'bg-red-500'
-                }`}></div>
-                {contentRating.label}
-              </div>
-              
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -487,12 +208,12 @@ export function ModerationResults({
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs font-medium truncate mr-1">{String(category).replace(/[-/]/g, ' ')}</span>
                     <span className={`text-xs ${getTextColorClass(Number(score), bookAgeRating)}`}>
-                      {(Number(score) * 100).toFixed(1)}%
+                      {(Number(score) * 100).toFixed(2)}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5">
                     <div 
-                      className={`h-1.5 rounded-full ${getScoreColor(Number(score))}`} 
+                      className={`h-1.5 rounded-full ${getScoreColor(Number(score), bookAgeRating)}`} 
                       style={{ width: `${Math.max(Number(score) * 100, 1)}%` }}
                     />
                   </div>
@@ -515,7 +236,7 @@ export function ModerationResults({
           <DialogTitle className="sr-only">Content Moderation Results</DialogTitle>
           <div className="flex flex-col">
             {/* Top Banner with status */}
-            {results && contentRating && (
+            {results && (
               <div className={`w-full px-6 py-4 ${
                 contentPasses ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 
                 'bg-gradient-to-r from-red-50 to-red-100'
@@ -535,16 +256,16 @@ export function ModerationResults({
                       <p className="text-sm opacity-80">
                         {contentPasses 
                           ? `Suitable for ${formatAgeRating(bookAgeRating)} audience` 
-                          : `Content rated ${contentRating.label} exceeds ${formatAgeRating(bookAgeRating)} rating`}
+                          : `Content requires review for ${formatAgeRating(bookAgeRating)} rating`}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end">
-                      <div className="text-sm font-medium">Content Rating</div>
-                      <div className="text-xs opacity-80">Based on highest scores</div>
+                      <div className="text-sm font-medium">Book Age Rating</div>
+                      <div className="text-xs opacity-80">Moderation target</div>
                     </div>
-                    <RatingBadge rating={contentRating.rating} />
+                    <RatingBadge rating={bookAgeRating} />
                   </div>
                 </div>
               </div>
@@ -556,6 +277,12 @@ export function ModerationResults({
                 <div className="text-xs font-medium text-slate-600">Model:</div>
                 <div className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
                   {selectedModel}
+                </div>
+                
+                {/* Add age rating badge in control bar */}
+                <div className="ml-3 flex items-center gap-2">
+                  <div className="text-xs font-medium text-slate-600">Rating:</div>
+                  <RatingBadge rating={bookAgeRating} />
                 </div>
               </div>
               
@@ -665,7 +392,7 @@ export function ModerationResults({
                     {selectedContent.type === 'chapter' && <BookOpen className="h-5 w-5 text-primary" />}
                     
                     {selectedContent.type === 'chapter' 
-                      ? `Chapter ${(selectedContent.data as any).chapter}` 
+                      ? `Chapter ${(selectedContent.data as any).chapter || (selectedContent.data as any).index}` 
                       : selectedContent.type.charAt(0).toUpperCase() + selectedContent.type.slice(1)}
                   </h2>
                   <Button 
@@ -678,6 +405,7 @@ export function ModerationResults({
                   </Button>
                 </div>
                 
+                {/* Content result from external component */}
                 <ContentResult
                   title=""
                   result={selectedContent.data}
@@ -700,7 +428,6 @@ export function ModerationResults({
                           icon={<FileText className="h-4 w-4" />}
                           result={results.contentResults.title}
                           id="title-section"
-                          bookAgeRating={bookAgeRating}
                         />
                       )}
                       
@@ -710,7 +437,6 @@ export function ModerationResults({
                           icon={<FileText className="h-4 w-4" />}
                           result={results.contentResults.description}
                           id="description-section"
-                          bookAgeRating={bookAgeRating}
                         />
                       )}
                       
@@ -720,7 +446,6 @@ export function ModerationResults({
                           icon={<Image className="h-4 w-4" />}
                           result={results.contentResults.coverImage}
                           id="coverImage-section"
-                          bookAgeRating={bookAgeRating}
                         />
                       )}
                     </div>
@@ -731,16 +456,27 @@ export function ModerationResults({
                     <h3 className="text-base font-medium">Chapters</h3>
                     
                     <div className="space-y-4">
-                      {results.contentResults?.chapters && results.contentResults.chapters.map((chapter, idx) => (
-                        <ContentCard
-                          key={`chapter-${idx}`}
-                          title={`Chapter ${chapter.chapter}`}
-                          icon={<BookOpen className="h-4 w-4" />}
-                          result={chapter}
-                          id={`chapter-${idx}`}
-                          bookAgeRating={bookAgeRating}
-                        />
-                      ))}
+                      {results.contentResults?.chapters && results.contentResults.chapters.map((chapter, idx) => {
+                        // Check if chapter has new structure (with result property) or old structure
+                        const isNewStructure = 'result' in chapter;
+                        // Use type assertion to safely access properties
+                        const chapterNumber = isNewStructure 
+                          ? ((chapter as any).index || idx+1) 
+                          : ((chapter as any).chapter || idx+1);
+                        const chapterContent = isNewStructure 
+                          ? (chapter as any).result 
+                          : chapter;
+                        
+                        return (
+                          <ContentCard
+                            key={`chapter-${idx}`}
+                            title={`Chapter ${chapterNumber}`}
+                            icon={<BookOpen className="h-4 w-4" />}
+                            result={chapterContent}
+                            id={`chapter-${idx}`}
+                          />
+                        );
+                      })}
                       
                       {(!results.contentResults?.chapters || results.contentResults.chapters.length === 0) && (
                         <div className="text-center p-4 border rounded-lg bg-slate-50 text-slate-500">

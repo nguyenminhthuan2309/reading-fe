@@ -5,6 +5,17 @@ import OpenAI from 'openai';
 import { OPENAI_MODERATION_SYSTEM_PROMPT, OPENAI_IMAGE_MODERATION_SYSTEM_PROMPT } from '../constants/openai-sys';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
+// Age rating thresholds for content moderation
+export const AGE_RATING_THRESHOLDS = {
+  ALL: 0,            // All ages: no content above 0 score
+  "13_PLUS": 0.05,   // 13+: scores below 0.05
+  "16_PLUS": 0.1,    // 16+: scores below 0.1
+  "18_PLUS": 0.2     // 18+: scores below 0.2
+};
+
+// Age rating type
+export type AgeRating = "ALL" | "13_PLUS" | "16_PLUS" | "18_PLUS";
+
 // Initialize the OpenAI client
 // Note: The API key should be handled securely, this is just for demonstration
 // In production, you'd need to use a proxy or secure environment variables
@@ -36,6 +47,24 @@ export const MODERATION_MODELS = {
   'gpt-4o': { price: 2.50, description: 'Advanced moderation with GPT-4o ($2.50/1M tokens)' },
   'o4-mini': { price: 1.10, description: 'Balanced moderation with o4-mini ($1.10/1M tokens)' }
 } as const;
+
+/**
+ * Determines if content is flagged based on age rating and category scores
+ * @param scores Category scores from moderation
+ * @param ageRating Target age rating for the content
+ * @returns Boolean indicating if the content should be flagged
+ */
+export function isContentFlagged(scores: Record<string, number>, ageRating: AgeRating = "ALL"): boolean {
+  if (!scores || Object.keys(scores).length === 0) return false;
+  
+  const threshold = AGE_RATING_THRESHOLDS[ageRating];
+  
+  // Content is flagged if any score exceeds the threshold for the given age rating
+  return Object.values(scores).some(score => {
+    console.log("Score:", score, "Threshold:", threshold, "Result:", score > threshold);
+    return score > threshold;
+  });
+}
 
 /**
  * Enhanced content moderation for books and chapters
@@ -139,8 +168,7 @@ export async function moderateContent(
           
           for (const imageUrl of chapter.content) {
             if (imageUrl) { 
-              const imageResult = await checkImageContent(model, imageUrl)
-
+              const imageResult = await checkImageContent(model, imageUrl);
               
               // Combine scores by taking the maximum for each category
               Object.entries(imageResult.category_scores).forEach(([category, score]) => {
@@ -163,10 +191,9 @@ export async function moderateContent(
       }
     } 
     
-    // Return combined results without a flagged property
+    // Return combined results without flagged property
     return {
       model,
-      flagged: false, // Adding placeholder flagged property that will be ignored by UI
       contentResults,
       timestamp: new Date().toISOString(),
     };
@@ -188,8 +215,6 @@ async function moderateContentWithGPT(
   } = { moderateBookInfo: true }
 ): Promise<EnhancedModerationResponse> {
   try {
-    const { chapterIds, moderateBookInfo = true } = options;
-    
     // Prepare the messages array
     const messages: ChatCompletionMessageParam[] = [
       {
@@ -336,23 +361,50 @@ async function moderateContentWithGPT(
       console.error('Failed to parse GPT moderation result:', e);
       throw new Error('Failed to parse moderation result');
     }
+
+    // Define all possible categories for OpenAI moderation
+    const allCategories = [
+      "sexual", "hate", "harassment", "self-harm", "sexual/minors", 
+      "hate/threatening", "violence", "violence/graphic", "self-harm/intent", 
+      "self-harm/instructions", "harassment/threatening", "sexual/explicit"
+    ];
     
     // Process the results into our standard format
     const contentResults: Record<string, any> = {};
     
+    // Helper function to normalize content results
+    const normalizeContentResult = (contentResult: any): any => {
+      if (!contentResult) return {};
+      
+      // Ensure category_scores object exists
+      const category_scores = contentResult.category_scores || {};
+      
+      // Ensure all categories have a value (default to 0 for missing)
+      const normalized_scores = allCategories.reduce((acc, category) => {
+        acc[category] = category_scores[category] || 0;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Remove flagged property - let the component handle flagging based on age rating
+      return {
+        category_scores: normalized_scores,
+        ...(contentResult.reason ? { reason: contentResult.reason } : {})
+      };
+    };
+    
     // Process title results if available
     if (result.title) {
-      contentResults.title = result.title;
+      contentResults.title = normalizeContentResult(result.title);
     }
     
     // Process description results if available
     if (result.description) {
-      contentResults.description = result.description;
+      contentResults.description = normalizeContentResult(result.description);
     }
     
     // Process cover image results if available
     if (result.coverImage) {
-      contentResults.coverImage = result.coverImage;
+      contentResults.coverImage = normalizeContentResult(result.coverImage);
     }
     
     // Process chapters if available
@@ -377,10 +429,15 @@ async function moderateContentWithGPT(
           chapterImages = chapterImageGroups[chapterNumber];
         }
         
-        // Convert results to ShortenModerationResult format
+        // Normalize chapter result
+        const normalizedChapterResult = normalizeContentResult(chapterResult);
+        
+        // Convert results to chapter moderation format
         const chapterModeration: Record<string, any> = {
-          ...chapterResult,
-          chapter: chapterNumber
+          id: params.chapters?.[index]?.id?.toString() || index.toString(),
+          index: chapterNumber,
+          title: chapterTitle,
+          result: normalizedChapterResult
         };
         
         // Process chapter image results if available
@@ -398,21 +455,28 @@ async function moderateContentWithGPT(
             
             // Get corresponding image result or use empty object
             return imageResultIndex < result.chapterImages.length ? 
-              result.chapterImages[imageResultIndex] : {};
+              normalizeContentResult(result.chapterImages[imageResultIndex]) : {};
           });
           
           // Combine image results with chapter result (calculate max scores)
           chapterImageResults.forEach(imageResult => {
-            if (imageResult) {
-              Object.keys(imageResult).forEach(key => {
-                if (typeof imageResult[key] === 'number') {
+            if (imageResult && imageResult.category_scores) {
+              Object.keys(imageResult.category_scores).forEach(key => {
+                if (typeof imageResult.category_scores[key] === 'number') {
                   // Use max score between chapter and image
-                  chapterModeration[key] = Math.max(
-                    chapterModeration[key] || 0,
-                    imageResult[key] || 0
+                  chapterModeration.result.category_scores[key] = Math.max(
+                    chapterModeration.result.category_scores[key] || 0,
+                    imageResult.category_scores[key] || 0
                   );
                 }
               });
+              
+              // Combine reasons if both have violations
+              if (imageResult.reason && !chapterModeration.result.reason) {
+                chapterModeration.result.reason = imageResult.reason;
+              } else if (imageResult.reason && chapterModeration.result.reason) {
+                chapterModeration.result.reason += "; " + imageResult.reason;
+              }
             }
           });
         }
@@ -421,7 +485,7 @@ async function moderateContentWithGPT(
       });
     }
     
-    // Return combined results
+    // Return combined results without flagged property
     return {
       model,
       contentResults,

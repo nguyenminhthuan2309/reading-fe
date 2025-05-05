@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/tooltip";
 import { extractChapterContent } from "@/lib/utils";
 import { ModerationResults, ModerateButton } from "@/components/moderation";
+import { isContentFlagged, AGE_RATING_THRESHOLDS, AgeRating } from "@/lib/api/openai";
 
 // Basic error message component
 const ErrorMessage = ({ message }: { message: string }) => (
@@ -68,21 +69,41 @@ export interface BookFormProps {
 // Update component props with correct RefObject types
 type BookInfoProps = Parameters<typeof BookInfo>[0];
 
+// Define the interface for our consolidated bookData state
+interface BookData {
+  title: string;
+  description: string;
+  coverImage: File | null;
+  coverImagePreview: string | null;
+  selectedGenres: string[];
+  bookType: string;
+  ageRating: number;
+}
+
+// Map AgeRatingEnum to API's AgeRating type
+const ageRatingMap: Record<number, AgeRating> = {
+  [AgeRatingEnum.EVERYONE]: "ALL",
+  [AgeRatingEnum.TEEN]: "13_PLUS",
+  [AgeRatingEnum.MATURE]: "16_PLUS",
+  [AgeRatingEnum.ADULT]: "18_PLUS",
+};
+
 export function BookForm({ initialData, isEditing = false, onSuccess }: BookFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const [coverImage, setCoverImage] = useState<File | null>(null);
-  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(initialData?.cover || null);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>(
-    initialData?.categories?.map((cat: any) => cat.id.toString()) || []
-  );
-  const [bookType, setBookType] = useState<string>(
-    initialData?.bookType?.name || BOOK_TYPES.NOVEL
-  );
-  const [ageRating, setAgeRating] = useState<number>(
-    initialData?.ageRating || AgeRatingEnum.EVERYONE
-  );
+  
+  // Consolidated book data state
+  const [bookData, setBookData] = useState<BookData>({
+    title: initialData?.title || '',
+    description: initialData?.description || '',
+    coverImage: null,
+    coverImagePreview: initialData?.cover || null,
+    selectedGenres: initialData?.categories?.map((cat: any) => cat.id.toString()) || [],
+    bookType: initialData?.bookType?.name || BOOK_TYPES.NOVEL,
+    ageRating: initialData?.ageRating || AgeRatingEnum.EVERYONE,
+  });
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [chapters, setChapters] = useState<LocalChapter[]>([]);
   const [emptyChapters, setEmptyChapters] = useState<string[]>([]);
@@ -117,70 +138,10 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   // Use our custom hook to warn users when navigating away with unsaved changes
   useNavigationGuard({ when: hasUnsavedChanges });
   
-  // Form refs
-  const titleInputRef = useRef<HTMLInputElement>(null);
-  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+ 
   
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   
-  useEffect(() => {
-    // Initialize form with initial data if editing
-    if (isEditing && initialData) {
-      if (titleInputRef.current) {
-        titleInputRef.current.value = initialData.title || '';
-      }
-      
-      if (descriptionTextareaRef.current) {
-        descriptionTextareaRef.current.value = initialData.description || '';
-      }
-      
-      // Initialize chapters if available
-      if (initialData.chapters && initialData.chapters.length > 0) {
-        const mappedChapters = initialData.chapters.map((chapter: any) => {
-          // Determine if chapter has images (for manga books)
-          let images: Array<string | {url: string; fileName: string}> = [];
-          
-          if (bookType === BOOK_TYPES.MANGA) {
-            try {
-              // If the content is not a string, it's likely a JSON array of image URLs
-              if (typeof chapter.content !== 'string') {
-                if (Array.isArray(chapter.content)) {
-                  images = chapter.content;
-                }
-              } else {
-                // Try to parse the content as JSON
-                try {
-                  const parsedContent = JSON.parse(chapter.content);
-                  if (Array.isArray(parsedContent)) {
-                    images = parsedContent.map((url: string) => typeof url === 'string' ? url : url);
-                  }
-                } catch (e) {
-                  // Content is not valid JSON, so it's probably just text content
-                  console.log("Content is not a valid JSON array of images:", e);
-                }
-              }
-            } catch (error) {
-              console.error("Error processing chapter content as images:", error);
-            }
-          }
-          
-          return {
-            id: chapter.id.toString(),
-            title: chapter.title,
-            content: chapter.content || '',
-            images: images,
-            chapter: chapter.chapterNumber || chapter.chapter,
-            isLocked: chapter.isLocked || false,
-            price: chapter.price?.toString() || "0",
-            createdAt: chapter.createdAt || new Date().toISOString(),
-            updatedAt: chapter.updatedAt || new Date().toISOString(),
-          };
-        });
-        
-        setChapters(mappedChapters);
-      }
-    }
-  }, [isEditing, initialData, bookType]);
   
   // Use React Query to fetch genres
   const genresQuery = useQuery({
@@ -240,6 +201,69 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       return response.data;
     },
   });
+  
+  // Add scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      if (scrollPosition > 60) {
+        setHasScrolled(true);
+      } else {
+        setHasScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    // Initialize chapters if available when editing
+    if (isEditing && initialData && initialData.chapters && initialData.chapters.length > 0) {
+      const mappedChapters = initialData.chapters.map((chapter: any) => {
+        // Determine if chapter has images (for manga books)
+        let images: Array<string | {url: string; fileName: string}> = [];
+        
+        if (bookData.bookType === BOOK_TYPES.MANGA) {
+          try {
+            // If the content is not a string, it's likely a JSON array of image URLs
+            if (typeof chapter.content !== 'string') {
+              if (Array.isArray(chapter.content)) {
+                images = chapter.content;
+              }
+            } else {
+              // Try to parse the content as JSON
+              try {
+                const parsedContent = JSON.parse(chapter.content);
+                if (Array.isArray(parsedContent)) {
+                  images = parsedContent.map((url: string) => typeof url === 'string' ? url : url);
+                }
+              } catch (e) {
+                // Content is not valid JSON, so it's probably just text content
+                console.log("Content is not a valid JSON array of images:", e);
+              }
+            }
+          } catch (error) {
+            console.error("Error processing chapter content as images:", error);
+          }
+        }
+        
+        return {
+          id: chapter.id.toString(),
+          title: chapter.title,
+          content: chapter.content || '',
+          images: images,
+          chapter: chapter.chapterNumber || chapter.chapter,
+          isLocked: chapter.isLocked || false,
+          price: chapter.price?.toString() || "0",
+          createdAt: chapter.createdAt || new Date().toISOString(),
+          updatedAt: chapter.updatedAt || new Date().toISOString(),
+        };
+      });
+      
+      setChapters(mappedChapters);
+    }
+  }, [isEditing, initialData, bookData.bookType]);
 
   // Process chapters data when it's available
   useEffect(() => {
@@ -249,7 +273,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         // Determine if chapter has images (for manga books)
         let images: Array<string | {url: string; fileName: string}> = [];
         
-        if (bookType === BOOK_TYPES.MANGA) {
+        if (bookData.bookType === BOOK_TYPES.MANGA) {
           try {
             // If the content is not a string, it's likely a JSON array of image URLs
             if (typeof chapter.content !== 'string') {
@@ -288,7 +312,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       
       setChapters(formattedChapters);
     }
-  }, [chaptersQuery.data, bookType]);
+  }, [chaptersQuery.data, bookData.bookType]);
 
   // Show error toast when chapter fetching fails
   useEffect(() => {
@@ -314,7 +338,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       .mixed()
       .test('hasImage', 'Cover image is required', function() {
         // If we're editing and already have a cover, or if we have a new cover image
-        return (isEditing && initialData?.cover) || coverImage !== null;
+        return (isEditing && initialData?.cover) || bookData.coverImage !== null;
       }),
     
     genres: yup
@@ -345,13 +369,13 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   const validateForm = async (isDraft = false) => {
     try {
       const formData = {
-        title: titleInputRef.current?.value || '',
-        description: descriptionTextareaRef.current?.value || '',
-        coverImage: coverImage,
-        genres: selectedGenres,
-        bookType: bookType,
-        ageRating: ageRating,
-        hasCoverImage: isEditing && initialData?.cover // Flag to indicate existing cover image
+        title: bookData.title,
+        description: bookData.description,
+        coverImage: bookData.coverImage,
+        genres: bookData.selectedGenres,
+        bookType: bookData.bookType,
+        ageRating: bookData.ageRating,
+        hasCoverImage: isEditing && initialData?.cover 
       };
       
       // For drafts, only validate title using draft schema
@@ -390,31 +414,47 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         return null;
       }
       
-      // Validate chapters - check for empty content only during form submission
-      const chaptersWithNoContent = chapters.filter(chapter => 
-        (!chapter.content || chapter.content.trim() === '') && 
-        (!chapter.images || chapter.images.length === 0) &&
-        (!chapter.documentUrl || chapter.documentUrl === 'pending')
-      );
-      
-      // Update the empty chapters state - but only during form validation
-      if (chaptersWithNoContent.length > 0) {
-        // Set the empty chapters - this will highlight them in the UI
-        setEmptyChapters(chaptersWithNoContent.map(ch => ch.id));
+      // For drafts, clear any chapter validation errors and proceed
+      if (isDraft) {
+        // Clear empty chapters state for drafts
+        setEmptyChapters([]);
         
-        if (!isDraft) {
+        // Remove any chapter-related errors
+        if (errors.chapters) {
+          const { chapters, ...rest } = errors;
+          setErrors(rest);
+        }
+      } 
+      // For publishing, validate that chapters have content
+      else {
+        const chaptersWithNoContent = chapters.filter(chapter => 
+          (!chapter.content || chapter.content.trim() === '') && 
+          (!chapter.images || chapter.images.length === 0) &&
+          (!chapter.documentUrl || chapter.documentUrl === 'pending')
+        );
+        
+        // Update the empty chapters state
+        if (chaptersWithNoContent.length > 0) {
+          // Set the empty chapters - this will highlight them in the UI
+          setEmptyChapters(chaptersWithNoContent.map(ch => ch.id));
+          
           const chapterWord = chaptersWithNoContent.length === 1 ? 'chapter' : 'chapters';
           setErrors(prev => ({
             ...prev,
             chapters: `${chaptersWithNoContent.length} ${chapterWord} with no content. Please add content or remove them.`
           }));
+        } else {
+          // Clear empty chapters state since all chapters have content
+          setEmptyChapters([]);
+          if (errors.chapters) {
+            const { chapters, ...rest } = errors;
+            setErrors(rest);
+          }
         }
-      } else {
-        // Clear empty chapters state since all chapters have content
-        setEmptyChapters([]);
-        if (errors.chapters) {
-          const { chapters, ...rest } = errors;
-          setErrors(rest);
+        
+        // If there are empty chapters for a non-draft book, return null
+        if (chaptersWithNoContent.length > 0) {
+          return null;
         }
       }
       
@@ -436,11 +476,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         await bookSchema.validate(formData, { abortEarly: false });
       }
       
-      // If there are empty chapters and it's not a draft, return null
-      if (chaptersWithNoContent.length > 0 && !isDraft) {
-        return null;
-      }
-      
       return formData;
     } catch (error) {
       if (error instanceof yup.ValidationError) {
@@ -459,97 +494,78 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
 
-  // Handle book submission
-  const handleBookSubmission = async (isDraft: boolean) => {
-    const validatedData = await validateForm(isDraft);
-    if (!validatedData) {
-      // For drafts, only show an error if title is missing
-      if (isDraft) {
-        toast.error("Please provide a title for your draft.");
-        return false;
-      }
-      
-      // Check specifically for empty chapters for regular submissions
-      if (emptyChapters.length > 0 && !isDraft) {
-        // Scroll to the chapters section if there are empty chapters
-        document.querySelector('.ChapterCreator, [id^="chapter-content"]')?.scrollIntoView({ behavior: 'smooth' });
-        toast.error(`${emptyChapters.length} chapter(s) found with no content. Please add content or remove them.`);
-      }
-      return false;
-    }
-    
+  /**
+   * Standardized function to handle the book submission process
+   * This consolidates all the submission logic in one place
+   */
+  const processBookSubmission = async (isDraft: boolean = false): Promise<boolean> => {
+    // We've already validated the form data before calling this function
     try {
-      // Get form values
-      const title = titleInputRef.current?.value || '';
-      const description = descriptionTextareaRef.current?.value || '';
+      // Prepare basic book data from state
+      const { title, description, coverImage, ageRating } = bookData;
       
-      // Handle cover image
+      // Handle cover image upload
       let coverUrl = initialData?.cover || '';
-      
       if (coverImage) {
-        // For a new book, or if the cover has changed in edit mode
-        if (!isEditing) {
-          // Upload new cover for new book
+        try {
+          // Upload new cover image
           const uploadResponse = await uploadFile<string>('/upload/image', coverImage);
           if (uploadResponse.status !== 200 && uploadResponse.status !== 201) {
             throw new Error(uploadResponse.msg || 'Failed to upload cover image');
           }
           coverUrl = uploadResponse.data;
-        } else {
-          // For editing with a new cover image, we'll handle upload after book update
-          try {
-            // Only upload new cover if it has changed
-            const uploadCoverResponse = await uploadFile<string>('/upload/image', coverImage);
-            if (uploadCoverResponse.status !== 200 && uploadCoverResponse.status !== 201) {
-              throw new Error(uploadCoverResponse.msg || 'Failed to upload cover image');
-            }
-            coverUrl = uploadCoverResponse.data;
-          } catch (error) {
-            throw new Error('Error uploading cover image. Please try again.');
-          }
+        } catch (error) {
+          throw new Error('Error uploading cover image. Please try again.');
         }
       } else if (!isEditing && !coverUrl) {
-        // For new books without a cover (should be caught by validation, but just in case)
         throw new Error('Cover image is required for new books');
       }
       
-      // Prepare book data
-      const bookData = {
+      // Prepare moderation data if available
+      const moderationData = moderationResults && moderationStatus === 'passed' 
+        ? { moderated: selectedModel } 
+        : {};
+      
+      // Prepare book API data
+      const bookApiData = {
         title,
         description,
+        ageRating,
         cover: coverUrl,
-        ageRating: ageRating,
-        bookTypeId: bookType === BOOK_TYPES.NOVEL ? 1 : 2,
+        bookTypeId: bookData.bookType === BOOK_TYPES.NOVEL ? 1 : 2,
         progressStatusId: ProgressStatusEnum.ONGOING,
         accessStatusId: isDraft ? AccessStatusEnum.PRIVATE : AccessStatusEnum.PENDING,
-        categoryIds: selectedGenres.map(id => parseInt(id)),
-        isDraft
+        categoryIds: bookData.selectedGenres.map((id: string) => parseInt(id)),
+        isDraft,
+        // Add moderation data if available
+        ...moderationData
       };
       
       let updatedBookId: number;
       
+      // Create or update the book
       if (isEditing) {
         // Update existing book
-        const updateResponse = await updateBook(initialData.id, bookData);
+        const updateResponse = await updateBook(initialData.id, bookApiData);
         if (updateResponse.status !== 200 && updateResponse.status !== 201) {
           throw new Error(updateResponse.msg || 'Failed to update book');
         }
         
         updatedBookId = initialData.id;
         
-        // Handle chapter updates for existing book
+        // Handle chapter updates
         if (chapters.length > 0 || chaptersToDelete.length > 0) {
           try {
             await handleExistingBookChapters(updatedBookId);
           } catch (error) {
-            console.error("Error creating chapters:", error);
+            console.error("Error updating chapters:", error);
             setChapterUploadFailed(true);
             toast.error(`Book updated but there was an issue with saving chapters: ${(error as Error).message}. Please try again.`);
           }
         }
       } else {
         // Create new book
-        const createResponse = await createBook(bookData);
+        const createResponse = await createBook(bookApiData);
         if (createResponse.status !== 201 && createResponse.status !== 200) {
           throw new Error(createResponse.msg || 'Failed to create book');
         }
@@ -568,13 +584,22 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         }
       }
       
-      // Reset form state
+      // Reset form state and set success
       setHasUnsavedChanges(false);
       setSuccessBookId(updatedBookId);
       
       // Call the success callback if provided
       if (onSuccess) {
         onSuccess(updatedBookId);
+      }
+      
+      // Show appropriate success message
+      if (isDraft) {
+        toast.success("Draft saved successfully");
+      } else if (isEditing) {
+        toast.success("Book updated successfully");
+      } else {
+        toast.success("Book submitted for review");
       }
       
       return true;
@@ -587,11 +612,22 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
 
-  // Form submission handler
+  // Update form submission handler to use the standardized flow
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Check if content has been moderated
+    // First validate the form
+    const validatedData = await validateForm(false);
+    if (!validatedData) {
+      // Show error for empty chapters
+      if (emptyChapters.length > 0) {
+        document.querySelector('.ChapterCreator, [id^="chapter-content"]')?.scrollIntoView({ behavior: 'smooth' });
+        toast.error(`${emptyChapters.length} chapter(s) found with no content. Please add content or remove them.`);
+      }
+      return;
+    }
+    
+    // Then check for moderation status
     if (!moderationResults) {
       // Show alert dialog to run moderation first
       setShowNoModerationDialog(true);
@@ -602,33 +638,140 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       return;
     }
     
-    // Continue with submission
+    // Set UI state for submission
     setPendingPublishAction(true);
     setIsSubmitting(true);
-    await handleBookSubmission(false);
+    
+    // Use standardized submission flow
+    await processBookSubmission(false);
+    
+    // Reset UI state
     setIsSubmitting(false);
     setPendingPublishAction(false);
   };
   
-  // Save as draft handler
+  // Update save as draft handler
   const handleSaveAsDraft = async () => {
-    setIsSavingDraft(true);
-    const success = await handleBookSubmission(true);
-    
-    // If validation failed for a draft, focus on the title field
-    if (!success && errors.title) {
-      titleInputRef.current?.focus();
+    // First validate the draft (only title is required)
+    const validatedData = await validateForm(true);
+    if (!validatedData) {
+      toast.error("Please provide a title for your draft.");
+      return;
     }
-    
+
+    setIsSavingDraft(true);
+    await processBookSubmission(true);
     setIsSavingDraft(false);
   };
 
-  // Handle chapter updates for existing book
-  const handleExistingBookChapters = async (bookId: number) => {
+  /**
+   * Processes image data for a single chapter
+   */
+  const processChapterImages = async (chapter: LocalChapter): Promise<string[]> => {
+    const imageUrls: string[] = [];
+    
+    if (!chapter.images || chapter.images.length === 0) {
+      return imageUrls;
+    }
+    
+    // Process each image - some might be strings (already uploaded URLs) and some might be objects
+    for (const image of chapter.images) {
+      let imageUrl = '';
+      
+      if (typeof image === 'string') {
+        // Direct string URL or base64
+        imageUrl = image;
+      } else if (typeof image === 'object' && 'url' in image) {
+        // Get URL from image object
+        imageUrl = image.url;
+      }
+      
+      // Add the processed image URL to our collection
+      if (imageUrl) {
+        // If it's an unsaved image (blob URL), we need to convert it to base64
+        if (imageUrl.startsWith('blob:')) {
+          try {
+            // Fetch the blob URL
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            
+            // Create a promise to handle the async file reader
+            const base64Data = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            
+            imageUrls.push(base64Data);
+          } catch (error) {
+            console.error("Error converting image to base64:", error);
+            // Still include the original URL if conversion fails
+            imageUrls.push(imageUrl);
+          }
+        } else {
+          // For already saved images (http URLs) or already base64 encoded
+          imageUrls.push(imageUrl);
+        }
+      }
+    }
+    
+    return imageUrls;
+  };
+
+  /**
+   * Formats chapter data for API submission
+   */
+  const formatChapterForApi = (chapter: LocalChapter, isManga: boolean): ChapterCreateItem => {
+    // Handle different content formats based on book type
+    let content = chapter.content;
+    
+    // For manga books, if we have images and the content wasn't already set during upload,
+    // then convert images array to content
+    if (isManga && chapter.images && chapter.images.length > 0 && !content) {
+      content = JSON.stringify(chapter.images.map(img => 
+        typeof img === 'string' ? img : img.url
+      ));
+    }
+    
+    // Add moderation data if available and this chapter has been moderated
+    let moderationData = {};
+    if (moderationResults && moderationResults.contentResults?.chapters) {
+      // Try to find moderation data for this chapter
+      const chapterModeration = moderationResults.contentResults.chapters.find(
+        (c: any) => {
+          if ('index' in c && c.index == chapter.chapter) return true;
+          if ('chapter' in c && c.chapter == chapter.chapter) return true;
+          return false;
+        }
+      );
+      
+      if (chapterModeration) {
+        const result = 'result' in chapterModeration ? chapterModeration.result : chapterModeration;
+        
+        // Only include moderated property if the content passed moderation
+        if (!result.flagged) {
+          moderationData = { moderated: selectedModel };
+        }
+      }
+    }
+    
+    return {
+      title: chapter.title || `Chapter ${chapter.chapter}`,  // Ensure title is never undefined
+      chapter: chapter.chapter,
+      content: content || '',  // Ensure content is never undefined
+      ...moderationData  // Add moderation data if available
+    };
+  };
+
+  /**
+   * Handler for updating chapters of an existing book
+   */
+  const handleExistingBookChapters = async (bookId: number): Promise<boolean> => {
     if (chapters.length === 0 && chaptersToDelete.length === 0) return true;
     
     try {
-      // Process deletion queue first
+      // 1. Process deletion queue first
       if (chaptersToDelete.length > 0) {
         setIsSubmitting(true);
         
@@ -650,64 +793,19 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         setChaptersToDelete([]);
       }
       
-      // Continue with normal processing (separating chapters into new and existing)
+      // 2. Separate chapters into new and existing
       const existingChapters = chapters.filter(ch => !ch.id.startsWith('chapter-'));
       const newChapters = chapters.filter(ch => ch.id.startsWith('chapter-'));
       
-      // Track which chapters have been processed
-      let processedChapters = 0;
-      let failedChapters = 0;
-      
-      // For manga books, process images first
-      if (bookType === BOOK_TYPES.MANGA) {
+      // 3. Process manga book images if needed
+      const isManga = bookData.bookType === BOOK_TYPES.MANGA;
+      if (isManga) {
         // Process both existing and new chapters to upload images
         const allChapters = [...existingChapters, ...newChapters];
         
         for (const chapter of allChapters) {
           if (chapter.images && chapter.images.length > 0) {
-            const imageUrls: string[] = [];
-            
-            // Process each image - some might be strings (already uploaded URLs) and some might be objects
-            for (const image of chapter.images) {
-              let imageUrl = '';
-              
-              if (typeof image === 'string') {
-                // Direct string URL or base64
-                imageUrl = image;
-              } else if (typeof image === 'object' && 'url' in image) {
-                // Get URL from image object
-                imageUrl = image.url;
-              }
-              
-              // Add the processed image URL to our collection
-              if (imageUrl) {
-                // If it's an unsaved image (blob URL), we need to convert it to base64
-                if (imageUrl.startsWith('blob:')) {
-                  try {
-                    // Fetch the blob URL
-                    const response = await fetch(imageUrl);
-                    const blob = await response.blob();
-                    
-                    // Create a promise to handle the async file reader
-                    const base64Data = await new Promise<string>((resolve, reject) => {
-                      const reader = new FileReader();
-                      reader.onload = () => resolve(reader.result as string);
-                      reader.onerror = reject;
-                      reader.readAsDataURL(blob);
-                    });
-                    
-                    imageUrls.push(base64Data);
-                  } catch (error) {
-                    console.error("Error converting image to base64:", error);
-                    // Still include the original URL if conversion fails
-                    imageUrls.push(imageUrl);
-                  }
-                } else {
-                  // For already saved images (http URLs) or already base64 encoded
-                  imageUrls.push(imageUrl);
-                }
-              }
-            }
+            const imageUrls = await processChapterImages(chapter);
             
             // Update the chapter with the collected image URLs
             chapter.content = JSON.stringify(imageUrls);
@@ -715,7 +813,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         }
       }
       
-      // Process existing chapters by updating them individually using mutation
+      // 4. Process existing chapters by updating them individually
       for (const chapter of existingChapters) {
         try {
           // Check if the chapter has been modified
@@ -737,11 +835,34 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           
           // Only update if something changed
           if (contentChanged || titleChanged || isLockedChanged || chapterNumberChanged) {
+            // Add moderation data if available for this chapter
+            let moderationData = {};
+            if (moderationResults && moderationResults.contentResults?.chapters) {
+              // Try to find moderation data for this chapter
+              const chapterModeration = moderationResults.contentResults.chapters.find(
+                (c: any) => {
+                  if ('index' in c && c.index == chapter.chapter) return true;
+                  if ('chapter' in c && c.chapter == chapter.chapter) return true;
+                  return false;
+                }
+              );
+              
+              if (chapterModeration) {
+                const result = 'result' in chapterModeration ? chapterModeration.result : chapterModeration;
+                
+                // Only include moderated property if the content passed moderation
+                if (!result.flagged) {
+                  moderationData = { moderated: selectedModel };
+                }
+              }
+            }
+            
             const chapterData = {
               title: chapter.title,
               content: chapter.content,
               isLocked: chapter.isLocked,
-              chapter: chapter.chapter
+              chapter: chapter.chapter,
+              ...moderationData
             };
             
             // Use mutation to update the chapter
@@ -749,145 +870,70 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               chapterId: parseInt(chapter.id), 
               chapterData 
             });
-            
-            processedChapters++;
-          } else {
-            // Chapter hasn't changed, just count it as processed
-            processedChapters++;
           }
         } catch (error) {
           console.error(`Error updating chapter ${chapter.id}:`, error);
-          failedChapters++;
+          throw error;
         }
       }
       
-      // Process new chapters as a batch using mutation
+      // 5. Process new chapters as a batch
       if (newChapters.length > 0) {
         try {
-          // Format new chapters for API according to ChapterCreateItem type
-          const formattedNewChapters: ChapterCreateItem[] = newChapters.map(chapter => {
-            return {
-              title: chapter.title,
-              chapter: chapter.chapter,
-              content: chapter.content || ''  // Ensure content is never undefined
-            };
-          });
+          // Format new chapters for API
+          const formattedNewChapters = newChapters.map(chapter => 
+            formatChapterForApi(chapter, isManga)
+          );
           
           // Use mutation to create new chapters
           await createChaptersMutation.mutateAsync({
             bookId,
             chaptersData: { chapters: formattedNewChapters }
           });
-          
-          processedChapters += newChapters.length;
         } catch (error) {
           console.error("Error creating new chapters:", error);
-          failedChapters += newChapters.length;
+          throw error;
         }
       }
       
-      // Report result
-      if (failedChapters > 0) {
-        setChapterUploadFailed(true);
-        toast.error(`${failedChapters} chapters couldn't be saved. You can retry later.`);
-      }
-      
-      return failedChapters === 0;
+      return true;
     } catch (error) {
       console.error("Error processing chapters:", error);
       setChapterUploadFailed(true);
-      toast.error(`Book updated but there was an issue with saving chapters: ${(error as Error).message}. Please try again.`);
-      return false;
+      throw error;
     }
   };
 
-  // Handle creation of chapters for new book
-  const handleNewBookChapters = async (bookId: number) => {
+  /**
+   * Handler for creating chapters for a new book
+   */
+  const handleNewBookChapters = async (bookId: number): Promise<boolean> => {
     if (chapters.length === 0) return true;
     
     try {
-      // For manga books, we need to upload all images first
-      if (bookType === BOOK_TYPES.MANGA) {
+      const isManga = bookData.bookType === BOOK_TYPES.MANGA;
+      
+      // 1. For manga books, process images first
+      if (isManga) {
         setIsSubmitting(true);
-        // Track upload progress
-        let uploadedChapters = 0;
         
         // Process chapters sequentially to upload images
         for (const chapter of chapters) {
           if (chapter.images && chapter.images.length > 0) {
-            const imageUrls: string[] = [];
-            
-            // Process each image - some might be strings (already uploaded URLs) and some might be objects
-            for (const image of chapter.images) {
-              let imageUrl = '';
-              
-              if (typeof image === 'string') {
-                // Direct string URL or base64
-                imageUrl = image;
-              } else if (typeof image === 'object' && 'url' in image) {
-                // Get URL from image object
-                imageUrl = image.url;
-              }
-              
-              // Add the processed image URL to our collection
-              if (imageUrl) {
-                // If it's an unsaved image (blob URL), we need to convert it to base64
-                if (imageUrl.startsWith('blob:')) {
-                  try {
-                    // Fetch the blob URL
-                    const response = await fetch(imageUrl);
-                    const blob = await response.blob();
-                    
-                    // Create a promise to handle the async file reader
-                    const base64Data = await new Promise<string>((resolve, reject) => {
-                      const reader = new FileReader();
-                      reader.onload = () => resolve(reader.result as string);
-                      reader.onerror = reject;
-                      reader.readAsDataURL(blob);
-                    });
-                    
-                    imageUrls.push(base64Data);
-                  } catch (error) {
-                    console.error("Error converting image to base64:", error);
-                    // Still include the original URL if conversion fails
-                    imageUrls.push(imageUrl);
-                  }
-                } else {
-                  // For already saved images (http URLs) or already base64 encoded
-                  imageUrls.push(imageUrl);
-                }
-              }
-            }
+            const imageUrls = await processChapterImages(chapter);
             
             // Update the chapter with the collected image URLs
             chapter.content = JSON.stringify(imageUrls);
           }
-          
-          uploadedChapters++;
         }
       }
       
-      // Format chapters data for API after all uploads are complete
-      const formattedChapters: ChapterCreateItem[] = chapters.map(chapter => {
-        // Handle different content formats based on book type
-        let content = chapter.content;
-        
-        // For manga books, if we have images and the content wasn't already set during upload,
-        // then convert images array to content
-        if (bookType === BOOK_TYPES.MANGA && chapter.images && chapter.images.length > 0 && !content) {
-          content = JSON.stringify(chapter.images.map(img => 
-            typeof img === 'string' ? img : img.url
-          ));
-        }
-        
-        return {
-          title: chapter.title || `Chapter ${chapter.chapter}`,  // Ensure title is never undefined
-          chapter: chapter.chapter,
-          content: content || ''  // Ensure content is never undefined
-        };
-      });
+      // 2. Format chapters data for API
+      const formattedChapters = chapters.map(chapter => 
+        formatChapterForApi(chapter, isManga)
+      );
       
-      // Use mutation to create chapters
+      // 3. Use mutation to create chapters
       await createChaptersMutation.mutateAsync({
         bookId,
         chaptersData: { chapters: formattedChapters }
@@ -897,8 +943,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     } catch (error) {
       console.error("Error creating chapters:", error);
       setChapterUploadFailed(true);
-      toast.error(`Book created but there was an issue with saving chapters: ${(error as Error).message}. Please try again.`);
-      return false;
+      throw error;
     }
   };
 
@@ -913,7 +958,53 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     router.push('/');
   };
   
-  // Handle image upload
+  /**
+   * Validates an image file for size and type
+   */
+  const validateImageFile = (file: File, maxSizeInMB: number = 1): { valid: boolean; error?: string } => {
+    const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
+    
+    // Check file size
+    if (file.size > maxSizeInBytes) {
+      return { 
+        valid: false, 
+        error: `Image size should be less than ${maxSizeInMB}MB` 
+      };
+    }
+    
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return { 
+        valid: false, 
+        error: 'Unsupported file type. Please use JPEG, PNG or WebP.' 
+      };
+    }
+    
+    return { valid: true };
+  };
+
+  /**
+   * Processes a blob URL and returns a base64 string
+   */
+  const blobUrlToBase64 = async (blobUrl: string): Promise<string> => {
+    try {
+      const response = await fetch(blobUrl);
+      const blob = await response.blob();
+      
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error("Error converting blob URL to base64:", error);
+      return blobUrl; // Return original URL on error
+    }
+  };
+
+  // Update image upload handler to use the validation helper
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
     
@@ -921,130 +1012,32 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     if (!files || files.length === 0) return;
     
     const file = files[0];
-    const maxSize = 1024 * 1024; // 1MB
     
-    // Check file size
-    if (file.size > maxSize) {
-      setErrors({
-        ...errors,
-        coverImage: 'Image size should be less than 1MB'
-      });
-      return;
-    }
-    
-    // Check file type
-    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-      setErrors({
-        ...errors,
-        coverImage: 'Unsupported file type. Please use JPEG, PNG or WebP.'
-      });
+    // Validate the image file
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setErrors(prev => ({
+        ...prev,
+        coverImage: validation.error || ''
+      }));
       return;
     }
     
     // Clear any previous error
     if (errors.coverImage) {
-      const { coverImage, ...rest } = errors;
-      setErrors(rest);
+      setErrors(prev => {
+        const { coverImage, ...rest } = prev;
+        return rest;
+      });
     }
     
-    // Set the file and create a preview
-    setCoverImage(file);
-    setCoverImagePreview(URL.createObjectURL(file));
-    setHasUnsavedChanges(true);
-    if (isEditing) {
-      setHasChanges(true);
-    }
+    // Update bookData state with new cover image
+    handleFieldChange('coverImage', file);
+    
+    // Set the preview URL
+    const previewUrl = URL.createObjectURL(file);
+    handleFieldChange('coverImagePreview', previewUrl);
   };
-
-  // Check for changes when in edit mode
-  useEffect(() => {
-    if (isEditing) {
-      const currentTitle = titleInputRef.current?.value || '';
-      const currentDescription = descriptionTextareaRef.current?.value || '';
-      const currentGenres = selectedGenres;
-      const currentBookType = bookType;
-      const currentAgeRating = ageRating;
-      
-      // Compare current values with initial data
-      const titleChanged = currentTitle !== (initialData?.title || '');
-      const descriptionChanged = currentDescription !== (initialData?.description || '');
-      const genresChanged = JSON.stringify(currentGenres.sort()) !== 
-        JSON.stringify((initialData?.categories?.map((cat: any) => cat.id.toString()) || []).sort());
-      const bookTypeChanged = currentBookType !== (initialData?.bookType?.name || BOOK_TYPES.NOVEL);
-      const ageRatingChanged = currentAgeRating !== (initialData?.ageRating || AgeRatingEnum.EVERYONE);
-      const coverChanged = coverImage !== null;
-      
-      // Check if chapters have changed
-      let chaptersChanged = false;
-      
-      // Only check chapter changes if we have initial chapters data to compare against
-      if (initialData?.chapters?.length > 0 || chapters.length > 0) {
-        // Check if chapter count has changed
-        if ((initialData?.chapters?.length || 0) !== chapters.length) {
-          chaptersChanged = true;
-        } else {
-          // Check if any chapter content has changed
-          chaptersChanged = chapters.some((chapter, index) => {
-            const initialChapter = initialData?.chapters?.[index];
-            if (!initialChapter) return true;
-            
-            // Check title, content, and other properties
-            return (
-              chapter.title !== initialChapter.title ||
-              chapter.content !== initialChapter.content ||
-              chapter.isLocked !== initialChapter.isLocked 
-              // chapter.price?.toString() !== initialChapter.price?.toString()
-            );
-          });
-        }
-      }
-      
-      // Set hasChanges if any field has changed
-      setHasChanges(
-        titleChanged || 
-        descriptionChanged || 
-        genresChanged || 
-        bookTypeChanged || 
-        ageRatingChanged || 
-        coverChanged ||
-        chaptersChanged
-      );
-    }
-  }, [
-    isEditing, 
-    initialData, 
-    titleInputRef.current?.value, 
-    descriptionTextareaRef.current?.value, 
-    selectedGenres, 
-    bookType, 
-    ageRating, 
-    coverImage,
-    chapters // Add chapters to the dependency array
-  ]);
-
-  // Add event listeners to detect changes in text fields
-  useEffect(() => {
-    if (isEditing) {
-      const handleInputChange = () => {
-        const titleChanged = (titleInputRef.current?.value || '') !== (initialData?.title || '');
-        const descriptionChanged = (descriptionTextareaRef.current?.value || '') !== (initialData?.description || '');
-        
-        if (titleChanged || descriptionChanged) {
-          setHasChanges(true);
-        }
-      };
-      
-      // Add listeners
-      titleInputRef.current?.addEventListener('input', handleInputChange);
-      descriptionTextareaRef.current?.addEventListener('input', handleInputChange);
-      
-      // Cleanup
-      return () => {
-        titleInputRef.current?.removeEventListener('input', handleInputChange);
-        descriptionTextareaRef.current?.removeEventListener('input', handleInputChange);
-      };
-    }
-  }, [isEditing, initialData]);
 
   const handleBack = () => {
     if (hasUnsavedChanges) {
@@ -1054,32 +1047,85 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
   
-  // Handle book type change
-  const handleBookTypeChange = (value: string) => {
-    setBookType(value);
-    // Clear type-specific errors when changing book type
-    if (errors.bookType) {
-      const { bookType, ...rest } = errors;
-      setErrors(rest);
+  // Generic form field change handler with moderation status update
+  const handleFieldChange = <T extends keyof BookData>(
+    field: T,
+    value: BookData[T],
+    clearErrorField?: string
+  ) => {
+    // Update the field in bookData
+    setBookData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear any related error
+    if (clearErrorField && errors[clearErrorField]) {
+      setErrors(prev => {
+        const { [clearErrorField]: _, ...rest } = prev;
+        return rest;
+      });
     }
+    
+    // Mark form as having unsaved changes
     setHasUnsavedChanges(true);
-  };
-  
-  // Handle age rating change
-  const handleAgeRatingChange = (value: string) => {
-    setAgeRating(parseInt(value));
-    // Clear age rating errors when changing selection
-    if (errors.ageRating) {
-      const { ageRating, ...rest } = errors;
-      setErrors(rest);
+    
+    // If in edit mode, mark as having changes for the update button
+    if (isEditing) {
+      setHasChanges(true);
     }
-    setHasUnsavedChanges(true);
+    
+    // If we have moderation results, mark them as outdated since content changed
+    if (moderationResults) {
+      setModerationStatus(null);
+      toast.info("Content changed. Please run moderation again before submitting.", {
+        id: "moderation-outdated",
+        duration: 3000
+      });
+    }
   };
 
-  // Placeholder for AI enhancement functions
+  // Update specific handlers to use the generic handler
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFieldChange('title', e.target.value, 'title');
+  };
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    handleFieldChange('description', e.target.value, 'description');
+  };
+
+  const handleBookTypeChange = (value: string) => {
+    handleFieldChange('bookType', value, 'bookType');
+  };
+
+  const handleAgeRatingChange = (rating: number) => {
+    // Update the age rating in the form data
+    handleFieldChange('ageRating', rating, 'ageRating');
+    
+    // If we have moderation results, re-evaluate flagging based on new age rating
+    if (moderationResults) {
+      updateModerationFlagsForAgeRating(rating);
+      
+      // Show toast notification that moderation flags were updated based on new age rating
+      toast.info("Moderation flags updated for new age rating", {
+        id: "age-rating-updated",
+        duration: 3000
+      });
+    }
+  };
+
+  const handleGenresChange = (newGenres: string[]) => {
+    handleFieldChange('selectedGenres', newGenres, 'genres');
+  };
+
+  // Update placeholder for AI enhancement functions to use state updates
   const enhanceTitle = () => {
     setIsEnhancingTitle(true);
     // This would be an actual API call to enhance the title
+    // Example of what the implementation would do with state:
+    // const enhancedTitle = await someAIService.enhanceTitle(bookData.title);
+    // setBookData(prev => ({ ...prev, title: enhancedTitle }));
+    
     setTimeout(() => {
       setIsEnhancingTitle(false);
     }, 1000);
@@ -1088,25 +1134,15 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   const enhanceDescription = () => {
     setIsEnhancingDescription(true);
     // This would be an actual API call to enhance the description
+    // Example of what the implementation would do with state:
+    // const enhancedDescription = await someAIService.enhanceDescription(bookData.description);
+    // setBookData(prev => ({ ...prev, description: enhancedDescription }));
+    
     setTimeout(() => {
       setIsEnhancingDescription(false);
     }, 1000);
   };
   
-  // Add scroll effect
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      if (scrollPosition > 60) {
-        setHasScrolled(true);
-      } else {
-        setHasScrolled(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
   
   // Handle retrying chapter upload
   const handleRetryChapterUpload = async () => {
@@ -1128,135 +1164,225 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
 
-  // Helper function to convert a blob URL to base64
-  const blobUrlToBase64 = async (blobUrl: string): Promise<string> => {
-    try {
-      const response = await fetch(blobUrl);
-      const blob = await response.blob();
+  /**
+   * Prepares chapter content for moderation
+   */
+  const prepareChapterContentForModeration = async (chapter: LocalChapter): Promise<{
+    chapter: number;
+    title: string;
+    content: string | string[];
+  }> => {
+    let chapterContent: string | string[] = '';
+    
+    // For novel books with text content
+    if (bookData.bookType === BOOK_TYPES.NOVEL && chapter.content) {
+      try {
+        // Extract just the text content using the utility function
+        chapterContent = extractChapterContent(chapter.content);
+      } catch (error) {
+        console.error("Error extracting chapter content:", error);
+        // Fallback to raw content if extraction fails
+        chapterContent = chapter.content;
+      }
+    } 
+    // For manga books with images
+    else if (bookData.bookType === BOOK_TYPES.MANGA && chapter.images && chapter.images.length > 0) {
+      // Process all images in the chapter
+      const processedImages: string[] = [];
       
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error("Error converting blob URL to base64:", error);
-      return blobUrl; // Return original URL on error
+      // Process each image sequentially
+      for (const image of chapter.images) {
+        let imageUrl = '';
+        
+        if (typeof image === 'string') {
+          // Direct string URL or base64
+          imageUrl = image;
+        } else if (typeof image === 'object' && 'url' in image) {
+          // Get URL from image object
+          imageUrl = image.url;
+        }
+        
+        if (imageUrl) {
+          // If it's a blob URL, convert to base64
+          if (imageUrl.startsWith('blob:')) {
+            const base64Data = await blobUrlToBase64(imageUrl);
+            processedImages.push(base64Data);
+          } else {
+            // Already a URL or base64
+            const base64Data = await blobUrlToBase64(imageUrl);
+            processedImages.push(base64Data);
+          }
+        }
+      }
+      
+      chapterContent = processedImages;
     }
+    
+    return {
+      chapter: chapter.chapter,
+      title: chapter.title || `Chapter ${chapter.chapter}`,
+      content: chapterContent
+    };
   };
 
-  // Update content moderation function to handle base64 images and proper content extraction
+  /**
+   * Prepares cover image for moderation
+   */
+  const prepareCoverImageForModeration = async (): Promise<string> => {
+    let coverImageData = '';
+    
+    if (bookData.coverImage) {
+      // If we have a direct file reference, convert it to base64
+      try {
+        const reader = new FileReader();
+        await new Promise<void>((resolve, reject) => {
+          reader.onload = () => {
+            coverImageData = reader.result as string;
+            resolve();
+          };
+          reader.onerror = reject;
+          // Only read if coverImage is not null
+          if (bookData.coverImage) {
+            reader.readAsDataURL(bookData.coverImage);
+          } else {
+            resolve(); // Resolve anyway if null
+          }
+        });
+      } catch (error) {
+        console.error("Error converting cover image to base64:", error);
+      }
+    } else if (bookData.coverImagePreview) {
+      // If it's a blob URL, convert to base64
+      if (bookData.coverImagePreview.startsWith('blob:')) {
+        coverImageData = await blobUrlToBase64(bookData.coverImagePreview);
+      } else {
+        // Use the preview URL directly (could be URL or base64)
+        coverImageData = bookData.coverImagePreview;
+      }
+    } else if (initialData?.cover) {
+      // Use the saved cover image URL
+      coverImageData = initialData.cover;
+    }
+    
+    return coverImageData;
+  };
+
+  // Add function to update moderation flags based on age rating
+  const updateModerationFlagsForAgeRating = (rating: number) => {
+    if (!moderationResults || !moderationResults.contentResults) return;
+    
+    // Map AgeRatingEnum to API's AgeRating type
+    const apiAgeRating = ageRatingMap[rating];
+    
+    // Create a deep copy of the moderation results to modify
+    const updatedResults = JSON.parse(JSON.stringify(moderationResults));
+    let hasAnyFlagged = false;
+    
+    // Check title
+    if (updatedResults.contentResults.title?.category_scores) {
+      const titleFlagged = isContentFlagged(
+        updatedResults.contentResults.title.category_scores,
+        apiAgeRating
+      );
+      updatedResults.contentResults.title.flagged = titleFlagged;
+      if (titleFlagged) hasAnyFlagged = true;
+    }
+    
+    // Check description
+    if (updatedResults.contentResults.description?.category_scores) {
+      const descriptionFlagged = isContentFlagged(
+        updatedResults.contentResults.description.category_scores,
+        apiAgeRating
+      );
+      updatedResults.contentResults.description.flagged = descriptionFlagged;
+      if (descriptionFlagged) hasAnyFlagged = true;
+    }
+    
+    // Check cover image
+    if (updatedResults.contentResults.coverImage?.category_scores) {
+      const coverFlagged = isContentFlagged(
+        updatedResults.contentResults.coverImage.category_scores,
+        apiAgeRating
+      );
+      updatedResults.contentResults.coverImage.flagged = coverFlagged;
+      if (coverFlagged) hasAnyFlagged = true;
+    }
+    
+    // Check chapters
+    if (updatedResults.contentResults.chapters && Array.isArray(updatedResults.contentResults.chapters)) {
+      updatedResults.contentResults.chapters.forEach((chapter: any) => {
+        if (chapter.result?.category_scores) {
+          const chapterFlagged = isContentFlagged(
+            chapter.result.category_scores,
+            apiAgeRating
+          );
+          chapter.result.flagged = chapterFlagged;
+          if (chapterFlagged) hasAnyFlagged = true;
+        }
+      });
+    }
+    
+    // Update global flagged status
+    updatedResults.flagged = hasAnyFlagged;
+
+    console.log("Updated results:", updatedResults);
+    
+    // Update moderation status
+    setModerationStatus(hasAnyFlagged ? 'flagged' : 'passed');
+    
+    // Update moderation results with new flags
+    setModerationResults(updatedResults);
+  };
+
+  /**
+   * Streamlined moderation handler
+   */
   const handleModerateContent = async () => {
     setModerationResults(null);
     setModerationStatus('pending');
     
     try {
-      // Collect all content to moderate
-      const title = titleInputRef.current?.value || '';
-      const description = descriptionTextareaRef.current?.value || '';
+      // Get content to moderate from state
+      const { title, description, ageRating } = bookData;
       
-      // Format chapters based on the new structure
-      const formattedChapters = await Promise.all(chapters.map(async (chapter) => {
-        let chapterContent: string | string[] = '';
-        
-        // For novel books with text content
-        if (bookType === BOOK_TYPES.NOVEL && chapter.content) {
-          try {
-            // Extract just the text content using the utility function
-            chapterContent = extractChapterContent(chapter.content);
-          } catch (error) {
-            console.error("Error extracting chapter content:", error);
-            // Fallback to raw content if extraction fails
-            chapterContent = chapter.content;
-          }
-        } 
-        // For manga books with images
-        else if (bookType === BOOK_TYPES.MANGA && chapter.images && chapter.images.length > 0) {
-          // Process all images in the chapter
-          const processedImages: string[] = [];
-          
-          // Process each image sequentially
-          for (const image of chapter.images) {
-            let imageUrl = '';
-            
-            if (typeof image === 'string') {
-              // Direct string URL or base64
-              imageUrl = image;
-            } else if (typeof image === 'object' && 'url' in image) {
-              // Get URL from image object
-              imageUrl = image.url;
-            }
-            
-            if (imageUrl) {
-              // If it's a blob URL, convert to base64
-              if (imageUrl.startsWith('blob:')) {
-                const base64Data = await blobUrlToBase64(imageUrl);
-                processedImages.push(base64Data);
-              } else {
-                // Already a URL or base64
-                const base64Data = await blobUrlToBase64(imageUrl);
-                processedImages.push(base64Data);
-              }
-            }
-          }
-          
-          chapterContent = processedImages;
-        }
-        
-        return {
-          chapter: chapter.chapter,
-          title: chapter.title || `Chapter ${chapter.chapter}`,
-          content: chapterContent
-        };
-      }));
+      // Map AgeRatingEnum to API's AgeRating type
+      const apiAgeRating = ageRatingMap[ageRating];
       
-      // Prepare cover image - use URL if saved, base64 if new
-      let coverImageData = '';
+      // 1. Process chapters for moderation
+      const formattedChapters = await Promise.all(
+        chapters.map(prepareChapterContentForModeration)
+      );
       
-      if (coverImage) {
-        // If we have a direct file reference, convert it to base64
-        try {
-          const reader = new FileReader();
-          await new Promise<void>((resolve, reject) => {
-            reader.onload = () => {
-              coverImageData = reader.result as string;
-              resolve();
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(coverImage);
-          });
-        } catch (error) {
-          console.error("Error converting cover image to base64:", error);
-        }
-      } else if (coverImagePreview) {
-        // If it's a blob URL, convert to base64
-        if (coverImagePreview.startsWith('blob:')) {
-          coverImageData = await blobUrlToBase64(coverImagePreview);
-        } else {
-          // Use the preview URL directly (could be URL or base64)
-          coverImageData = coverImagePreview;
-        }
-      } else if (initialData?.cover) {
-        // Use the saved cover image URL
-        coverImageData = initialData.cover;
-      }
+      // 2. Process cover image for moderation
+      const coverImageData = await prepareCoverImageForModeration();
       
-      console.log("Formatted chapters for moderation:", formattedChapters);
-      console.log("Cover image type:", typeof coverImageData, coverImageData?.substring(0, 30) + '...');
-      
-      // Use the hook to moderate content with the new structure
+      // 3. Send content for moderation
       const result = await moderateContent({
         title,
         description,
         coverImage: coverImageData,
         chapters: formattedChapters,
-        model: selectedModel
+        model: selectedModel,
+        ageRating: apiAgeRating
       });
       
+      // 4. Handle moderation results
       if (result) {
         console.log("Moderation results:", result);
-        setModerationResults(result);
+        
+        // Add flagged status to each content item based on age rating
+        const processedResults = addFlagsToModerationResults(result, apiAgeRating);
+        
+        setModerationResults(processedResults);
+        
+        // Determine if any content is flagged
+        const hasIssues = processedResults.flagged;
+
+        console.log("Has issues:", hasIssues);
+        
+        setModerationStatus(hasIssues ? 'flagged' : 'passed');
+        
+        // Show moderation dialog
         setModerationDialogOpen(true);
       } else {
         setModerationStatus(null);
@@ -1266,6 +1392,64 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       setModerationStatus(null);
       toast.error("Failed to run content moderation. Please try again.");
     }
+  };
+
+  // Helper function to add flags to moderation results
+  const addFlagsToModerationResults = (results: any, ageRating: AgeRating) => {
+    if (!results || !results.contentResults) return results;
+    
+    // Create a deep copy of the results to modify
+    const processedResults = JSON.parse(JSON.stringify(results));
+    let hasAnyFlagged = false;
+    
+    // Check title
+    if (processedResults.contentResults.title?.category_scores) {
+      const titleFlagged = isContentFlagged(
+        processedResults.contentResults.title.category_scores,
+        ageRating
+      );
+      processedResults.contentResults.title.flagged = titleFlagged;
+      if (titleFlagged) hasAnyFlagged = true;
+    }
+    
+    // Check description
+    if (processedResults.contentResults.description?.category_scores) {
+      const descriptionFlagged = isContentFlagged(
+        processedResults.contentResults.description.category_scores,
+        ageRating
+      );
+      processedResults.contentResults.description.flagged = descriptionFlagged;
+      if (descriptionFlagged) hasAnyFlagged = true;
+    }
+    
+    // Check cover image
+    if (processedResults.contentResults.coverImage?.category_scores) {
+      const coverFlagged = isContentFlagged(
+        processedResults.contentResults.coverImage.category_scores,
+        ageRating
+      );
+      processedResults.contentResults.coverImage.flagged = coverFlagged;
+      if (coverFlagged) hasAnyFlagged = true;
+    }
+    
+    // Check chapters
+    if (processedResults.contentResults.chapters && Array.isArray(processedResults.contentResults.chapters)) {
+      processedResults.contentResults.chapters.forEach((chapter: any) => {
+        if (chapter.result?.category_scores) {
+          const chapterFlagged = isContentFlagged(
+            chapter.result.category_scores,
+            ageRating
+          );
+          chapter.result.flagged = chapterFlagged;
+          if (chapterFlagged) hasAnyFlagged = true;
+        }
+      });
+    }
+    
+    // Update global flagged status
+    processedResults.flagged = hasAnyFlagged;
+    
+    return processedResults;
   };
 
   // Function to be passed to ChapterCreator for handling deletion
@@ -1319,28 +1503,21 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
 
-  // Add a publish book handler
-  const handlePublishBook = async () => {
-    try {
-      // Prepare book data with published status
-      const bookData = {
-        accessStatusId: AccessStatusEnum.PENDING, // Change from PRIVATE to PENDING
-      };
-      
-      // Update the book status
-      const updateResponse = await updateBook(initialData.id, bookData);
-      if (updateResponse.status !== 200 && updateResponse.status !== 201) {
-        throw new Error(updateResponse.msg || 'Failed to publish book');
-      }
-      
-      toast.success("Book submitted for review successfully");
-      
-      // Call the success callback if provided
-      if (onSuccess) {
-        onSuccess(initialData.id);
-      }
-    } catch (error) {
-      toast.error((error as Error).message || 'Failed to publish book');
+  // Update chapters handler to use common form change tracking and moderation reset
+  const handleUpdateChapters = (updatedChapters: LocalChapter[]) => {
+    setChapters(updatedChapters);
+    setHasUnsavedChanges(true);
+    if (isEditing) {
+      setHasChanges(true);
+    }
+    
+    // If we have moderation results, mark them as outdated since chapters changed
+    if (moderationResults) {
+      setModerationStatus(null);
+      toast.info("Chapters updated. Please run moderation again before submitting.", {
+        id: "moderation-outdated",
+        duration: 3000
+      });
     }
   };
 
@@ -1389,6 +1566,17 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               </div>
             </div>
           )}
+          {moderationStatus === null && moderationResults && (
+            <div 
+              className="px-2 py-1 text-xs rounded-full font-medium cursor-pointer bg-gray-100 text-gray-700"
+              onClick={() => setModerationDialogOpen(true)}
+            >
+              <div className="flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                <span>Moderation Outdated</span>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="flex space-x-2">
@@ -1426,9 +1614,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                 <Button
                   type="button"
                   variant="outline"
-                  // onClick={handleSaveAsDraft}
-                  // disabled={isSavingDraft || isSubmitting}
-                  disabled={true}
+                  onClick={handleSaveAsDraft}
+                  disabled={isSavingDraft || isSubmitting}
                   className="gap-2"
                 >
                   {isSavingDraft ? (
@@ -1449,16 +1636,22 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                 form="book-form"
                 disabled={isSubmitting || isSavingDraft || (isEditing && !hasChanges) || !canEditBasicInfo}
                 className="gap-2"
+                onClick={(e) => {
+                  if (isEditing) {
+                    e.preventDefault(); // Prevent form submission
+                    handleSaveAsDraft();
+                  }
+                }}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    {isEditing ? 'Updating...' : 'Submitting...'}
+                    {isEditing ? 'Saving...' : 'Publishing...'}
                   </>
                 ) : (
                   <>
                     <BookOpen size={16} />
-                    {isEditing ? 'Update Book' : 'Submit for Review'}
+                    {isEditing ? 'Save Changes' : 'Publish Book'}
                   </>
                 )}
               </Button>
@@ -1469,10 +1662,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        type="button"
-                        variant="default"
-                        onClick={handlePublishBook}
-                        disabled={isSubmitting || isSavingDraft || !canEditBasicInfo}
+                        type="submit"
+                        form="book-form"
+                        disabled={isSubmitting || isSavingDraft || !canEditBasicInfo || (isEditing && !hasChanges)}
                         className="gap-2 bg-green-600 hover:bg-green-700"
                       >
                         <Shield size={16} />
@@ -1499,6 +1691,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         onModelChange={setSelectedModel}
         onRecheck={handleModerateContent}
         isLoading={isModeratingContent}
+        bookAgeRating={ageRatingMap[bookData.ageRating]}
       />
       
       {errors.form && (
@@ -1556,17 +1749,15 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               isCollapsed={isBookInfoCollapsed}
               setIsCollapsed={setIsBookInfoCollapsed}
               errors={errors}
-              titleInputRef={titleInputRef as React.RefObject<HTMLInputElement>}
-              descriptionTextareaRef={descriptionTextareaRef as React.RefObject<HTMLTextAreaElement>}
-              coverImage={coverImage}
-              coverImagePreview={coverImagePreview}
+              coverImage={bookData.coverImage}
+              coverImagePreview={bookData.coverImagePreview}
               handleImageUpload={handleImageUpload}
-              bookType={bookType}
+              bookType={bookData.bookType}
               handleBookTypeChange={handleBookTypeChange}
-              selectedGenres={selectedGenres}
-              setSelectedGenres={setSelectedGenres}
-              ageRating={ageRating}
-              setAgeRating={setAgeRating}
+              selectedGenres={bookData.selectedGenres}
+              setSelectedGenres={handleGenresChange}
+              ageRating={bookData.ageRating}
+              setAgeRating={handleAgeRatingChange}
               genres={genresQuery.data || []}
               isEnhancingTitle={isEnhancingTitle}
               enhanceTitle={enhanceTitle}
@@ -1575,14 +1766,18 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               isEditing={isEditing}
               canEdit={canEditBasicInfo}
               reasonIfDenied={reasonIfDenied}
+              titleValue={bookData.title}
+              descriptionValue={bookData.description}
+              onTitleChange={handleTitleChange}
+              onDescriptionChange={handleDescriptionChange}
             />
             
             {/* Right column - Chapters using ChapterCreator Component */}
             <div className="w-full md:flex-1 lg:pl-6 border-t md:border-t-0 md:border-l border-secondary/90">
               <ChapterCreator
-                bookType={bookType}
+                bookType={bookData.bookType}
                 chapters={chapters}
-                setChapters={setChapters}
+                setChapters={handleUpdateChapters}
                 errors={errors}
                 emptyChapters={emptyChapters}
                 isLoadingChapters={isLoadingChapters}
@@ -1611,7 +1806,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               if (pendingPublishAction) {
                 setPendingPublishAction(true);
                 setIsSubmitting(true);
-                handleBookSubmission(false).finally(() => {
+                processBookSubmission(false).finally(() => {
                   setIsSubmitting(false);
                   setPendingPublishAction(false);
                 });
@@ -1643,7 +1838,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               if (pendingPublishAction) {
                 setPendingPublishAction(true);
                 setIsSubmitting(true);
-                handleBookSubmission(false).finally(() => {
+                processBookSubmission(false).finally(() => {
                   setIsSubmitting(false);
                   setPendingPublishAction(false);
                 });

@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Sparkles, AlertCircle, PanelLeftOpen, PanelLeftClose, Camera } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -37,8 +36,8 @@ interface BookInfoProps {
   isCollapsed: boolean;
   setIsCollapsed: (value: boolean) => void;
   errors: Record<string, string>;
-  titleInputRef: React.RefObject<HTMLInputElement>;
-  descriptionTextareaRef: React.RefObject<HTMLTextAreaElement>;
+  titleInputRef?: React.RefObject<HTMLInputElement>;
+  descriptionTextareaRef?: React.RefObject<HTMLTextAreaElement>;
   coverImage: File | null;
   coverImagePreview: string | null;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -56,6 +55,10 @@ interface BookInfoProps {
   isEditing?: boolean;
   canEdit?: boolean;
   reasonIfDenied?: string;
+  titleValue: string;
+  descriptionValue: string;
+  onTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onDescriptionChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
 }
 
 export default function BookInfo({
@@ -80,7 +83,11 @@ export default function BookInfo({
   enhanceDescription,
   isEditing = false,
   canEdit = false,
-  reasonIfDenied = ""
+  reasonIfDenied = "",
+  titleValue = "",
+  descriptionValue = "",
+  onTitleChange,
+  onDescriptionChange
 }: BookInfoProps) {
   return (
     <div className={`w-full md:w-[30%] relative transition-all duration-300 ${isCollapsed ? 'md:w-[48px]' : ''}`}>
@@ -229,10 +236,11 @@ export default function BookInfo({
             <div className="relative">
               <Input
                 id="title"
-                ref={titleInputRef}
                 className={errors.title ? 'border-destructive' : ''}
                 placeholder="Enter book title"
                 disabled={!canEdit}
+                value={titleValue}
+                onChange={onTitleChange}
               />
             </div>
             {errors.title && <ErrorMessage message={errors.title} />}
@@ -319,11 +327,12 @@ export default function BookInfo({
             </div>
             <Textarea
               id="description"
-              ref={descriptionTextareaRef}
-              className={errors.description ? 'border-destructive' : ''}
+              className={errors.description ? 'border-destructive resize-none min-h-[120px]' : 'resize-none min-h-[120px]'}
               placeholder="Enter book description"
               rows={5}
               disabled={!canEdit}
+              value={descriptionValue}
+              onChange={onDescriptionChange}
             />
             {errors.description && <ErrorMessage message={errors.description} />}
           </div>

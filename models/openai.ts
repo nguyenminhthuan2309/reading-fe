@@ -25,6 +25,7 @@ export interface EnhancedModerationRequest {
   coverImage?: string;
   chapterImages?: string[];
   model?: 'omni-moderation-latest' | 'gpt-4o' | 'o4-mini';
+  ageRating?: 'ALL' | '13_PLUS' | '16_PLUS' | '18_PLUS';
   chapters?: Array<{
     id?: string | number;
     chapter: number;

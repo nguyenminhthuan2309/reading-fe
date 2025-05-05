@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBookById } from "@/lib/api/books";
 import { BookForm } from "@/components/books/book-form";
 import { useUserStore } from "@/lib/store";
-import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
@@ -16,30 +14,27 @@ export default function EditBookPage() {
   const { user } = useUserStore();
   const bookId = parseInt(params.id as string);
   const queryClient = useQueryClient();
-  
+
   // Fetch book data
   const { data, isLoading, error } = useQuery({
     queryKey: BOOK_KEYS.DETAIL(bookId),
     queryFn: async () => {
       const response = await getBookById(bookId);
-      
+
       if (response.status !== 200) {
         throw new Error(response.msg || 'Failed to fetch book');
       }
-      
+
       return response.data?.data?.[0]; // First item in the data array
     },
     retry: 1,
   });
   
-  useEffect(() => {
-    // Check if the user is the author of the book
-    if (data && user && data.author.id !== +user.id) {
-      toast.error("You don't have permission to edit this book");
-      router.push(`/books/${bookId}`);
-    }
-  }, [data, user, router, bookId]);
-  
+  if (data && user && data.author.id !== +user.id) {
+    toast.error("You don't have permission to edit this book");
+    router.push(`/books/${bookId}`);
+  }
+
   const handleSuccess = (bookId: number) => {
     queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId), type: 'active' });
     queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.BOOK_CHAPTERS(bookId), type: 'active' });
@@ -47,7 +42,7 @@ export default function EditBookPage() {
     toast.success("Book updated successfully");
     router.push(`/books/${bookId}`);
   };
-  
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -57,7 +52,7 @@ export default function EditBookPage() {
       </div>
     );
   }
-  
+
   if (error || !data) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -66,8 +61,8 @@ export default function EditBookPage() {
           <p className="text-destructive/90">
             {(error as Error)?.message || "This book couldn't be loaded or doesn't exist"}
           </p>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="mt-4"
             onClick={() => router.push('/books')}
           >
@@ -77,13 +72,13 @@ export default function EditBookPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8 pt-4">
-      <BookForm 
-        initialData={data} 
-        isEditing={true} 
-        onSuccess={handleSuccess} 
+      <BookForm
+        initialData={data}
+        isEditing={true}
+        onSuccess={handleSuccess}
       />
     </div>
   );
