@@ -12,6 +12,7 @@ import { login } from "@/lib/api/auth";
 import { useUserStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import Cookies from "js-cookie";
 
 // Define validation schema with Yup
 const signinSchema = yup.object({
@@ -51,7 +52,6 @@ export default function SignIn() {
         setToken(res.data.accessToken);
         return res.data.user;
       } else {
-
         if (res.msg.includes('Mật khẩu')) {
           setError('password', { message: res.msg });
         } else {
@@ -62,6 +62,13 @@ export default function SignIn() {
       }
     },
     onSuccess: (userData) => {
+      // Set user role cookie
+      if (userData.role?.name) {
+        Cookies.set('user_role', userData.role.name, { 
+          expires: 7, 
+          secure: process.env.NODE_ENV === 'production' 
+        });
+      }
       queryClient.setQueryData(['me'], userData);
       router.push('/');
     }

@@ -15,6 +15,20 @@ export const USER_ROLES = [
   { id: 3, name: UserRoleEnum.MEMBER }
 ];
 
+// User role enum
+export enum UserStatusEnum {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  BANNED = 'BANNED'
+}
+
+// User roles with their IDs
+export const USER_STATUSES = [
+  { id: 1, name: UserStatusEnum.ACTIVE },
+  { id: 2, name: UserStatusEnum.INACTIVE },
+  { id: 3, name: UserStatusEnum.BANNED }
+];
+
 export type User = {
   id: number;
   name: string;
@@ -39,23 +53,23 @@ export type User = {
     avgRating: number;
   };
   tokenBalance
-: 
-number
-tokenEarned
-: 
-number
-tokenPurchased
-: 
-number
-tokenReceived
-: 
-number
-tokenSpent
-: 
-number
-tokenWithdrawn
-: 
-number
+  :
+  number
+  tokenEarned
+  :
+  number
+  tokenPurchased
+  :
+  number
+  tokenReceived
+  :
+  number
+  tokenSpent
+  :
+  number
+  tokenWithdrawn
+  :
+  number
   authoredBooks?: any[]; // Books created by the user
   socialLinks?: SocialLinks; // Social media links
 };

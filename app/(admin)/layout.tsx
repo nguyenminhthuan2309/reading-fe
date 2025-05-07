@@ -3,9 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenText, BarChart3, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpenText, BarChart3, LogOut, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { RoleGuard } from "@/components/auth/role-guard";
+import { UserRoleEnum } from "@/models/user";
 
 export default function AdminLayout({
   children,
@@ -24,16 +26,24 @@ export default function AdminLayout({
       title: "Book Management",
       path: "/admin/books",
       icon: <BookOpenText className="h-5 w-5" />,
+      roles: [UserRoleEnum.ADMIN, UserRoleEnum.MANAGER],
     },
     {
       title: "Analytics",
       path: "/admin/analytics",
       icon: <BarChart3 className="h-5 w-5" />,
+      roles: [UserRoleEnum.ADMIN, UserRoleEnum.MANAGER],
+    },
+    {
+      title: "User Management",
+      path: "/admin/users",
+      icon: <Users className="h-5 w-5" />,
+      roles: [UserRoleEnum.ADMIN],
     },
   ];
 
   return (
-    <>
+    <RoleGuard allowedRoles={[UserRoleEnum.ADMIN, UserRoleEnum.MANAGER]}>
       {/* Admin-specific header */}
       <header className="bg-card border-b border-border h-14 flex items-center px-4 shrink-0">
         <div className="flex items-center justify-between w-full">
@@ -102,6 +112,6 @@ export default function AdminLayout({
           {children}
         </main>
       </div>
-    </>
+    </RoleGuard>
   );
 } 

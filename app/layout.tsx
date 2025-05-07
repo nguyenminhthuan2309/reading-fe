@@ -6,6 +6,7 @@ import { ThemeProvider } from 'next-themes';
 import type { Metadata } from "next";
 import { Oswald } from "next/font/google";
 import "./globals.css";
+import { Chat } from '@/components/chat/chat';
 
 const oswald = Oswald({
   variable: "--font-oswald",
@@ -65,6 +66,7 @@ export default function RootLayout({
               <AuthProvider>
                 {children}
                 <Toaster />
+                <Chat />
               </AuthProvider>
             </QueryProvider>
           </LanguageProvider>

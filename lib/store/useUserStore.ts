@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { User } from '@/models';
+import { User, UserRoleEnum } from '@/models';
 import Cookies from 'js-cookie';
 
 interface UserState {
@@ -13,13 +13,19 @@ interface UserState {
 }
 
 // Helper to manage cookies alongside store
-const setCookie = (token: string | undefined | null) => {
+const setCookie = (token: string | undefined | null, user: User | null) => {
   if (token) {
-    // Set cookie with expiration (7 days) and HTTP only for security
+    // Set auth token cookie with expiration (7 days) and HTTP only for security
     Cookies.set('auth_token', token, { expires: 7, secure: process.env.NODE_ENV === 'production' });
+    
+    // Set user role cookie if user exists
+    if (user?.role?.name) {
+      Cookies.set('user_role', user.role.name, { expires: 7, secure: process.env.NODE_ENV === 'production' });
+    }
   } else {
-    // Remove cookie when token is null
+    // Remove cookies when token is null
     Cookies.remove('auth_token');
+    Cookies.remove('user_role');
   }
 };
 
@@ -34,13 +40,14 @@ export const useUserStore = create<UserState>()(
         isLoggedIn: !!user 
       }),
       setToken: (token) => {
-        // Set or remove cookie when token changes
-        setCookie(token);
+        const state = useUserStore.getState();
+        // Set or remove cookies when token changes
+        setCookie(token, state.user);
         set({ token });
       },
       logout: () => {
-        // Clear cookie on logout
-        setCookie(null);
+        // Clear cookies on logout
+        setCookie(null, null);
         set({ 
           user: null, 
           token: null, 
