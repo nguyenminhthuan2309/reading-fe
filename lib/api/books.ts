@@ -1,6 +1,6 @@
 import { get, post, put, del, delWithBody, uploadFile, patch } from '../api';
 import { ApiResponse, PaginatedData } from '@/models/api';
-import { Book, Chapter, BookFilters,  ReadingHistoryItem, ReadingHistoryFilters, BookUpdatePayload, BookCreatePayload, BookReview, BookReviewFilters, Category, ChaptersBatchPayload } from '@/models/book';
+import { Book, Chapter, BookFilters,  ReadingHistoryItem, ReadingHistoryFilters, BookUpdatePayload, BookCreatePayload, BookReview, BookReviewFilters, Category, ChaptersBatchPayload, ChapterAccessStatus } from '@/models/book';
 
 /**
  * Get a list of books with optional filters
@@ -255,8 +255,12 @@ export async function unfollowBook(bookId: number): Promise<ApiResponse<{ succes
 /**
  * Get all chapters for a book
  */
-export async function getChaptersByBookId(bookId: number): Promise<ApiResponse<Chapter[]>> {
-  return get<Chapter[]>(`/book/${bookId}/chapters`);
+export async function getChaptersByBookId(bookId: number, accessStatus?: ChapterAccessStatus): Promise<ApiResponse<Chapter[]>> {
+  const queryParams = new URLSearchParams();
+  if (accessStatus) {
+    queryParams.append('chapterAccessStatus', accessStatus.toString());
+  }
+  return get<Chapter[]>(`/book/${bookId}/chapters?${queryParams.toString()}`);
 }
 
 /**

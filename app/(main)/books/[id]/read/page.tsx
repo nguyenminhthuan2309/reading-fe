@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getChapterDetail, getBookById, getChaptersByBookId, updateReadingHistory } from "@/lib/api/books";
-import { Book, Chapter } from "@/models/book";
+import { Book, Chapter, ChapterAccessStatus } from "@/models/book";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChapterComments } from "@/components/books/chapter-comments";
 import { Slider } from "@/components/ui/slider";
@@ -79,7 +79,7 @@ export default function ReadPage() {
   } = useQuery({
     queryKey: CHAPTER_KEYS.LIST(bookId),
     queryFn: async () => {
-      const response = await getChaptersByBookId(Number(bookId));
+      const response = await getChaptersByBookId(Number(bookId), ChapterAccessStatus.PUBLISHED);
       if (response.status !== 200) {
         throw new Error(response.msg || 'Failed to fetch chapter list');
       }

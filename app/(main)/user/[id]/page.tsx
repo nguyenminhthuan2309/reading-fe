@@ -1,28 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { 
-  Book, 
   BookOpen, 
   Clock, 
   ChevronLeft,
   User as UserIcon,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {  getUserById, updateUserProfile } from "@/lib/api/auth";
-import { updatePassword } from "@/lib/api/auth";
-import { uploadAvatar } from "@/lib/api/user";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {  getUserById } from "@/lib/api/auth";
 import { useUserStore } from "@/lib/store";
 import { User, UserPreferences } from "@/models";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { toast } from "sonner";
-import * as yup from "yup";
-import { UserBooks } from "@/components/user/user-books";
-import { FollowedBooks } from "@/components/user/followed-books";
-import { AUTH_KEYS, USER_KEYS } from "@/lib/constants/query-keys";
+import { USER_KEYS } from "@/lib/constants/query-keys";
 import { useUserBooks } from "@/lib/hooks/useUserBooks";
 import { BookCard } from "@/components/books/book-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -141,7 +134,7 @@ function CompactUserBooks({ userId, filter = "created", limitPage = 16 }: { user
               chapters={book.totalChapters || 0}
               rating={book.rating || 0}
               genres={book.categories || []}
-              progress={0}
+              readingProgress={book.readingProgress}
               isCreator={user?.id === book.author.id}
               isFollowed={book.isFollowed}
               className="w-full scale-95 origin-top"

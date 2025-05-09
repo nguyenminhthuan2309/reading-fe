@@ -145,8 +145,16 @@ export type Book = {
   chapters?: Chapter[];
   ageRating?: number;
   totalPurchases?: number;
-  moderated?: 'omni-moderation-latest' | 'gpt-4o' | 'o4-mini'
+  moderated?: 'omni-moderation-latest' | 'gpt-4o' | 'o4-mini';
+  readingProgress?: ReadingProgress;
+  chaptersRead?: ChapterRead[];
 };
+
+export type ReadingProgress = {
+  lastReadChapterId?: number;
+  lastReadChapterNumber?: number;
+  totalReadChapters?: number;
+}
 
 // For backward compatibility - will be gradually removed
 export type LegacyBook = {
@@ -181,6 +189,7 @@ export interface ChapterRead {
   title: string;
   lastReadAt: string;
   isLocked: boolean;
+  chapter: number;
 }
 
 // Filters for getting books

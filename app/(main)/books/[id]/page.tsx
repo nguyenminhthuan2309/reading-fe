@@ -18,7 +18,7 @@ import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import { useUserStore } from "@/lib/store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FollowButton } from "@/components/books/follow-button";
-
+import { ChapterAccessStatus } from "@/models/book";
 export default function BookPage() {
   const params = useParams();
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function BookPage() {
   } = useQuery({
     queryKey: CHAPTER_KEYS.BOOK_CHAPTERS(id),
     queryFn: async () => {
-      const response = await getChaptersByBookId(Number(id));
+      const response = await getChaptersByBookId(Number(id), ChapterAccessStatus.PUBLISHED);
       if (response.status !== 200) {
         throw new Error(response.msg || 'Failed to fetch chapters');
       }

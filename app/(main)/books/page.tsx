@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getBooks, getGenres } from "@/lib/api/books";
-import {  BookFilters, Category, SortDirectionEnum } from "@/models/book";
+import {  BookFilters, Category, SortDirectionEnum, ReadingProgress } from "@/models/book";
 import { BookCard } from "@/components/books/book-card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Filter, PlusCircle, Search, SlidersHorizontal, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -44,6 +44,7 @@ interface DisplayBook {
   coverImage: string;
   author?: Author; // Adding authorId field to match the usage
   isFollowed: boolean;
+  readingProgress?: ReadingProgress;
 }
 
 // Define the API response type structure
@@ -234,6 +235,7 @@ export default function BooksPage() {
       categories?: Category[];
       cover: string;
       isFollowed: boolean;
+      readingProgress?: ReadingProgress;
     }>;
     
     const books = bookData.data.map(book => ({
@@ -244,7 +246,7 @@ export default function BooksPage() {
       chapters: book.totalChapters || 0,
       rating: book.rating || 0,
       genre: book.categories || [],
-      progress: 0,
+      readingProgress: book.readingProgress,
       coverImage: book.cover || "",
       authorId: book.author?.id,
       isFollowed: book.isFollowed,
@@ -600,7 +602,7 @@ export default function BooksPage() {
                       chapters={book.chapters}
                       rating={book.rating}
                       genres={book.genre}
-                      progress={book.progress}
+                      readingProgress={book.readingProgress}
                       coverImage={book.coverImage}
                       className="h-full w-full border-0 shadow-lg"
                       showPreview={false}

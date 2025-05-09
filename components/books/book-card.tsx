@@ -11,8 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Genre, GENRE_OPTIONS } from "@/models/genre";
-import { Author, Category } from "@/models";
+import { Author, Category, ReadingProgress } from "@/models";
 import { FollowButton } from "@/components/books/follow-button";
 
 interface BookCardProps {
@@ -24,7 +23,7 @@ interface BookCardProps {
   chapters: number;
   rating: number;
   genres: Category[];
-  progress?: number;
+  readingProgress?: ReadingProgress;
   className?: string;
   showPreview?: boolean;
   lastReadAt?: string;
@@ -43,16 +42,17 @@ export function BookCard({
   chapters,
   rating,
   genres,
-  progress = 0,
+  readingProgress,
   className,
   showPreview = true,
-  lastReadAt,
   currentChapter,
   lastReadChapterTitle,
   isCreator = false,
   isFollowed = false,
 }: BookCardProps) {
-  const hasStartedReading = progress > 0;
+  const hasStartedReading = readingProgress?.totalReadChapters && readingProgress.totalReadChapters > 0;
+  const progress = readingProgress?.totalReadChapters ? (readingProgress.totalReadChapters / chapters) : 0;
+
   const [isLoaded, setIsLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -174,8 +174,8 @@ export function BookCard({
         <div className="flex gap-2 mt-3">
           <Link 
             href={hasStartedReading 
-              ? `/books/${id}/read?chapter=${Math.ceil(progress * chapters)}` 
-              : `/books/${id}/read?chapter=${currentChapter}&id=${id}`} 
+              ? `/books/${id}/read?chapter=${readingProgress?.lastReadChapterNumber}&id=${readingProgress?.lastReadChapterId}` 
+              : `/books/${id}/read?chapter=${readingProgress?.lastReadChapterNumber}&id=${readingProgress?.lastReadChapterId}`} 
             className="flex-1"
           >
             <Button variant="destructive" size="sm" className="w-full text-xs h-8 rounded-lg">

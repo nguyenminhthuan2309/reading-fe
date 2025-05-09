@@ -22,7 +22,15 @@ export default function Home() {
       });
       
       if (response.status === 200) {
-        return response.data.data;
+        const mapReadHistory = response.data.data.map((book: Book) => ({
+          ...book,
+          readingProgress: {
+            totalReadChapters: book.chaptersRead?.length || 0,
+            lastReadChapterNumber: book.chaptersRead?.[0]?.chapter || 0,
+            lastReadChapterId: book.chaptersRead?.[0]?.id || 0,
+          },
+        }));
+        return mapReadHistory;
       }
       throw new Error(response.msg || 'Failed to fetch reading history');
     },

@@ -91,11 +91,8 @@ export function SectionCarousel({ title, books, linkHref, className, isLoading =
                         chapters={book.totalChapters}
                         rating={book.rating || 0}
                         genres={book.categories}
-                        // progress={book.progress || 0}
+                        readingProgress={book.readingProgress}
                         className="shadow-none h-full w-full"
-                        // lastReadChapterTitle={book.lastReadChapterTitle}
-                        // currentChapter={book.currentChapter}
-                        // lastReadAt={book.lastReadAt}
                         isCreator={user?.id === book.author?.id }
                         isFollowed={book.isFollowed}
                       />
