@@ -166,7 +166,7 @@ export default function Header() {
                             {genres.map((genre) => (
                               <NavigationMenuLink key={genre.id} asChild>
                                 <Link
-                                  href={`/books?filter=${genre.name.toLowerCase().replace(/\s+/g, '-')}`}
+                                  href={`/books?genres=${genre.name.replace(/\s+/g, '+')}&page=1`}
                                   className="text-sm hover:text-black cursor-pointer dark:hover:text-gray-300"
                                 >
                                   {genre.name}
