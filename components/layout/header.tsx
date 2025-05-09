@@ -135,6 +135,7 @@ export default function Header() {
 
   // Check if user has admin role
   const isAdmin = user?.role?.name === UserRoleEnum.ADMIN;
+  const isManager = user?.role?.name === UserRoleEnum.MANAGER;
 
   return (
     <header className="bg-white text-black border-b border-gray-200 dark:bg-gray-950 dark:text-white dark:border-gray-800">
@@ -405,7 +406,7 @@ export default function Header() {
                           <span>Publish Book</span>
                         </Link>
 
-                        {isAdmin && (
+                        {(isAdmin || isManager) && (
                           <Link 
                             href="/admin/books" 
                             className="flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"

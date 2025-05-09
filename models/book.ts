@@ -12,6 +12,7 @@ export type Chapter = {
   createdAt: string;
   updatedAt: string;
   moderated?: string;
+  chapterAccessStatus?: ChapterAccessStatus;
 };
 
 // Legacy chapter type for backward compatibility
@@ -261,6 +262,7 @@ export interface ChapterCreateItem {
   title: string;
   chapter: number;
   content: string;
+  chapterAccessStatus?: string;
 }
 
 export interface ChaptersBatchPayload {
@@ -280,4 +282,12 @@ export interface Comment {
     avatar?: string;
   };
   parentId?: number | null;
+}
+
+
+export enum ChapterAccessStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  PENDING_REVIEW = 'pending_review',
+  REJECTED = 'rejected',
 }

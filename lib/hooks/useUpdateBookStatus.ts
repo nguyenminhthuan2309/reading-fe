@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateBook, updateBookPatch } from "@/lib/api/books";
+import {  updateBookStatus } from "@/lib/api/books";
 import { AccessStatusEnum } from "@/models/book";
 import { BOOK_KEYS } from "@/lib/constants/query-keys";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ export function useUpdateBookStatus() {
 
   return useMutation({
     mutationFn: async ({ bookId, newStatus }: BookStatusUpdatePayload) => {
-      const response = await updateBookPatch(bookId, {
+      const response = await updateBookStatus(bookId, {
         accessStatusId: newStatus,
       });
 

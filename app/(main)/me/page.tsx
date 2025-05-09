@@ -50,6 +50,7 @@ import * as yup from "yup";
 import { UserBooks } from "@/components/user/user-books";
 import { FollowedBooks } from "@/components/user/followed-books";
 import { AUTH_KEYS, USER_KEYS } from "@/lib/constants/query-keys";
+import { RecentlyReadBooks } from "@/components/user/recently-read-books";
 
 // Create a complete initial user data with proper types
 const defaultPreferences: Required<UserPreferences> = {
@@ -101,6 +102,8 @@ const INITIAL_USER_DATA: User = {
 
   }
 };
+
+type ProfilePage = "account" | "balance" | "shelf" | "bookmarks" | "history" | "analytics" | "preferences";
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -165,9 +168,9 @@ export default function UserProfilePage() {
   // Initialize with the default user data (non-null)
   const [userData, setUserData] = useState<User>(structuredClone(INITIAL_USER_DATA));
   
-  // Get section from URL query parameter and set active page accordingly
+  // Get section from URL query parameter, default to "account"
   const sectionParam = searchParams.get('section');
-  const [activePage, setActivePage] = useState<string>(sectionParam || "account");
+  const [activePage, setActivePage] = useState<ProfilePage>(sectionParam as ProfilePage || "account");
   
   // Update URL with section=account if it's missing on initial load
   useEffect(() => {
@@ -183,12 +186,12 @@ export default function UserProfilePage() {
   // Update active page when URL changes
   useEffect(() => {
     if (sectionParam) {
-      setActivePage(sectionParam);
+      setActivePage(sectionParam as ProfilePage);
     }
   }, [sectionParam]);
   
   // Function to update active page and URL query parameter
-  const handleNavigate = (page: string) => {
+  const handleNavigate = (page: ProfilePage) => {
     setActivePage(page);
     // Create new URLSearchParams object from current params
     const newParams = new URLSearchParams(searchParams);
@@ -1532,25 +1535,17 @@ export default function UserProfilePage() {
                 <h2 className="text-xl font-bold">Recently Read</h2>
                 
                 <div className="flex gap-2">
-                    <Link href="/books/create">
-                      <Button variant="outline" className="flex items-center gap-2">
-                        <PlusCircle size={16} />
-                        <span className="hidden sm:inline">Submit Book</span>
-                        <span className="sm:hidden">Submit</span>
-                      </Button>
-                    </Link>
+                  <Link href="/books">
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <BookOpen size={16} />
+                      <span className="hidden sm:inline">Browse Books</span>
+                      <span className="sm:hidden">Browse</span>
+                    </Button>
+                  </Link>
                 </div>
               </div>
               
-              <div className="text-center py-10">
-                <div className="flex justify-center mb-4">
-                  <Clock size={48} className="text-muted-foreground/50" />
-                </div>
-                <p className="text-muted-foreground">No recently read books.</p>
-                <Link href="/books">
-                  <Button className="mt-4">Browse Books</Button>
-                </Link>
-              </div>
+              <RecentlyReadBooks />
             </div>
           )}
           

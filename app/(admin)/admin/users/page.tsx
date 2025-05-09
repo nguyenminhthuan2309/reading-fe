@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Loader2, User, Ban, Filter, Eye, Ban as BanIcon } from "lucide-react";
+import { Search, Plus, Loader2, User, Ban, Filter, Eye, Lock, Unlock } from "lucide-react";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { UserRoleEnum, UserStatusEnum, USER_ROLES, USER_STATUSES } from "@/models/user";
 import { DataTable } from "@/components/books/data-table";
@@ -37,6 +37,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDebounce } from "@/lib/hooks/useDebounce";
+import { useUserStore } from "@/lib/store/useUserStore";
 
 // Define validation schema for create manager form
 const createManagerSchema = yup.object({
@@ -88,6 +89,7 @@ export default function UsersPage() {
   const [selectedRole, setSelectedRole] = useState<string>(UserRoleEnum.MEMBER);
   const [selectedStatus, setSelectedStatus] = useState<string>(UserStatusEnum.ACTIVE);
   const pageSize = 10;
+  const { user } = useUserStore();
 
   // Debounce search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -127,6 +129,7 @@ export default function UsersPage() {
   };
 
   const handleCreateManager = (data: CreateManagerFormData) => {
+
     createManager(data, {
       onSuccess: () => {
         setIsCreateDialogOpen(false);
@@ -138,6 +141,10 @@ export default function UsersPage() {
 
   const handleBlockUser = (userId: number) => {
     updateUserStatus({ userId, status: 3 }); // 3 is BANNED status
+  };
+
+  const handleUnbanUser = (userId: number) => {
+    updateUserStatus({ userId, status: 1 }); // 1 is ACTIVE status
   };
 
   const handleFilterChange = () => {
@@ -217,8 +224,18 @@ export default function UsersPage() {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
-        const user = row.original;
-        const isBlocked = user.status?.name === UserStatusEnum.BANNED;
+        const rowUser = row.original;
+        const isBlocked = rowUser.status?.name === UserStatusEnum.BANNED;
+        const isAdmin = rowUser.role?.name === UserRoleEnum.ADMIN;
+        const isManager = rowUser.role?.name === UserRoleEnum.MANAGER;
+
+        // Only allow managers to ban members, admins can ban both managers and members
+        const canBanUser = (user?.role?.name === UserRoleEnum.ADMIN && !isAdmin) || 
+          (user?.role?.name === UserRoleEnum.MANAGER && !isAdmin && !isManager);
+
+        // Only admins can unban managers, managers can only unban members
+        const canUnbanUser = user?.role?.name === UserRoleEnum.ADMIN || 
+          (user?.role?.name === UserRoleEnum.MANAGER && !isManager);
 
         return (
           <div className="flex justify-end gap-2">
@@ -231,7 +248,7 @@ export default function UsersPage() {
                     className="h-8 w-8"
                     onClick={() => {
                       // TODO: Implement view details functionality
-                      console.log("View details for user:", user.id);
+                      console.log("View details for user:", rowUser.id);
                     }}
                   >
                     <Eye className="h-4 w-4" />
@@ -251,16 +268,31 @@ export default function UsersPage() {
                     size="icon"
                     className={cn(
                       "h-8 w-8",
-                      isBlocked && "text-muted-foreground cursor-not-allowed"
+                      isBlocked && canUnbanUser ? "text-green-600 hover:text-green-700 hover:bg-green-50" : 
+                      !canBanUser && !isBlocked ? "text-muted-foreground cursor-not-allowed" : 
+                      "text-red-600 hover:text-red-700 hover:bg-red-50"
                     )}
-                    onClick={() => !isBlocked && handleBlockUser(user.id)}
-                    disabled={isBlocked || isUpdatingStatus}
+                    onClick={() => isBlocked ? handleUnbanUser(rowUser.id) : handleBlockUser(rowUser.id)}
+                    disabled={(!canBanUser && !isBlocked) || (!canUnbanUser && isBlocked) || isUpdatingStatus}
                   >
-                    <BanIcon className="h-4 w-4" />
+                    {isBlocked ? (
+                      <Unlock className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{isBlocked ? "User is blocked" : "Block User"}</p>
+                  <p>
+                    {isBlocked 
+                      ? !canUnbanUser 
+                        ? "Insufficient permissions to unban" 
+                        : "Unban User" 
+                      : !canBanUser 
+                        ? "Insufficient permissions" 
+                        : "Block User"
+                    }
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -271,7 +303,7 @@ export default function UsersPage() {
   ];
 
   return (
-    <RoleGuard allowedRoles={[UserRoleEnum.ADMIN]}>
+    <RoleGuard allowedRoles={[UserRoleEnum.ADMIN, UserRoleEnum.MANAGER]}>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -280,7 +312,7 @@ export default function UsersPage() {
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="flex items-center">
+              <Button className="flex items-center" disabled={user?.role?.name !== UserRoleEnum.ADMIN || isCreating}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Manager
               </Button>

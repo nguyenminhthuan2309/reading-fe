@@ -34,7 +34,7 @@ export function Chat() {
     if (!isExcludedRoute) {
       const timer = setTimeout(() => {
         setShowIcon(true);
-      }, 5000);
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [isExcludedRoute]);
@@ -65,7 +65,7 @@ export function Chat() {
           <Bot className="h-6 w-6" />
         </Button>
       ) : (
-        <div className="flex flex-col w-80 h-96 bg-background rounded-lg shadow-lg border">
+        <div className="flex flex-col w-[400px] h-[600px] bg-background rounded-lg shadow-lg border">
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-semibold">Chat with AI Assistant</h3>
             <Button
@@ -87,7 +87,7 @@ export function Chat() {
                   message.isUser ? "flex-row-reverse" : "flex-row"
                 )}
               >
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-8 w-8 shrink-0">
                   {message.isUser ? (
                     user?.avatar ? (
                       <AvatarImage src={user.avatar} alt={user.name || 'User'} />
@@ -104,7 +104,7 @@ export function Chat() {
                 </Avatar>
                 <div
                   className={cn(
-                    "max-w-[80%] rounded-lg p-3",
+                    "max-w-[80%] rounded-lg p-3 whitespace-pre-wrap break-words",
                     message.isUser
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted"
@@ -116,7 +116,7 @@ export function Chat() {
             ))}
             {isLoading && (
               <div className="flex items-start gap-2">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-8 w-8 shrink-0">
                   <AvatarFallback className="bg-primary/10">
                     <Sparkles className="h-4 w-4 text-primary" />
                   </AvatarFallback>

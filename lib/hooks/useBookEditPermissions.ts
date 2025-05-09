@@ -50,7 +50,7 @@ export function useBookEditPermissions(book?: Book | null) {
   }
   
   // Check if book access status ID is 1 (PUBLISHED)
-  if (book.accessStatus?.id === 1 || book.accessStatus?.id === AccessStatusEnum.PUBLISHED) {
+  if (book.accessStatus?.id === AccessStatusEnum.PUBLISHED ) {
     return {
       canEditBasicInfo: false,
       canEditExistingChapters: false,
@@ -60,12 +60,8 @@ export function useBookEditPermissions(book?: Book | null) {
     } as EditPermissions;
   }
   
-  // Check book status
-  const isPending = book.accessStatus?.id === AccessStatusEnum.PENDING;
-  const isPrivate = book.accessStatus?.id === AccessStatusEnum.PRIVATE;
-  
   // For pending books, no edits allowed
-  if (isPending) {
+  if (book.accessStatus?.id === AccessStatusEnum.PENDING) {
     return {
       canEditBasicInfo: false,
       canEditExistingChapters: false,

@@ -216,6 +216,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleBold}
           isActive={editor.isActive('bold')}
           title="Bold"
+          disabled={!editable}
         >
           <Bold size={16} />
         </MenuButton>
@@ -224,6 +225,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleItalic}
           isActive={editor.isActive('italic')}
           title="Italic"
+          disabled={!editable}
         >
           <Italic size={16} />
         </MenuButton>
@@ -232,6 +234,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleH1}
           isActive={editor.isActive('heading', { level: 1 })}
           title="Heading 1"
+          disabled={!editable}
         >
           <Heading1 size={16} />
         </MenuButton>
@@ -240,6 +243,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleH2}
           isActive={editor.isActive('heading', { level: 2 })}
           title="Heading 2"
+          disabled={!editable}
         >
           <Heading2 size={16} />
         </MenuButton>
@@ -248,6 +252,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleBulletList}
           isActive={editor.isActive('bulletList')}
           title="Bullet List"
+          disabled={!editable}
         >
           <List size={16} />
         </MenuButton>
@@ -256,6 +261,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleOrderedList}
           isActive={editor.isActive('orderedList')}
           title="Ordered List"
+          disabled={!editable}
         >
           <ListOrdered size={16} />
         </MenuButton>
@@ -264,6 +270,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleBlockquote}
           isActive={editor.isActive('blockquote')}
           title="Blockquote"
+          disabled={!editable}
         >
           <Quote size={16} />
         </MenuButton>
@@ -275,6 +282,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleAlignLeft}
           isActive={editor.isActive({ textAlign: 'left' })}
           title="Align Left"
+          disabled={!editable}
         >
           <AlignLeft size={16} />
         </MenuButton>
@@ -283,6 +291,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleAlignCenter}
           isActive={editor.isActive({ textAlign: 'center' })}
           title="Align Center"
+          disabled={!editable}
         >
           <AlignCenter size={16} />
         </MenuButton>
@@ -291,6 +300,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleAlignRight}
           isActive={editor.isActive({ textAlign: 'right' })}
           title="Align Right"
+          disabled={!editable}
         >
           <AlignRight size={16} />
         </MenuButton>
@@ -299,6 +309,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleAlignJustify}
           isActive={editor.isActive({ textAlign: 'justify' })}
           title="Align Justify"
+          disabled={!editable}
         >
           <AlignJustify size={16} />
         </MenuButton>
@@ -309,6 +320,7 @@ export default function TiptapEditor({ content, onChange, className = '', editab
           onClick={handleInsertTable}
           isActive={isTableActive}
           title="Insert Table"
+          disabled={!editable}
         >
           <TableIcon size={16} />
         </MenuButton>

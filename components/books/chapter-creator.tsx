@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PictureImage } from "@/components/books/picture-image";
 import { BOOK_TYPES } from "@/models";
 import TiptapEditor from "@/components/editor/TiptapEditor";
-import { DocumentUploader } from "@/components/books/DocumentUploader";
+import { DocumentUploader } from "@/components/books/document-uploader";
 
 // Add Dialog components for confirmation
 import {
@@ -71,13 +71,17 @@ const SortableImageItem = ({
   imgUrl, 
   imgIndex,
   onRemoveImage,
-  chapter
+  chapter,
+  isChapterEditable
 }: {
   imgUrl: string | {url: string, fileName: string};
   imgIndex: number;
   onRemoveImage: (index: number) => void;
   chapter: LocalChapter;
+  isChapterEditable: boolean;
 }) => {
+
+  console.log("isChapterEditable", isChapterEditable);
   const {
     attributes,
     listeners,
@@ -132,6 +136,7 @@ const SortableImageItem = ({
         variant="ghost"
         size="icon"
         className="h-8 w-8 text-muted-foreground hover:text-destructive"
+        disabled={!isChapterEditable}
         onClick={() => onRemoveImage(imgIndex)}
       >
         <Trash2 size={16} />
@@ -150,7 +155,7 @@ interface ChapterCreatorProps {
   onDeleteChapter?: (chapterId: string, chapterNumber: number) => Promise<void>;
   canEditExistingChapters?: boolean;
   canAddNewChapters?: boolean;
-  reasonIfDenied?: string;
+  canEditChapter: (chapter: LocalChapter) => boolean;
 }
 
 export default function ChapterCreator({
@@ -163,7 +168,7 @@ export default function ChapterCreator({
   onDeleteChapter,
   canEditExistingChapters = true,
   canAddNewChapters = true,
-  reasonIfDenied = ""
+  canEditChapter,
 }: ChapterCreatorProps) {
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
@@ -181,6 +186,7 @@ export default function ChapterCreator({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
 
   const handleAddChapter = () => {    
     // Create a new chapter with an auto-generated title
@@ -403,6 +409,14 @@ export default function ChapterCreator({
     }
   };
 
+  // Add helper function to determine if a chapter is editable
+  const isChapterEditable = (chapter: LocalChapter): boolean => {
+    if (chapter.id.startsWith('chapter-')) {
+      return canAddNewChapters;
+    }
+    return canEditChapter(chapter);
+  };
+
   return (
     <div className="ChapterCreator">
       <div className="px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between">
@@ -474,7 +488,7 @@ export default function ChapterCreator({
                                 setEditingChapterId(null);
                               }
                             }}
-                            disabled={!canEditExistingChapters}
+                            disabled={!isChapterEditable(chapter)}
                           />
                         )}
                         
@@ -492,9 +506,10 @@ export default function ChapterCreator({
                                 editableInputRef.current?.focus();
                               }, 0);
                             }}
-                            disabled={!canEditExistingChapters}
+                            
+                            disabled={!isChapterEditable(chapter)}
                           >
-                            <Pencil size={16} />
+                        <Pencil size={16} />
                           </Button>
                           
                           {/* Delete button */}
@@ -507,7 +522,7 @@ export default function ChapterCreator({
                               e.stopPropagation();
                               confirmDeleteChapter(chapter.id);
                             }}
-                            disabled={!canEditExistingChapters}
+                            disabled={!isChapterEditable(chapter)}
                           >
                             <Trash2 size={16} />
                           </Button>
@@ -593,7 +608,7 @@ export default function ChapterCreator({
                                             }
                                           }}
                                           className={emptyChapters.includes(chapter.id) ? 'border-destructive focus-visible:ring-destructive/40' : ''}
-                                          editable={canEditExistingChapters}
+                                          editable={isChapterEditable(chapter)}
                                         />
                                       </div>
                                     )}
@@ -618,7 +633,7 @@ export default function ChapterCreator({
                                                 // No longer calling setEmptyChapters as it's handled in parent
                                               }
                                             }}
-                                            disabled={!canEditExistingChapters}
+                                            disabled={!isChapterEditable(chapter)}
                                           />
                                         ) : (
                                           <div className="flex items-center gap-2 text-sm p-2">
@@ -635,6 +650,7 @@ export default function ChapterCreator({
                                                 );
                                                 setChapters(updatedChapters);
                                               }}
+                                              disabled={!isChapterEditable(chapter)}
                                             >
                                               Remove
                                             </Button>
@@ -657,6 +673,7 @@ export default function ChapterCreator({
                                     {chapter.images?.length ? (
                                       <div className="space-y-2 mb-4">
                                         <DndContext
+                                          
                                           sensors={sensors}
                                           collisionDetection={closestCenter}
                                           onDragEnd={(event: DragEndEvent) => {
@@ -686,6 +703,7 @@ export default function ChapterCreator({
                                           <SortableContext
                                             items={chapter.images?.map((_, index) => `image-${chapter.id}-${index}`) || []}
                                             strategy={verticalListSortingStrategy}
+                                            disabled={!isChapterEditable(chapter)}
                                           >
                                             {chapter.images?.map((img, imgIndex) => (
                                               <SortableImageItem
@@ -696,6 +714,7 @@ export default function ChapterCreator({
                                                 onRemoveImage={(index) => {
                                                   handleRemoveImage(chapter.id, index);
                                                 }}
+                                                isChapterEditable={isChapterEditable(chapter)}
                                               />
                                             ))}
                                           </SortableContext>
@@ -723,6 +742,7 @@ export default function ChapterCreator({
                                           </p>
                                         )}
                                       </div>
+
                                       
                                       <Input
                                         type="file"
@@ -730,7 +750,7 @@ export default function ChapterCreator({
                                         multiple
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                         onChange={(e) => handleImageUpload(e, chapter.id)}
-                                        disabled={!canEditExistingChapters}
+                                        disabled={!isChapterEditable(chapter)}
                                       />
                                     </div>
                                   </div>
@@ -756,15 +776,6 @@ export default function ChapterCreator({
 
             {/* Add new chapter */}
             <div className="pt-4 pb-2 border-t border-secondary/50">
-              {!canAddNewChapters && reasonIfDenied && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="flex items-center text-blue-600 text-sm">
-                    <AlertCircle size={16} className="mr-2 flex-shrink-0" />
-                    <span>{reasonIfDenied}</span>
-                  </p>
-                </div>
-              )}
-            
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <Input 

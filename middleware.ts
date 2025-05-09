@@ -14,11 +14,6 @@ const adminRoutes = [
   '/admin',
 ];
 
-// List of admin-only routes that require admin role
-const adminOnlyRoutes = [
-  '/admin/users',
-];
-
 // List of authentication routes
 const authRoutes = [
   '/signin',
@@ -49,17 +44,6 @@ export function middleware(request: NextRequest) {
     }
     
     if (!userRole || ![UserRoleEnum.ADMIN, UserRoleEnum.MANAGER].includes(userRole as UserRoleEnum)) {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-  }
-
-  // Check admin-only access
-  if (adminOnlyRoutes.some(route => pathname.startsWith(route))) {
-    if (!token) {
-      return NextResponse.redirect(new URL('/signin', request.url));
-    }
-    
-    if (!userRole || userRole !== UserRoleEnum.ADMIN) {
       return NextResponse.redirect(new URL('/', request.url));
     }
   }

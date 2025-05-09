@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, Save, Trash2, BookOpen, Loader2, Eye, Home, AlertCircle, Shield, CheckCircle2, Info, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as yup from "yup";
-import { createBook, updateBook, getGenres, getChaptersByBookId, createChapters, updateChapter, addChapter, deleteChapter } from "@/lib/api/books";
+import { createBook, updateBook, getGenres, getChaptersByBookId, createChapters, updateChapter, addChapter, deleteChapter, updateBookStatus } from "@/lib/api/books";
 import { uploadFile } from "@/lib/api/base";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { BOOK_TYPES, AgeRatingEnum, ProgressStatusEnum, AccessStatusEnum, Chapter, ChaptersBatchPayload, ChapterCreateItem } from "@/models";
+import { BOOK_TYPES, AgeRatingEnum, ProgressStatusEnum, AccessStatusEnum, Chapter, ChaptersBatchPayload, ChapterCreateItem, ChapterAccessStatus } from "@/models";
 import { toast } from "sonner";
 import { useUserStore } from "@/lib/store";
 import { useNavigationGuard } from "@/lib/hooks/useUnsavedChangesWarning";
@@ -88,6 +88,11 @@ const ageRatingMap: Record<number, AgeRating> = {
   [AgeRatingEnum.ADULT]: "18_PLUS",
 };
 
+// Create extended LocalChapter type that includes chapterAccessStatus
+type ExtendedLocalChapter = LocalChapter & {
+  chapterAccessStatus?: string;
+};
+
 export function BookForm({ initialData, isEditing = false, onSuccess }: BookFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,7 +110,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [chapters, setChapters] = useState<LocalChapter[]>([]);
+  const [chapters, setChapters] = useState<ExtendedLocalChapter[]>([]);
   const [emptyChapters, setEmptyChapters] = useState<string[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isBookInfoCollapsed, setIsBookInfoCollapsed] = useState(false);
@@ -118,28 +123,17 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   const [chapterUploadFailed, setChapterUploadFailed] = useState(false);
   const [chaptersToDelete, setChaptersToDelete] = useState<number[]>([]);
   
-  // Moderation state
-  const [moderationResults, setModerationResults] = useState<any | null>(null);
-  const [selectedModel, setSelectedModel] = useState<ModerationModelType>(MODERATION_MODELS.OMNI);
-  const [moderationDialogOpen, setModerationDialogOpen] = useState(false);
-  const [moderationStatus, setModerationStatus] = useState<'pending' | 'passed' | 'flagged' | null>(null);
-  
   // Get edit permissions
   const { canEditBasicInfo, canEditExistingChapters, canAddNewChapters, canDelete, reasonIfDenied } = useBookEditPermissions(initialData);
-  
-  // Alert dialog states
-  const [showNoModerationDialog, setShowNoModerationDialog] = useState(false);
-  const [showModerationIssuesDialog, setShowModerationIssuesDialog] = useState(false);
-  const [pendingPublishAction, setPendingPublishAction] = useState(false);
-  
-  // Use the OpenAI hook
-  const { moderateContent, isLoading: isModeratingContent } = useOpenAI();
   
   // Use our custom hook to warn users when navigating away with unsaved changes
   useNavigationGuard({ when: hasUnsavedChanges });
   
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   
+  // Add state for book type change warning
+  const [showBookTypeChangeWarning, setShowBookTypeChangeWarning] = useState(false);
+  const [pendingBookType, setPendingBookType] = useState<string | null>(null);
   
   // Use React Query to fetch genres
   const genresQuery = useQuery({
@@ -215,11 +209,14 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Add state to track draft chapters
+  const [hasDraftChapters, setHasDraftChapters] = useState(false);
+
   // Process chapters data when it's available
   useEffect(() => {
     if (chaptersQuery.data) {
       // Convert API chapters to LocalChapter format
-      const formattedChapters: LocalChapter[] = chaptersQuery.data.map((chapter: Chapter) => {
+      const formattedChapters: ExtendedLocalChapter[] = chaptersQuery.data.map((chapter: Chapter) => {
         // Determine if chapter has images (for manga books)
         let images: Array<string | {url: string; fileName: string}> = [];
         
@@ -257,11 +254,19 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           updatedAt: chapter.updatedAt,
           moderated: chapter.moderated || '',
           // Set images array for manga books
-          images
+          images,
+          // Add chapterAccessStatus to track chapter status
+          chapterAccessStatus: chapter.chapterAccessStatus || 'published'
         };
       });
       
       setChapters(formattedChapters);
+      
+      // Check if there are any draft chapters
+      const draftChapters = formattedChapters.filter(ch => 
+        ch.chapterAccessStatus === ChapterAccessStatus.DRAFT
+      );
+      setHasDraftChapters(draftChapters.length > 0);
     }
   }, [chaptersQuery.data, bookData.bookType]);
 
@@ -333,13 +338,10 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       if (isDraft) {
         try {
           await draftSchema.validate({ title: formData.title }, { abortEarly: false });
-          
           // Clear any previous errors since we're saving as draft
           setErrors({});
-          
           // Clear empty chapters list for drafts
           setEmptyChapters([]);
-          
           return formData;
         } catch (error) {
           if (error instanceof yup.ValidationError) {
@@ -354,16 +356,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           }
           return null;
         }
-      }
+      } else
       
-      // Validate that the book has at least one chapter when publishing
-      if (chapters.length === 0 && !isDraft) {
-        setErrors(prev => ({
-          ...prev,
-          chapters: "You must create at least one chapter before publishing your book."
-        }));
-        return null;
-      }
+      
       
       // For drafts, clear any chapter validation errors and proceed
       if (isDraft) {
@@ -378,6 +373,32 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       } 
       // For publishing, validate that chapters have content
       else {
+       if( initialData?.cover) {
+          // If editing and has existing cover, create a modified schema that doesn't require new cover upload
+          const editSchema = yup.object().shape({
+            title: bookSchema.fields.title,
+            description: bookSchema.fields.description,
+            genres: bookSchema.fields.genres,
+            bookType: bookSchema.fields.bookType,
+            ageRating: bookSchema.fields.ageRating,
+            // Skip coverImage validation since we already have a cover
+          });
+          
+          await editSchema.validate(formData, { abortEarly: false });
+        } else {
+          // Regular validation for new books or books without covers
+          await bookSchema.validate(formData, { abortEarly: false });
+        }
+        
+        // Validate that the book has at least one chapter when publishing
+        if (chapters.length === 0) {
+          setErrors(prev => ({
+            ...prev,
+            chapters: "You must create at least one chapter before publishing your book."
+          }));
+          return null;
+        }
+
         const chaptersWithNoContent = chapters.filter(chapter => 
           (!chapter.content || chapter.content.trim() === '') && 
           (!chapter.images || chapter.images.length === 0) &&
@@ -409,23 +430,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         }
       }
       
-      // Create a modified schema for edit mode if there's an existing cover
-      if (isEditing && initialData?.cover) {
-        // If editing and has existing cover, create a modified schema that doesn't require new cover upload
-        const editSchema = yup.object().shape({
-          title: bookSchema.fields.title,
-          description: bookSchema.fields.description,
-          genres: bookSchema.fields.genres,
-          bookType: bookSchema.fields.bookType,
-          ageRating: bookSchema.fields.ageRating,
-          // Skip coverImage validation since we already have a cover
-        });
-        
-        await editSchema.validate(formData, { abortEarly: false });
-      } else {
-        // Regular validation for new books or books without covers
-        await bookSchema.validate(formData, { abortEarly: false });
-      }
+     
       
       return formData;
     } catch (error) {
@@ -446,10 +451,94 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   };
 
   /**
+   * Formats chapter data for API submission
+   */
+  const formatChapterForApi = async (chapter: ExtendedLocalChapter, isManga: boolean, accessStatus: string = 'pending_review'): Promise<ChapterCreateItem> => {
+    // Handle different content formats based on book type
+    let content = chapter.content;
+    
+    // For manga books, if we have images
+    if (isManga && chapter.images && chapter.images.length > 0) {
+      // Process and upload any images that haven't been uploaded yet
+      const processedImages = [];
+      
+      for (const image of chapter.images) {
+        if (typeof image === 'string') {
+          // If the image is already a URL or base64 string
+          if (image.startsWith('blob:')) {
+            // Convert blob URL to base64 first
+            const base64Data = await blobUrlToBase64(image);
+            
+            // Upload the base64 image
+            try {
+              // Convert base64 to a File object for upload
+              const response = await fetch(base64Data);
+              const blob = await response.blob();
+              const file = new File([blob], "image.jpg", { type: 'image/jpeg' });
+              
+              const uploadResponse = await uploadFile<string>('/upload/image', file);
+              if (uploadResponse.status === 200 || uploadResponse.status === 201) {
+                processedImages.push(uploadResponse.data);
+              } else {
+                throw new Error(uploadResponse.msg || 'Failed to upload image');
+              }
+            } catch (error) {
+              console.error("Error uploading image:", error);
+              // Still include the original image as fallback
+              processedImages.push(base64Data);
+            }
+          } else {
+            // Already a URL or base64 that's been saved
+            processedImages.push(image);
+          }
+        } else if (typeof image === 'object' && 'url' in image) {
+          // Handle image object format
+          if (image.url.startsWith('blob:')) {
+            // Convert blob URL to base64 first
+            const base64Data = await blobUrlToBase64(image.url);
+            
+            // Upload the base64 image
+            try {
+              // Convert base64 to a File object for upload
+              const response = await fetch(base64Data);
+              const blob = await response.blob();
+              const file = new File([blob], "image.jpg", { type: 'image/jpeg' });
+              
+              const uploadResponse = await uploadFile<string>('/upload/image', file);
+              if (uploadResponse.status === 200 || uploadResponse.status === 201) {
+                processedImages.push(uploadResponse.data);
+              } else {
+                throw new Error(uploadResponse.msg || 'Failed to upload image');
+              }
+            } catch (error) {
+              console.error("Error uploading image:", error);
+              // Still include the original image as fallback
+              processedImages.push(base64Data);
+            }
+          } else {
+            // Already a URL that's been saved
+            processedImages.push(image.url);
+          }
+        }
+      }
+      
+      // Set content to the JSON string of processed image URLs
+      content = JSON.stringify(processedImages);
+    }
+    
+    return {
+      title: chapter.title || `Chapter ${chapter.chapter}`,  // Ensure title is never undefined
+      chapter: chapter.chapter,
+      content: content || '',  // Ensure content is never undefined
+      chapterAccessStatus: accessStatus  // Set the chapter access status
+    };
+  };
+
+  /**
    * Standardized function to handle the book submission process
    * This consolidates all the submission logic in one place
    */
-  const processBookSubmission = async (isDraft: boolean = false): Promise<boolean> => {
+  const processBookSubmission = async (isDraft: boolean = false, isPublishing: boolean = false): Promise<boolean> => {
     // We've already validated the form data before calling this function
     try {
       // Prepare basic book data from state
@@ -472,56 +561,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         throw new Error('Cover image is required for new books');
       }
       
-      // Prepare moderation data if available
-      let moderationData = {};
-
-      // For a book to be marked as moderated, both the book content and all chapters must pass moderation
-      if (moderationResults && moderationStatus === 'passed') {
-        // Make sure all chapters have been moderated too
-        let allContentModerated = true;
-        
-        // Check that we have chapter moderation results for all chapters
-        if (chapters.length > 0) {
-          // For each chapter, check if it has moderation data and passed
-          chapters.forEach(chapter => {
-            // Try to find moderation data for this chapter
-            let chapterPassed = false;
-            
-            if (moderationResults.contentResults?.chapters) {
-              const chapterModeration = moderationResults.contentResults.chapters.find(
-                (c: any) => {
-                  if ('index' in c && c.index == chapter.chapter) return true;
-                  if ('chapter' in c && c.chapter == chapter.chapter) return true;
-                  return false;
-                }
-              );
-              
-              if (chapterModeration) {
-                const result = 'result' in chapterModeration ? chapterModeration.result : chapterModeration;
-                chapterPassed = !result.flagged;
-              } else {
-                // No moderation data found for this chapter
-                chapterPassed = false;
-              }
-            }
-            
-            // If any chapter didn't pass moderation, the book can't be marked as moderated
-            if (!chapterPassed) {
-              allContentModerated = false;
-            }
-          });
-        }
-        
-        // Only mark as moderated if all content (including all chapters) passed moderation
-        if (allContentModerated) {
-          moderationData = { moderated: selectedModel };
-        }
-      } else if (isEditing && initialData?.moderated && !hasChanges) {
-        // If we're editing and the book was already moderated and no changes were made,
-        // preserve the existing moderation status
-        moderationData = { moderated: initialData.moderated };
-      }
-      
       // Prepare book API data
       const bookApiData = {
         title,
@@ -530,29 +569,42 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         cover: coverUrl,
         bookTypeId: bookData.bookType === BOOK_TYPES.NOVEL ? 1 : 2,
         progressStatusId: ProgressStatusEnum.ONGOING,
-        accessStatusId: isDraft ? AccessStatusEnum.PRIVATE : AccessStatusEnum.PENDING,
+        accessStatusId: isDraft ? AccessStatusEnum.PRIVATE : (isPublishing ? AccessStatusEnum.PENDING : initialData?.accessStatus?.id),
         categoryIds: bookData.selectedGenres.map((id: string) => parseInt(id)),
         isDraft,
-        // Add moderation data if available
-        ...moderationData
       };
       
       let updatedBookId: number;
       
       // Create or update the book
       if (isEditing) {
-        // Update existing book
-        const updateResponse = await updateBook(initialData.id, bookApiData);
-        if (updateResponse.status !== 200 && updateResponse.status !== 201) {
-          throw new Error(updateResponse.msg || 'Failed to update book');
+        // For published books that are being submitted for review, use updateBookStatus instead
+        if (isPublishing && initialData?.accessStatus?.id === AccessStatusEnum.PUBLISHED) {
+          // Only update the status, not the other book details
+          const updateStatusResponse = await updateBookStatus(initialData.id, {
+            accessStatusId: AccessStatusEnum.PENDING,
+          });
+          
+          if (updateStatusResponse.status !== 200 && updateStatusResponse.status !== 201) {
+            throw new Error(updateStatusResponse.msg || 'Failed to update book status');
+          }
+          
+          updatedBookId = initialData.id;
+        } else {
+          // Regular update for other cases
+          const updateResponse = await updateBook(initialData.id, bookApiData);
+          if (updateResponse.status !== 200 && updateResponse.status !== 201) {
+            throw new Error(updateResponse.msg || 'Failed to update book');
+          }
+          
+          updatedBookId = initialData.id;
         }
-        
-        updatedBookId = initialData.id;
         
         // Handle chapter updates
         if (chapters.length > 0 || chaptersToDelete.length > 0) {
           try {
-            await handleExistingBookChapters(updatedBookId);
+            // Pass isDraft flag to determine chapter access status
+            await handleExistingBookChapters(updatedBookId, isDraft, isPublishing);
           } catch (error) {
             console.error("Error updating chapters:", error);
             setChapterUploadFailed(true);
@@ -571,7 +623,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         // Create chapters for new book
         if (chapters.length > 0) {
           try {
-            await handleNewBookChapters(updatedBookId);
+            // Pass isDraft flag to determine chapter access status
+            await handleNewBookChapters(updatedBookId, isDraft, isPublishing);
           } catch (error) {
             console.error("Error creating chapters:", error);
             setChapterUploadFailed(true);
@@ -592,6 +645,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       // Show appropriate success message
       if (isDraft) {
         toast.success("Draft saved successfully");
+      } else if (isPublishing) {
+        toast.success("Book submitted for review");
       } else if (isEditing) {
         toast.success("Book updated successfully");
       } else {
@@ -600,70 +655,68 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       
       return true;
     } catch (error) {
-      toast.error((error as Error).message || 'An error occurred');
-      setErrors({ 
-        form: (error as Error).message || 'Failed to save book'
-      });
+      console.error("Error submitting book:", error);
+      toast.error("Failed to submit book. Please try again.");
       return false;
     }
   };
 
-  // Update form submission handler to use the standardized flow
+  // Update form submission handler to remove moderation checks
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // First validate the form
     const validatedData = await validateForm(false);
-    if (!validatedData) {
-      // Show error for empty chapters
-      if (emptyChapters.length > 0) {
-        document.querySelector('.ChapterCreator, [id^="chapter-content"]')?.scrollIntoView({ behavior: 'smooth' });
-        toast.error(`${emptyChapters.length} chapter(s) found with no content. Please add content or remove them.`);
-      }
-      return;
-    }
-    
-    // Then check for moderation status
-    if (!moderationResults) {
-      // Show alert dialog to run moderation first
-      setShowNoModerationDialog(true);
-      return;
-    } else if (moderationResults && moderationStatus === 'flagged') {
-      // Content has been moderated but has issues
-      setShowModerationIssuesDialog(true);
-      return;
-    }
+    if (!validatedData) return;
     
     // Set UI state for submission
-    setPendingPublishAction(true);
     setIsSubmitting(true);
     
-    // Use standardized submission flow
-    await processBookSubmission(false);
+    // Use standardized submission flow with isPublishing=true
+    await processBookSubmission(false, true);
     
     // Reset UI state
     setIsSubmitting(false);
-    setPendingPublishAction(false);
   };
   
   // Update save as draft handler
   const handleSaveAsDraft = async () => {
     // First validate the draft (only title is required)
     const validatedData = await validateForm(true);
-    if (!validatedData) {
-      toast.error("Please provide a title for your draft.");
-      return;
-    }
+    if (!validatedData) return;
 
     setIsSavingDraft(true);
-    await processBookSubmission(true);
+    await processBookSubmission(true, false);
     setIsSavingDraft(false);
+  };
+
+  // Add a new handler for saving changes to a published book
+  const handleSaveChanges = async () => {
+    // We need at least basic validation
+    const validatedData = await validateForm(false);
+    if (!validatedData) return;
+
+    setIsSavingDraft(true);
+    // Save changes without changing to draft status or pending review
+    await processBookSubmission(false, false);
+    setIsSavingDraft(false);
+  };
+
+  // Add a handler for publishing changes to a published book
+  const handlePublishChanges = async () => {
+    const validatedData = await validateForm(false);
+    if (!validatedData) return;
+
+    setIsSubmitting(true);
+    // Process with isPublishing=true to set new chapters to pending_review
+    await processBookSubmission(false, true);
+    setIsSubmitting(false);
   };
 
   /**
    * Processes image data for a single chapter
    */
-  const processChapterImages = async (chapter: LocalChapter): Promise<string[]> => {
+  const processChapterImages = async (chapter: ExtendedLocalChapter): Promise<string[]> => {
     const imageUrls: string[] = [];
     
     if (!chapter.images || chapter.images.length === 0) {
@@ -716,54 +769,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   };
 
   /**
-   * Formats chapter data for API submission
-   */
-  const formatChapterForApi = (chapter: LocalChapter, isManga: boolean): ChapterCreateItem => {
-    // Handle different content formats based on book type
-    let content = chapter.content;
-    
-    // For manga books, if we have images and the content wasn't already set during upload,
-    // then convert images array to content
-    if (isManga && chapter.images && chapter.images.length > 0 && !content) {
-      content = JSON.stringify(chapter.images.map(img => 
-        typeof img === 'string' ? img : img.url
-      ));
-    }
-    
-    // Add moderation data if available and this chapter has been moderated
-    let moderationData = {};
-    if (moderationResults && moderationResults.contentResults?.chapters) {
-      // Try to find moderation data for this chapter
-      const chapterModeration = moderationResults.contentResults.chapters.find(
-        (c: any) => {
-          if ('index' in c && c.index == chapter.chapter) return true;
-          if ('chapter' in c && c.chapter == chapter.chapter) return true;
-          return false;
-        }
-      );
-      
-      if (chapterModeration) {
-        const result = 'result' in chapterModeration ? chapterModeration.result : chapterModeration;
-        
-        // Only include moderated property if the content passed moderation
-        if (!result.flagged) {
-          moderationData = { moderated: selectedModel };
-        }
-      }
-    }
-    
-    return {
-      title: chapter.title || `Chapter ${chapter.chapter}`,  // Ensure title is never undefined
-      chapter: chapter.chapter,
-      content: content || '',  // Ensure content is never undefined
-      ...moderationData  // Add moderation data if available
-    };
-  };
-
-  /**
    * Handler for updating chapters of an existing book
    */
-  const handleExistingBookChapters = async (bookId: number): Promise<boolean> => {
+  const handleExistingBookChapters = async (bookId: number, isDraft: boolean = false, isPublishing: boolean = false): Promise<boolean> => {
     if (chapters.length === 0 && chaptersToDelete.length === 0) return true;
     
     try {
@@ -795,19 +803,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       
       // 3. Process manga book images if needed
       const isManga = bookData.bookType === BOOK_TYPES.MANGA;
-      if (isManga) {
-        // Process both existing and new chapters to upload images
-        const allChapters = [...existingChapters, ...newChapters];
-        
-        for (const chapter of allChapters) {
-          if (chapter.images && chapter.images.length > 0) {
-            const imageUrls = await processChapterImages(chapter);
-            
-            // Update the chapter with the collected image URLs
-            chapter.content = JSON.stringify(imageUrls);
-          }
-        }
-      }
       
       // 4. Process existing chapters by updating them individually
       for (const chapter of existingChapters) {
@@ -817,6 +812,13 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           
           if (!originalChapter) {
             console.warn(`Original chapter with ID ${chapter.id} not found, skipping update`);
+            continue;
+          }
+
+          // For published books, ignore any chapters that are not draft
+          if (initialData?.accessStatus?.id === AccessStatusEnum.PUBLISHED && 
+              !canEditExistingChapters && 
+              originalChapter.chapterAccessStatus !== ChapterAccessStatus.DRAFT) {
             continue;
           }
           
@@ -829,39 +831,47 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           const isLockedChanged = chapter.isLocked !== originalChapter.isLocked;
           const chapterNumberChanged = chapter.chapter !== originalChapter.chapter;
           
-          // Only update if something changed
+          // Update if something changed
           if (contentChanged || titleChanged || isLockedChanged || chapterNumberChanged) {
-            // Add moderation data if available for this chapter
-            let moderationData = {};
-            if (moderationResults && moderationResults.contentResults?.chapters) {
-              // Try to find moderation data for this chapter
-              const chapterModeration = moderationResults.contentResults.chapters.find(
-                (c: any) => {
-                  if ('index' in c && c.index == chapter.chapter) return true;
-                  if ('chapter' in c && c.chapter == chapter.chapter) return true;
-                  return false;
-                }
+            // Process manga images for this chapter if needed
+            let chapterContent = chapter.content;
+            if (isManga && chapter.images && chapter.images.length > 0) {
+              // Format chapter data with manga images processed
+              const formattedChapter = await formatChapterForApi(
+                chapter, 
+                isManga,
+                isDraft ? ChapterAccessStatus.DRAFT : 
+                  (isPublishing && chapter.chapterAccessStatus === ChapterAccessStatus.DRAFT ? 
+                    ChapterAccessStatus.PENDING_REVIEW : chapter.chapterAccessStatus as ChapterAccessStatus)
               );
-              
-              if (chapterModeration) {
-                const result = 'result' in chapterModeration ? chapterModeration.result : chapterModeration;
-                
-                // Only include moderated property if the content passed moderation
-                if (!result.flagged) {
-                  moderationData = { moderated: selectedModel };
-                }
-              }
+              chapterContent = formattedChapter.content;
             }
             
+            const chapterData = {
+              title: chapter.title,
+              content: chapterContent,
+              isLocked: chapter.isLocked,
+              chapter: chapter.chapter,
+              chapterAccessStatus: isDraft ? ChapterAccessStatus.DRAFT : 
+                (isPublishing && chapter.chapterAccessStatus === ChapterAccessStatus.DRAFT ? 
+                  ChapterAccessStatus.PENDING_REVIEW : chapter.chapterAccessStatus as ChapterAccessStatus)
+            };
+            
+            // Use mutation to update the chapter
+            await updateChapterMutation.mutateAsync({ 
+              chapterId: parseInt(chapter.id), 
+              chapterData 
+            });
+          }
+          // Or publish if nothing changed and publishing
+          else if (isPublishing) {
             const chapterData = {
               title: chapter.title,
               content: chapter.content,
               isLocked: chapter.isLocked,
               chapter: chapter.chapter,
-              ...moderationData
+              chapterAccessStatus: ChapterAccessStatus.PENDING_REVIEW
             };
-            
-            // Use mutation to update the chapter
             await updateChapterMutation.mutateAsync({ 
               chapterId: parseInt(chapter.id), 
               chapterData 
@@ -876,10 +886,17 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       // 5. Process new chapters as a batch
       if (newChapters.length > 0) {
         try {
-          // Format new chapters for API
-          const formattedNewChapters = newChapters.map(chapter => 
-            formatChapterForApi(chapter, isManga)
+          // Determine access status for new chapters
+          const accessStatus = isDraft ? ChapterAccessStatus.DRAFT : 
+            (isPublishing ? ChapterAccessStatus.PENDING_REVIEW : ChapterAccessStatus.DRAFT);
+          
+          // Format new chapters for API with await for each async formatChapterForApi call
+          const formattedChaptersPromises = newChapters.map(chapter => 
+            formatChapterForApi(chapter, isManga, accessStatus)
           );
+          
+          // Wait for all chapter formatting to complete
+          const formattedNewChapters = await Promise.all(formattedChaptersPromises);
           
           // Use mutation to create new chapters
           await createChaptersMutation.mutateAsync({
@@ -903,33 +920,24 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   /**
    * Handler for creating chapters for a new book
    */
-  const handleNewBookChapters = async (bookId: number): Promise<boolean> => {
+  const handleNewBookChapters = async (bookId: number, isDraft: boolean = false, isPublishing: boolean = false): Promise<boolean> => {
     if (chapters.length === 0) return true;
     
     try {
       const isManga = bookData.bookType === BOOK_TYPES.MANGA;
       
-      // 1. For manga books, process images first
-      if (isManga) {
-        setIsSubmitting(true);
-        
-        // Process chapters sequentially to upload images
-        for (const chapter of chapters) {
-          if (chapter.images && chapter.images.length > 0) {
-            const imageUrls = await processChapterImages(chapter);
-            
-            // Update the chapter with the collected image URLs
-            chapter.content = JSON.stringify(imageUrls);
-          }
-        }
-      }
+      // Determine access status for new chapters
+      const accessStatus = isDraft ? 'draft' : (isPublishing ? 'pending_review' : 'draft');
       
-      // 2. Format chapters data for API
-      const formattedChapters = chapters.map(chapter => 
-        formatChapterForApi(chapter, isManga)
+      // Format chapters data for API with await for each async formatChapterForApi call
+      const formattedChaptersPromises = chapters.map(chapter => 
+        formatChapterForApi(chapter, isManga, accessStatus)
       );
       
-      // 3. Use mutation to create chapters
+      // Wait for all chapter formatting to complete
+      const formattedChapters = await Promise.all(formattedChaptersPromises);
+      
+      // Use mutation to create chapters
       await createChaptersMutation.mutateAsync({
         bookId,
         chaptersData: { chapters: formattedChapters }
@@ -1070,15 +1078,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     if (isEditing) {
       setHasChanges(true);
     }
-    
-    // If we have moderation results, mark them as outdated since content changed
-    if (moderationResults) {
-      setModerationStatus(null);
-      toast.info("Content changed. Please run moderation again before submitting.", {
-        id: "moderation-outdated",
-        duration: 3000
-      });
-    }
   };
 
   // Update specific handlers to use the generic handler
@@ -1090,24 +1089,36 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     handleFieldChange('description', e.target.value, 'description');
   };
 
+  // Update handleBookTypeChange to show warning if needed
   const handleBookTypeChange = (value: string) => {
-    handleFieldChange('bookType', value, 'bookType');
+    // If book is not editable, don't allow changes
+    if (isEditing && !canEditBasicInfo) return;
+
+    // If there are existing chapters and book type is changing
+    if (chapters.length > 0 && value !== bookData.bookType) {
+      setPendingBookType(value);
+      setShowBookTypeChangeWarning(true);
+    } else {
+      // No chapters or same type, proceed with change
+      handleFieldChange('bookType', value, 'bookType');
+    }
+  };
+
+  // Add function to handle book type change confirmation
+  const handleBookTypeChangeConfirm = () => {
+    if (pendingBookType) {
+      handleFieldChange('bookType', pendingBookType, 'bookType');
+      // Clear chapters when changing book type
+      setChapters([]);
+      setEmptyChapters([]);
+      setShowBookTypeChangeWarning(false);
+      setPendingBookType(null);
+    }
   };
 
   const handleAgeRatingChange = (rating: number) => {
     // Update the age rating in the form data
     handleFieldChange('ageRating', rating, 'ageRating');
-    
-    // If we have moderation results, re-evaluate flagging based on new age rating
-    if (moderationResults) {
-      updateModerationFlagsForAgeRating(rating);
-      
-      // Show toast notification that moderation flags were updated based on new age rating
-      toast.info("Moderation flags updated for new age rating", {
-        id: "age-rating-updated",
-        duration: 3000
-      });
-    }
   };
 
   const handleGenresChange = (newGenres: string[]) => {
@@ -1146,7 +1157,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     
     setIsSubmitting(true);
     try {
-      const success = await handleExistingBookChapters(successBookId);
+      const success = await handleExistingBookChapters(successBookId, false, false);
       
       if (success) {
         // Reset chapter upload failed state
@@ -1163,7 +1174,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   /**
    * Prepares chapter content for moderation
    */
-  const prepareChapterContentForModeration = async (chapter: LocalChapter): Promise<{
+  const prepareChapterContentForModeration = async (chapter: ExtendedLocalChapter): Promise<{
     chapter: number;
     title: string;
     content: string | string[];
@@ -1263,189 +1274,12 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     return coverImageData;
   };
 
-  // Add function to update moderation flags based on age rating
-  const updateModerationFlagsForAgeRating = (rating: number) => {
-    if (!moderationResults || !moderationResults.contentResults) return;
-    
-    // Map AgeRatingEnum to API's AgeRating type
-    const apiAgeRating = ageRatingMap[rating];
-    
-    // Create a deep copy of the moderation results to modify
-    const updatedResults = JSON.parse(JSON.stringify(moderationResults));
-    let hasAnyFlagged = false;
-    
-    // Check title
-    if (updatedResults.contentResults.title?.category_scores) {
-      const titleFlagged = isContentFlagged(
-        updatedResults.contentResults.title.category_scores,
-        apiAgeRating
-      );
-      updatedResults.contentResults.title.flagged = titleFlagged;
-      if (titleFlagged) hasAnyFlagged = true;
+  const handleUpdateChapters = (updatedChapters: ExtendedLocalChapter[]) => {
+    setChapters(updatedChapters);
+    setHasUnsavedChanges(true);
+    if (isEditing) {
+      setHasChanges(true);
     }
-    
-    // Check description
-    if (updatedResults.contentResults.description?.category_scores) {
-      const descriptionFlagged = isContentFlagged(
-        updatedResults.contentResults.description.category_scores,
-        apiAgeRating
-      );
-      updatedResults.contentResults.description.flagged = descriptionFlagged;
-      if (descriptionFlagged) hasAnyFlagged = true;
-    }
-    
-    // Check cover image
-    if (updatedResults.contentResults.coverImage?.category_scores) {
-      const coverFlagged = isContentFlagged(
-        updatedResults.contentResults.coverImage.category_scores,
-        apiAgeRating
-      );
-      updatedResults.contentResults.coverImage.flagged = coverFlagged;
-      if (coverFlagged) hasAnyFlagged = true;
-    }
-    
-    // Check chapters
-    if (updatedResults.contentResults.chapters && Array.isArray(updatedResults.contentResults.chapters)) {
-      updatedResults.contentResults.chapters.forEach((chapter: any) => {
-        if (chapter.result?.category_scores) {
-          const chapterFlagged = isContentFlagged(
-            chapter.result.category_scores,
-            apiAgeRating
-          );
-          chapter.result.flagged = chapterFlagged;
-          if (chapterFlagged) hasAnyFlagged = true;
-        }
-      });
-    }
-    
-    // Update global flagged status
-    updatedResults.flagged = hasAnyFlagged;
-
-    console.log("Updated results:", updatedResults);
-    
-    // Update moderation status
-    setModerationStatus(hasAnyFlagged ? 'flagged' : 'passed');
-    
-    // Update moderation results with new flags
-    setModerationResults(updatedResults);
-  };
-
-  /**
-   * Streamlined moderation handler
-   */
-  const handleModerateContent = async () => {
-    setModerationResults(null);
-    setModerationStatus('pending');
-    
-    try {
-      // Get content to moderate from state
-      const { title, description, ageRating } = bookData;
-      
-      // Map AgeRatingEnum to API's AgeRating type
-      const apiAgeRating = ageRatingMap[ageRating];
-      
-      // 1. Process chapters for moderation
-      const formattedChapters = await Promise.all(
-        chapters.map(prepareChapterContentForModeration)
-      );
-      
-      // 2. Process cover image for moderation
-      const coverImageData = await prepareCoverImageForModeration();
-      
-      // 3. Send content for moderation
-      const result = await moderateContent({
-        title,
-        description,
-        coverImage: coverImageData,
-        chapters: formattedChapters,
-        model: selectedModel,
-        ageRating: apiAgeRating
-      });
-      
-      // 4. Handle moderation results
-      if (result) {
-        console.log("Moderation results:", result);
-        
-        // Add flagged status to each content item based on age rating
-        const processedResults = addFlagsToModerationResults(result, apiAgeRating);
-        
-        setModerationResults(processedResults);
-        
-        // Determine if any content is flagged
-        const hasIssues = processedResults.flagged;
-
-        console.log("Has issues:", hasIssues);
-        
-        setModerationStatus(hasIssues ? 'flagged' : 'passed');
-        
-        // Show moderation dialog
-        setModerationDialogOpen(true);
-      } else {
-        setModerationStatus(null);
-      }
-    } catch (error) {
-      console.error("Error moderating content:", error);
-      setModerationStatus(null);
-      toast.error("Failed to run content moderation. Please try again.");
-    }
-  };
-
-  // Helper function to add flags to moderation results
-  const addFlagsToModerationResults = (results: any, ageRating: AgeRating) => {
-    if (!results || !results.contentResults) return results;
-    
-    // Create a deep copy of the results to modify
-    const processedResults = JSON.parse(JSON.stringify(results));
-    let hasAnyFlagged = false;
-    
-    // Check title
-    if (processedResults.contentResults.title?.category_scores) {
-      const titleFlagged = isContentFlagged(
-        processedResults.contentResults.title.category_scores,
-        ageRating
-      );
-      processedResults.contentResults.title.flagged = titleFlagged;
-      if (titleFlagged) hasAnyFlagged = true;
-    }
-    
-    // Check description
-    if (processedResults.contentResults.description?.category_scores) {
-      const descriptionFlagged = isContentFlagged(
-        processedResults.contentResults.description.category_scores,
-        ageRating
-      );
-      processedResults.contentResults.description.flagged = descriptionFlagged;
-      if (descriptionFlagged) hasAnyFlagged = true;
-    }
-    
-    // Check cover image
-    if (processedResults.contentResults.coverImage?.category_scores) {
-      const coverFlagged = isContentFlagged(
-        processedResults.contentResults.coverImage.category_scores,
-        ageRating
-      );
-      processedResults.contentResults.coverImage.flagged = coverFlagged;
-      if (coverFlagged) hasAnyFlagged = true;
-    }
-    
-    // Check chapters
-    if (processedResults.contentResults.chapters && Array.isArray(processedResults.contentResults.chapters)) {
-      processedResults.contentResults.chapters.forEach((chapter: any) => {
-        if (chapter.result?.category_scores) {
-          const chapterFlagged = isContentFlagged(
-            chapter.result.category_scores,
-            ageRating
-          );
-          chapter.result.flagged = chapterFlagged;
-          if (chapterFlagged) hasAnyFlagged = true;
-        }
-      });
-    }
-    
-    // Update global flagged status
-    processedResults.flagged = hasAnyFlagged;
-    
-    return processedResults;
   };
 
   // Function to be passed to ChapterCreator for handling deletion
@@ -1499,64 +1333,22 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     }
   };
 
-  // Update chapters handler to use common form change tracking and moderation reset
-  const handleUpdateChapters = (updatedChapters: LocalChapter[]) => {
-    setChapters(updatedChapters);
-    setHasUnsavedChanges(true);
-    if (isEditing) {
-      setHasChanges(true);
+  // Update the canEditChapter function to check for draft status
+  const canEditChapter = (chapter: ExtendedLocalChapter): boolean => {
+    // If user has general permission to edit existing chapters
+    if (canEditExistingChapters) {
+      return true;
     }
     
-    // If we have moderation results, mark them as outdated since chapters changed
-    if (moderationResults) {
-      setModerationStatus(null);
-      toast.info("Chapters updated. Please run moderation again before submitting.", {
-        id: "moderation-outdated",
-        duration: 3000
-      });
+    // For published books, allow editing draft chapters
+    if (isEditing && 
+        initialData?.accessStatus?.id === AccessStatusEnum.PUBLISHED && 
+        chapter.chapterAccessStatus === ChapterAccessStatus.DRAFT) {
+      return true;
     }
+    
+    return false;
   };
-
-  // Add this function to check for book moderation status when loading initial data
-  useEffect(() => {
-    // Check if we're in edit mode and have initial data
-    if (isEditing && initialData) {
-      // Check if the book has been moderated
-      if (initialData.moderated) {
-        // If the book is already moderated, we need to check if all chapters have moderation data too
-        if (chapters && chapters.length > 0) {
-          const allChaptersModerated = chapters.every(
-            (chapter: LocalChapter) => chapter.moderated
-          );
-          
-          if (allChaptersModerated) {
-            // Mark book as already moderated - we'll keep this status until content changes
-            setModerationStatus('passed');
-            
-            // Create a simplified version of moderation results to allow UI to show moderation status
-            setModerationResults({
-              flagged: false,
-              timestamp: new Date().toISOString(),
-              contentResults: {
-                title: { flagged: false },
-                description: { flagged: false },
-                coverImage: { flagged: false },
-                chapters: chapters.map((_) => ({
-                  result: { flagged: false }
-                }))
-              }
-            });
-            
-            // Infer the model that was used for moderation (default to OMNI if unknown)
-            if (typeof initialData.moderated === 'string' && 
-                Object.values(MODERATION_MODELS).includes(initialData.moderated as ModerationModelType)) {
-              setSelectedModel(initialData.moderated as ModerationModelType);
-            }
-          }
-        }
-      }
-    }
-  }, [isEditing, initialData, chapters]);
 
   return (
     <div className="w-full">
@@ -1576,44 +1368,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           <h1 className="text-2xl font-semibold mb-4 md:mb-0">
             {isEditing ? 'Edit Book' : 'Submit Book'}
           </h1>
-          
-          {/* Moderation Status Badge */}
-          {moderationStatus && (
-            <div 
-              className={`px-2 py-1 text-xs rounded-full font-medium cursor-pointer ${
-                moderationStatus === 'pending' ? 'bg-blue-100 text-blue-700' : 
-                moderationStatus === 'passed' ? 'bg-green-100 text-green-700' : 
-                'bg-amber-100 text-amber-700'
-              }`}
-              onClick={() => setModerationDialogOpen(true)}
-            >
-              <div className="flex items-center gap-1">
-                {moderationStatus === 'pending' ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : moderationStatus === 'passed' ? (
-                  <CheckCircle2 className="h-3 w-3" />
-                ) : (
-                  <AlertCircle className="h-3 w-3" />
-                )}
-                <span>
-                  {moderationStatus === 'pending' ? 'Moderating...' : 
-                   moderationStatus === 'passed' ? 'Passed Moderation' : 
-                   'Review Required'}
-                </span>
-              </div>
-            </div>
-          )}
-          {moderationStatus === null && moderationResults && (
-            <div 
-              className="px-2 py-1 text-xs rounded-full font-medium cursor-pointer bg-gray-100 text-gray-700"
-              onClick={() => setModerationDialogOpen(true)}
-            >
-              <div className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                <span>Moderation Outdated</span>
-              </div>
-            </div>
-          )}
         </div>
         
         <div className="flex space-x-2">
@@ -1639,14 +1393,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             </>
           ) : (
             <>
-              {/* Moderation Button Group */}
-              <ModerateButton
-                selectedModel={selectedModel}
-                onModelSelect={setSelectedModel}
-                onModerate={handleModerateContent}
-                isLoading={isModeratingContent}
-              />
-              
               {!isEditing && (
                 <Button
                   type="button"
@@ -1668,30 +1414,38 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   )}
                 </Button>
               )}
-              <Button
-                type="submit"
-                form="book-form"
-                disabled={isSubmitting || isSavingDraft || (isEditing && !hasChanges) || !canEditBasicInfo}
-                className="gap-2"
-                onClick={(e) => {
-                  if (isEditing) {
-                    e.preventDefault(); // Prevent form submission
-                    handleSaveAsDraft();
-                  }
-                }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    {isEditing ? 'Saving...' : 'Publishing...'}
-                  </>
-                ) : (
-                  <>
-                    <BookOpen size={16} />
-                    {isEditing ? 'Save Changes' : 'Publish Book'}
-                  </>
-                )}
-              </Button>
+              { initialData?.accessStatus.id !== AccessStatusEnum.PENDING &&
+                <Button
+                  type="submit"
+                  form="book-form"
+                  disabled={isSubmitting || isSavingDraft || (isEditing && !hasChanges)}
+                  className="gap-2"
+                  onClick={(e) => {
+                    if (isEditing) {
+                      e.preventDefault(); // Prevent form submission
+                      
+                      // For published books with canAddNewChapters permission
+                      if (initialData?.accessStatus?.id === AccessStatusEnum.PUBLISHED && canAddNewChapters) {
+                        handleSaveChanges();
+                      } else {
+                        handleSaveAsDraft();
+                      }
+                    }
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {isEditing ? 'Saving...' : 'Publishing...'}
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      {isEditing ? 'Save Changes' : 'Publish Book'}
+                    </>
+                  )}
+                </Button>
+              }
 
               {/* Publish button for draft books */}
               {isEditing && initialData && initialData.accessStatus && initialData.accessStatus.id === AccessStatusEnum.PRIVATE && (
@@ -1701,8 +1455,12 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                       <Button
                         type="submit"
                         form="book-form"
-                        disabled={isSubmitting || isSavingDraft || !canEditBasicInfo || (isEditing && !hasChanges)}
+                        disabled={isSubmitting || isSavingDraft || !canEditBasicInfo}
                         className="gap-2 bg-green-600 hover:bg-green-700"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePublishChanges();
+                        }}
                       >
                         <Shield size={16} />
                         Publish
@@ -1714,22 +1472,32 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   </Tooltip>
                 </TooltipProvider>
               )}
+
+              {/* Publish button for published books */}
+              {isEditing && initialData && initialData.accessStatus && initialData.accessStatus.id === AccessStatusEnum.PUBLISHED && canAddNewChapters && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        disabled={isSubmitting || isSavingDraft || !(hasChanges || hasDraftChapters)}
+                        className="gap-2 bg-green-600 hover:bg-green-700"
+                        onClick={handlePublishChanges}
+                      >
+                        <Shield size={16} />
+                        Publish Chapters
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Submit new chapters for review</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </>
           )}
         </div>
       </div>
-      
-      {/* Moderation Results Dialog */}
-      <ModerationResults
-        open={moderationDialogOpen}
-        onOpenChange={setModerationDialogOpen}
-        results={moderationResults}
-        selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
-        onRecheck={handleModerateContent}
-        isLoading={isModeratingContent}
-        bookAgeRating={ageRatingMap[bookData.ageRating]}
-      />
       
       {errors.form && (
         <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-md">
@@ -1739,7 +1507,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           </p>
         </div>
       )}
-
+      
       {!canEditBasicInfo && reasonIfDenied && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
           <p className="flex items-center text-blue-600">
@@ -1821,78 +1589,13 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                 onDeleteChapter={onDeleteChapter}
                 canEditExistingChapters={canEditExistingChapters}
                 canAddNewChapters={canAddNewChapters}
-                reasonIfDenied={reasonIfDenied}
+                canEditChapter={canEditChapter}
               />
             </div>
           </div>
         </div>
       </form>
       
-      {/* Alert dialogs for moderation confirmations */}
-      <AlertDialog open={showNoModerationDialog} onOpenChange={setShowNoModerationDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Content Moderation Recommended</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your content hasn't been moderated yet. Running moderation before submission can improve approval chances. Would you like to run moderation now?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowNoModerationDialog(false);
-              if (pendingPublishAction) {
-                setPendingPublishAction(true);
-                setIsSubmitting(true);
-                processBookSubmission(false).finally(() => {
-                  setIsSubmitting(false);
-                  setPendingPublishAction(false);
-                });
-              }
-            }}>
-              No, Submit Without Moderation
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              setShowNoModerationDialog(false);
-              handleModerateContent();
-            }}>
-              Yes, Run Moderation First
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <AlertDialog open={showModerationIssuesDialog} onOpenChange={setShowModerationIssuesDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Moderation Issues Detected</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your content has moderation issues that may cause it to be rejected. Would you like to review these issues before submitting?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowModerationIssuesDialog(false);
-              if (pendingPublishAction) {
-                setPendingPublishAction(true);
-                setIsSubmitting(true);
-                processBookSubmission(false).finally(() => {
-                  setIsSubmitting(false);
-                  setPendingPublishAction(false);
-                });
-              }
-            }}>
-              No, Submit Anyway
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              setShowModerationIssuesDialog(false);
-              setModerationDialogOpen(true);
-            }}>
-              Yes, Review Issues
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <AlertDialog open={showUnsavedChangesDialog} onOpenChange={setShowUnsavedChangesDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1911,6 +1614,29 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               className="bg-destructive text-white hover:bg-destructive/90"
             >
               Leave Page
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Book Type Change Warning Dialog */}
+      <AlertDialog open={showBookTypeChangeWarning} onOpenChange={setShowBookTypeChangeWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change Book Type</AlertDialogTitle>
+            <AlertDialogDescription>
+              Changing the book type will remove all existing chapters. This action cannot be undone. Are you sure you want to proceed?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowBookTypeChangeWarning(false);
+              setPendingBookType(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleBookTypeChangeConfirm}>
+              Yes, Change Type
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

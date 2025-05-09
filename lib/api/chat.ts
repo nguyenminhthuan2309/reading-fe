@@ -6,13 +6,10 @@ interface ChatMessage {
   content: string;
 }
 
-interface ChatResponseData {
-  response: string;
-}
 
 interface ChatResponse {
   success: boolean;
-  data: ChatResponseData;
+  data: string;
 }
 
 export async function sendChatMessage(message: ChatMessage): Promise<ApiResponse<ChatResponse>> {

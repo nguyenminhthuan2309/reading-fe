@@ -59,15 +59,13 @@ interface BookInfoProps {
   descriptionValue: string;
   onTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDescriptionChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  disabled?: boolean;
 }
 
 export default function BookInfo({
   isCollapsed,
   setIsCollapsed,
   errors,
-  titleInputRef,
-  descriptionTextareaRef,
-  coverImage,
   coverImagePreview,
   handleImageUpload,
   bookType,
@@ -83,12 +81,15 @@ export default function BookInfo({
   enhanceDescription,
   isEditing = false,
   canEdit = false,
-  reasonIfDenied = "",
   titleValue = "",
   descriptionValue = "",
   onTitleChange,
-  onDescriptionChange
+  onDescriptionChange,
 }: BookInfoProps) {
+
+
+  console.log("canEdit", canEdit);
+
   return (
     <div className={`w-full md:w-[30%] relative transition-all duration-300 ${isCollapsed ? 'md:w-[48px]' : ''}`}>
       <div className={`px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between ${isCollapsed ? 'md:px-0' : ''}`}>
@@ -285,6 +286,7 @@ export default function BookInfo({
               onValueChange={(value) => {
                 setAgeRating(parseInt(value));
               }}
+              disabled={!canEdit}
             >
               <SelectTrigger id="age-rating" className={errors.ageRating ? 'border-destructive' : ''}>
                 <SelectValue placeholder="Select age rating" />

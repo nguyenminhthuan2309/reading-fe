@@ -24,14 +24,14 @@ export function useChat() {
         // Add bot response with typing effect
         const botMessage: Message = {
           id: uuidv4(),
-          content: response.data.data.response,
+          content: response.data.data,
           isUser: false,
           isTyping: true,
         };
         setMessages(prev => [...prev, botMessage]);
 
         // Simulate typing effect
-        const fullText = response.data.data.response;
+        const fullText = response.data.data?.split('-')[0];
         let currentText = '';
         let currentIndex = 0;
 

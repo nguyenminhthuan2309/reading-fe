@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { getFollowedBooks, unfollowBook } from "@/lib/api/books";
+import { useQuery } from "@tanstack/react-query";
+import { getUserReadingHistory } from "@/lib/api/books";
 import { BOOK_KEYS } from "@/lib/constants/query-keys";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, BookOpen, Star, Clock, Eye, BookmarkX } from "lucide-react";
+import { AlertCircle, BookOpen, Star, Clock, Eye, Play } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -15,56 +15,35 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useUserStore } from "@/lib/store";
-import { toast } from "sonner";
+import { ReadingHistoryItem } from "@/models/book";
 
-export function FollowedBooks() {
+interface RecentlyReadBooksProps {
+  limitPage?: number;
+}
+
+export function RecentlyReadBooks({ limitPage = 10 }: RecentlyReadBooksProps) {
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
-  const { user } = useUserStore();
-  const queryClient = useQueryClient();
+  const [limit] = useState(limitPage);
   
   const { 
     data, 
     isLoading, 
     error 
   } = useQuery({
-    queryKey: BOOK_KEYS.FOLLOWED(page, limit),
+    queryKey: BOOK_KEYS.RECENTLY_READ,
     queryFn: async () => {
-      const response = await getFollowedBooks({
+      const response = await getUserReadingHistory({
         page,
         limit
       });
       
       if (response.status !== 200) {
-        throw new Error(response.msg || 'Failed to fetch followed books');
+        throw new Error(response.msg || 'Failed to fetch reading history');
       }
       
       return response.data;
     }
   });
-
-  const unfollowMutation = useMutation({
-    mutationFn: async (bookId: number) => {
-      const response = await unfollowBook(bookId);
-      if (response.status !== 200) {
-        throw new Error(response.msg || 'Failed to unfollow book');
-      }
-      return response.data;
-    },
-    onSuccess: () => {
-      // Invalidate and refetch the followed books query
-      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.FOLLOWED(page, limit) });
-      toast.success('Book removed from bookmarks');
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to remove book from bookmarks');
-    }
-  });
-
-  const handleUnfollow = (bookId: number) => {
-    unfollowMutation.mutate(bookId);
-  };
   
   if (isLoading) {
     return (
@@ -73,9 +52,9 @@ export function FollowedBooks() {
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
-              <TableHead>Chapters</TableHead>
+              <TableHead>Last Read</TableHead>
+              <TableHead>Progress</TableHead>
               <TableHead>Rating</TableHead>
-              <TableHead>Last Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -88,9 +67,9 @@ export function FollowedBooks() {
                     <Skeleton className="h-4 w-36" />
                   </div>
                 </TableCell>
-                <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                 <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                 <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
               </TableRow>
             ))}
@@ -108,7 +87,7 @@ export function FollowedBooks() {
           <h3 className="font-medium text-destructive">Error</h3>
         </div>
         <p className="text-destructive text-sm mt-2">
-          Failed to load followed books. {(error as Error).message}
+          Failed to load reading history. {(error as Error).message}
         </p>
       </div>
     );
@@ -118,9 +97,9 @@ export function FollowedBooks() {
     return (
       <div className="text-center py-10">
         <div className="flex justify-center mb-4">
-          <BookOpen size={48} className="text-muted-foreground/50" />
+          <Clock size={48} className="text-muted-foreground/50" />
         </div>
-        <p className="text-muted-foreground">No bookmarked books.</p>
+        <p className="text-muted-foreground">No recently read books.</p>
         <Link href="/books">
           <Button className="mt-4">Browse Books</Button>
         </Link>
@@ -135,57 +114,58 @@ export function FollowedBooks() {
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
-              <TableHead>Chapters</TableHead>
+              <TableHead>Last Read</TableHead>
+              <TableHead>Progress</TableHead>
               <TableHead>Rating</TableHead>
-              <TableHead>Last Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.data.map((book) => (
-              <TableRow key={book.id}>
+            {data.data.map((item: ReadingHistoryItem) => (
+              <TableRow key={item.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <div className="relative h-12 w-9 rounded overflow-hidden">
                       <img 
-                        src={book.cover || "/placeholder-book.png"} 
-                        alt={book.title} 
+                        src={item.cover || "/placeholder-book.png"} 
+                        alt={item.title} 
                         className="object-cover h-full w-full"
                       />
                     </div>
                     <div>
-                      <div className="font-medium">{book.title}</div>
-                      <div className="text-xs text-muted-foreground">by {book.author.name}</div>
+                      <div className="font-medium">{item.title}</div>
+                      <div className="text-xs text-muted-foreground">by {item.author.name}</div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{book.totalChapters || 0}</TableCell>
+                <TableCell>
+                  {item.chaptersRead[0]?.lastReadAt ? format(new Date(item.chaptersRead[0].lastReadAt), 'MMM d, yyyy') : 'N/A'}
+                </TableCell>
+                <TableCell>
+                  {Math.round((item.chaptersRead.length / item.totalChapters) * 100)}%
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center">
                     <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 mr-1" />
-                    <span>{book.rating?.toFixed(1) || "N/A"}</span>
+                    <span>{item.rating?.toFixed(1) || "N/A"}</span>
                   </div>
-                </TableCell>
-                <TableCell>
-                  {book.updatedAt ? format(new Date(book.updatedAt), 'MMM d, yyyy') : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-2">
                     <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/books/${book.id}`}>
+                      <Link href={`/books/${item.id}`}>
                         <Eye className="h-4 w-4" />
                         <span className="sr-only">View</span>
                       </Link>
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleUnfollow(book.id)}
-                      disabled={unfollowMutation.isPending}
-                    >
-                      <BookmarkX className="h-4 w-4" />
-                      <span className="sr-only">Remove from bookmarks</span>
-                    </Button>
+                    {item.chaptersRead.length > 0 && (
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/books/${item.id}/read/${item.chaptersRead[0].id}`}>
+                          <Play className="h-4 w-4" />
+                          <span className="sr-only">Continue Reading</span>
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

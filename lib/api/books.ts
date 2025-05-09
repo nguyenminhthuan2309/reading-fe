@@ -90,6 +90,13 @@ export async function updateBookPatch(bookId: number, bookData: BookUpdatePayloa
 }
 
 /**
+ * Update an existing book status
+ */
+export async function updateBookStatus(bookId: number, bookData: {accessStatusId?: number, progressStatusId?: number}): Promise<ApiResponse<Book>> {
+  return patch<Book>(`/book/${bookId}/status`, bookData);
+}
+
+/**
  * Delete a book
  */
 export async function deleteBook(bookId: number): Promise<ApiResponse<{ success: boolean }>> {
