@@ -9,7 +9,7 @@ export type ExtendedBook = Book & {
   submittedBy?: string;
   submittedDate?: string;
   status?: string;
-  moderated?: boolean;
+  moderated?: string;
   moderationResults?: any;
 };
 

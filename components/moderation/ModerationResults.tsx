@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,13 +28,19 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 import { MODERATION_MODELS, ModerationModelType } from "@/lib/hooks/useOpenAI";
 import { EnhancedModerationResult } from "@/models/openai";
 import { ContentResult } from "./ContentResults";
 import { AGE_RATING_THRESHOLDS } from "@/lib/api/openai";
+import { ModerationResultsPayload } from "@/models/openai";
+import { useModerationResults, useSaveModerationResults } from "@/lib/hooks/useModerationResults";
+import { processAllModerationResults, checkCategoryScores } from "@/lib/utils/moderation";
 
-export type AgeRating = "ALL" | "13_PLUS" | "16_PLUS" | "18_PLUS";
+// Primary numeric type that we now use
+export type NumericAgeRating = 0 | 1 | 2 | 3;
 
 export interface ModerationResultsProps {
   open: boolean;
@@ -42,19 +48,28 @@ export interface ModerationResultsProps {
   results: EnhancedModerationResult | null;
   selectedModel: ModerationModelType;
   onModelChange: (model: ModerationModelType) => void;
-  onRecheck?: () => void;
+  onRecheck?: (isEdit: boolean) => void;
   isLoading?: boolean;
-  bookAgeRating?: AgeRating;
+  bookAgeRating?: NumericAgeRating;
+  bookId?: number;
+  isViewing?: boolean;
+  isEdit?: boolean;
 }
 
 // Helper function to format age rating for display
-const formatAgeRating = (rating: AgeRating | undefined): string => {
-  if (!rating) return "All Ages";
-  return rating.replace("_", " ");
+const formatAgeRating = (rating: NumericAgeRating): string => {
+  switch (rating) {
+    case 3: return "18+";
+    case 2: return "16+";
+    case 1: return "13+";
+    case 0: return "All";
+    default: return "All Ages";
+  }
 };
 
 // Get color for score display based on age rating thresholds
-const getScoreColor = (score: number, ageRating: AgeRating = "ALL"): string => {
+const getScoreColor = (score: number, ageRating: NumericAgeRating = 0): string => {
+  
   // Get threshold for chosen age rating
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
   
@@ -66,7 +81,7 @@ const getScoreColor = (score: number, ageRating: AgeRating = "ALL"): string => {
 }
 
 // Helper for text color display with age rating threshold
-const getTextColorClass = (score: number, ageRating: AgeRating = "ALL"): string => {
+const getTextColorClass = (score: number, ageRating: NumericAgeRating = 0): string => {
   // Get threshold for chosen age rating
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
   
@@ -78,16 +93,22 @@ const getTextColorClass = (score: number, ageRating: AgeRating = "ALL"): string 
 };
 
 // A component to display the rating badge
-const RatingBadge = ({ rating }: { rating: AgeRating }) => (
-  <div className={`px-2.5 py-1 text-xs rounded-full font-medium ${
-    rating === "ALL" ? 'bg-green-100 text-green-700' :
-    rating === "13_PLUS" ? 'bg-yellow-100 text-yellow-700' :
-    rating === "16_PLUS" ? 'bg-amber-100 text-amber-700' :
-    'bg-red-100 text-red-700'
-  }`}>
-    {formatAgeRating(rating)}
-  </div>
-);
+const RatingBadge = ({ rating }: { rating: NumericAgeRating }) => {
+  let bgClass = 'bg-green-200 text-green-800';
+  
+  switch (rating) {
+    case 3: bgClass = 'bg-red-200 text-red-800'; break;
+    case 2: bgClass = 'bg-orange-200 text-orange-800'; break;
+    case 1: bgClass = 'bg-amber-200 text-amber-800'; break;
+    case 0: bgClass = 'bg-green-200 text-green-800'; break;
+  }
+  
+  return (
+    <div className={`px-2.5 py-1 text-xs rounded-full font-medium ${bgClass}`}>
+      {formatAgeRating(rating)}
+    </div>
+  );
+};
 
 export function ModerationResults({
   open,
@@ -97,13 +118,102 @@ export function ModerationResults({
   onModelChange,
   onRecheck,
   isLoading = false,
-  bookAgeRating = "ALL"
+  bookAgeRating = 0,
+  bookId,
+  isViewing = false,
+  isEdit = false,
 }: ModerationResultsProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [selectedContent, setSelectedContent] = useState<{ type: string; data: any } | null>(null);
+  const [currentResults, setCurrentResults] = useState<EnhancedModerationResult | null>(results);
+  
+  // React Query for fetching and saving moderation results
+  const { data: existingResults, isLoading: isLoadingResults } = useModerationResults(bookId);
+  const { saveModerationResults, isLoading: isSavingResults } = useSaveModerationResults();
 
-  // Use flagged property directly from results
-  const contentPasses = results ? !results.flagged : true;
+  // Keep track of all available model results
+  const [availableModelResults, setAvailableModelResults] = useState<Record<string, EnhancedModerationResult>>({});
+  
+  // When results or existingResults change, update available model results
+  useEffect(() => {
+    const newAvailableResults: Record<string, EnhancedModerationResult> = {};
+    
+    // Add current result
+    if (results) {
+      newAvailableResults[results.model] = results;
+    }
+    
+    // Parse and add existing results if available
+    if (existingResults && Array.isArray(existingResults)) {
+      // Use the utility function to process all existing results
+      const processedResults = processAllModerationResults(existingResults, bookAgeRating as NumericAgeRating);
+      
+      // Merge with newAvailableResults, but prioritize current results
+      Object.entries(processedResults).forEach(([model, result]) => {
+        // Only add if we don't already have this model from current results
+        if (!newAvailableResults[model]) {
+          newAvailableResults[model] = result;
+        }
+      });
+    }
+    
+    setAvailableModelResults(newAvailableResults);
+    
+    // Set current results to match selected model if available
+    if (selectedModel && newAvailableResults[selectedModel]) {
+      setCurrentResults(newAvailableResults[selectedModel]);
+    } else if (results) {
+      // Otherwise use the provided results
+      setCurrentResults(results);
+    }
+  }, [results, existingResults, selectedModel, bookAgeRating]);
+  
+  // When model changes, update current results if available
+  useEffect(() => {
+    if (selectedModel) {
+      if (availableModelResults[selectedModel]) {
+        setCurrentResults(availableModelResults[selectedModel]);
+      } else {
+        setCurrentResults(null);
+      }
+    }
+  }, [selectedModel, availableModelResults]);
+
+  // Determine overall content pass status - a book passes if ALL sections pass
+  // The result should have an explicit 'passed' property now, but we also check individual flags
+  const contentPasses = currentResults ? 
+    (currentResults as any).passed ?? (!(currentResults as any).flagged) : true;
+
+  // Save the moderation results to the backend
+  const handleSaveResults = async () => {
+    if (!currentResults || !bookId) return;
+
+    try {
+      // Prepare the moderation data
+      const moderationData: ModerationResultsPayload = {
+        title: currentResults.contentResults?.title 
+          ? JSON.stringify(currentResults.contentResults.title) 
+          : null,
+        description: currentResults.contentResults?.description 
+          ? JSON.stringify(currentResults.contentResults.description) 
+          : null,
+        coverImage: currentResults.contentResults?.coverImage 
+          ? JSON.stringify(currentResults.contentResults.coverImage) 
+          : null,
+        chapters: currentResults.contentResults?.chapters 
+          ? JSON.stringify(currentResults.contentResults.chapters)
+          : null,
+        model: currentResults.model,
+        bookId: bookId,
+      };
+
+      // Use the saveModerationResults function from our hook, passing hasExistingResults
+      await saveModerationResults(bookId, moderationData, isEdit);
+    } catch (error) {
+      console.error("Error saving moderation results:", error);
+      toast.error("Failed to save moderation results");
+    }
+  };
 
   // Toggle expanded section
   const toggleSection = (id: string) => {
@@ -125,12 +235,12 @@ export function ModerationResults({
     result: any;
     id: string;
   }) => {
-    // Use flagged property directly from result
-    const passes = !result.flagged;
+    // Get flagged status from the result directly
+    const passes = result ? !(result.flagged) : true;
     const isExpanded = expandedSections[id] || false;
     
     // If no category scores exist, return early
-    if (!result.category_scores) {
+    if (!result || !result.category_scores) {
       return (
         <div className="rounded-lg border p-3 bg-gray-50 text-slate-600">
           <div className="flex items-center gap-2">
@@ -207,13 +317,13 @@ export function ModerationResults({
                 <div key={category} className="flex flex-col">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs font-medium truncate mr-1">{String(category).replace(/[-/]/g, ' ')}</span>
-                    <span className={`text-xs ${getTextColorClass(Number(score), bookAgeRating)}`}>
+                    <span className={`text-xs ${getTextColorClass(Number(score), bookAgeRating as NumericAgeRating)}`}>
                       {(Number(score) * 100).toFixed(2)}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5">
                     <div 
-                      className={`h-1.5 rounded-full ${getScoreColor(Number(score), bookAgeRating)}`} 
+                      className={`h-1.5 rounded-full ${getScoreColor(Number(score), bookAgeRating as NumericAgeRating)}`} 
                       style={{ width: `${Math.max(Number(score) * 100, 1)}%` }}
                     />
                   </div>
@@ -235,41 +345,39 @@ export function ModerationResults({
         <DialogHeader className="pb-0 border-b sticky top-0 z-10 bg-white flex-shrink-0">
           <DialogTitle className="sr-only">Content Moderation Results</DialogTitle>
           <div className="flex flex-col">
-            {/* Top Banner with status */}
-            {results && (
-              <div className={`w-full px-6 py-4 ${
-                contentPasses ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 
-                'bg-gradient-to-r from-red-50 to-red-100'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`rounded-full p-2 ${
-                      contentPasses ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                    }`}>
-                      {contentPasses ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-                    </div>
-                    <div>
-                      <h2 className="font-semibold text-lg flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-primary" />
-                        Content Moderation
-                      </h2>
-                      <p className="text-sm opacity-80">
-                        {contentPasses 
-                          ? `Suitable for ${formatAgeRating(bookAgeRating)} audience` 
-                          : `Content requires review for ${formatAgeRating(bookAgeRating)} rating`}
-                      </p>
-                    </div>
+            {/* Top Banner with status - show placeholder when no results */}
+            <div className={`w-full px-6 py-4 ${
+              currentResults 
+                ? (contentPasses ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-red-50 to-red-100')
+                : 'bg-gradient-to-r from-slate-50 to-slate-100'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-full p-2 ${
+                    currentResults 
+                      ? (contentPasses ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')
+                      : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    {currentResults 
+                      ? (contentPasses ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />)
+                      : <Shield className="h-5 w-5" />}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-end">
-                      <div className="text-sm font-medium">Book Age Rating</div>
-                      <div className="text-xs opacity-80">Moderation target</div>
-                    </div>
-                    <RatingBadge rating={bookAgeRating} />
+                  <div>
+                    <h2 className="font-semibold text-lg flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-primary" />
+                       Content Moderation
+                    </h2>
+                    <p className="text-sm opacity-80">
+                      {currentResults 
+                        ? (contentPasses 
+                            ? `Suitable for ${formatAgeRating(bookAgeRating as NumericAgeRating)} audience` 
+                            : `Content requires review for ${formatAgeRating(bookAgeRating as NumericAgeRating)} rating`)
+                        : `No moderation results available for ${selectedModel}`}
+                    </p>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
             
             {/* Controls Bar */}
             <div className="px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -282,25 +390,14 @@ export function ModerationResults({
                 {/* Add age rating badge in control bar */}
                 <div className="ml-3 flex items-center gap-2">
                   <div className="text-xs font-medium text-slate-600">Rating:</div>
-                  <RatingBadge rating={bookAgeRating} />
+                  <RatingBadge rating={bookAgeRating as NumericAgeRating} />
                 </div>
+                
               </div>
               
               <div className="flex items-center gap-3">
-                <Select
-                  value={selectedModel}
-                  onValueChange={(value: ModerationModelType) => onModelChange(value)}
-                >
-                  <SelectTrigger className="h-8 text-xs w-[180px]" id="model-select">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={MODERATION_MODELS.OMNI}>Basic Moderation</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.GPT4O}>GPT-4o</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.O4_MINI}>o4-mini</SelectItem>
-                  </SelectContent>
-                </Select>
 
+              {currentResults && (
                 <div className="flex gap-2">
                   <Button 
                     variant="outline"
@@ -311,12 +408,12 @@ export function ModerationResults({
                       if (Object.keys(expandedSections).length === 0) {
                         // Expand all sections
                         const allSections: Record<string, boolean> = {};
-                        if (results?.contentResults) {
-                          if (results.contentResults.title) allSections['title-section'] = true;
-                          if (results.contentResults.description) allSections['description-section'] = true;
-                          if (results.contentResults.coverImage) allSections['coverImage-section'] = true;
-                          if (results.contentResults.chapters) {
-                            results.contentResults.chapters.forEach((_, idx) => {
+                        if (currentResults?.contentResults) {
+                          if (currentResults.contentResults.title) allSections['title-section'] = true;
+                          if (currentResults.contentResults.description) allSections['description-section'] = true;
+                          if (currentResults.contentResults.coverImage) allSections['coverImage-section'] = true;
+                          if (currentResults.contentResults.chapters) {
+                            currentResults.contentResults.chapters.forEach((_, idx) => {
                               allSections[`chapter-${idx}`] = true;
                             });
                           }
@@ -331,184 +428,241 @@ export function ModerationResults({
                     {Object.keys(expandedSections).length > 0 ? (
                       <>
                         <ChevronUp className="h-3.5 w-3.5" />
-                        Collapse All
+                        Collapse Details Scores
                       </>
                     ) : (
                       <>
                         <ChevronDown className="h-3.5 w-3.5" />
-                        Expand All
+                        Expand Details Scores
                       </>
                     )}
                   </Button>
-
-                  {onRecheck && (
-                    <Button 
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                      onClick={onRecheck}
-                      className="h-8 text-xs px-3"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 size={14} className="mr-1 animate-spin" />
-                          Checking...
-                        </>
-                      ) : "Recheck"}
-                    </Button>
-                  )}
                 </div>
+              )}
+
+                <Select
+                  value={selectedModel}
+                  onValueChange={(value: ModerationModelType) => onModelChange(value)}
+                >
+                  <SelectTrigger className="h-8 text-xs w-[180px]" id="model-select">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={MODERATION_MODELS.OMNI}>Basic Moderation</SelectItem>
+                    <SelectItem value={MODERATION_MODELS.GPT4O}>GPT-4o</SelectItem>
+                    <SelectItem value={MODERATION_MODELS.O4_MINI}>o4-mini</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {onRecheck && (
+                  <Button 
+                    size="sm"
+                    disabled={isLoading}
+                    onClick={() => onRecheck(availableModelResults[selectedModel] ? true : false)}
+                    className="h-8 text-xs px-3"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 size={14} className="mr-1 animate-spin" />
+                        Checking...
+                      </>
+                    ) : availableModelResults[selectedModel] ? "Recheck" : "Run"}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
         </DialogHeader>
 
-        {!results ? (
-          <div className="py-8 text-center text-muted-foreground flex-1 overflow-auto">
-            {isLoading ? (
-              <div className="flex flex-col items-center">
-                <Loader2 size={28} className="animate-spin mb-3 text-primary" />
-                <p className="text-base font-medium">Analyzing content...</p>
-                <p className="text-xs text-muted-foreground mt-1">This may take a moment depending on content volume</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center">
-                <Shield size={36} className="mb-3 text-muted-foreground opacity-20" />
-                <p className="text-base font-medium">No moderation results available</p>
-                <p className="text-xs text-muted-foreground mt-1">Run moderation check first to see content analysis</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col flex-1 overflow-auto">
-            {selectedContent ? (
-              // Detailed view of selected content
-              <div className="p-6 space-y-5">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-medium flex items-center gap-2">
-                    {selectedContent.type === 'title' && <FileText className="h-5 w-5 text-primary" />}
-                    {selectedContent.type === 'description' && <FileText className="h-5 w-5 text-primary" />}
-                    {selectedContent.type === 'coverImage' && <Image className="h-5 w-5 text-primary" />}
-                    {selectedContent.type === 'chapter' && <BookOpen className="h-5 w-5 text-primary" />}
-                    
-                    {selectedContent.type === 'chapter' 
-                      ? `Chapter ${(selectedContent.data as any).chapter || (selectedContent.data as any).index}` 
-                      : selectedContent.type.charAt(0).toUpperCase() + selectedContent.type.slice(1)}
-                  </h2>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setSelectedContent(null)}
-                    className="text-xs"
-                  >
-                    Back to Overview
-                  </Button>
+        <div className="flex flex-col flex-1 overflow-auto">
+          {!currentResults ? (
+            // No results state - maintain same layout structure
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Book Metadata Section */}
+                <div className="space-y-4">
+                  <h3 className="text-base font-medium">Book Metadata</h3>
+                  
+                  <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-slate-50 h-56">
+                    {isLoading ? (
+                      <div className="flex flex-col items-center">
+                        <Loader2 size={28} className="animate-spin mb-3 text-primary" />
+                        <p className="text-base font-medium">Analyzing content...</p>
+                        <p className="text-xs text-muted-foreground mt-1">This may take a moment</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <Shield size={36} className="mb-3 text-muted-foreground opacity-20" />
+                        <p className="text-base font-medium text-center">No moderation results available for {selectedModel}</p>
+                        {onRecheck && (
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 mt-4"
+                            onClick={() => onRecheck(false)}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Running...
+                              </>
+                            ) : (
+                              <>
+                                <Shield className="h-3.5 w-3.5" />
+                                Run Moderation
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Content result from external component */}
-                <ContentResult
-                  title=""
-                  result={selectedContent.data}
-                  showDetailedScores={true}
-                  bookAgeRating={bookAgeRating}
-                />
-              </div>
-            ) : (
-              // Main content view with 50/50 layout
-              <div className="p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Book Metadata Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-base font-medium">Book Metadata</h3>
-                    
-                    <div className="space-y-4">
-                      {results.contentResults?.title && (
-                        <ContentCard
-                          title="Title"
-                          icon={<FileText className="h-4 w-4" />}
-                          result={results.contentResults.title}
-                          id="title-section"
-                        />
-                      )}
-                      
-                      {results.contentResults?.description && (
-                        <ContentCard
-                          title="Description"
-                          icon={<FileText className="h-4 w-4" />}
-                          result={results.contentResults.description}
-                          id="description-section"
-                        />
-                      )}
-                      
-                      {results.contentResults?.coverImage && (
-                        <ContentCard
-                          title="Cover Image"
-                          icon={<Image className="h-4 w-4" />}
-                          result={results.contentResults.coverImage}
-                          id="coverImage-section"
-                        />
-                      )}
-                    </div>
-                  </div>
+                {/* Chapters Section - placeholder */}
+                <div className="space-y-4">
+                  <h3 className="text-base font-medium">Chapters</h3>
                   
-                  {/* Chapters Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-base font-medium">Chapters</h3>
-                    
-                    <div className="space-y-4">
-                      {results.contentResults?.chapters && results.contentResults.chapters.map((chapter, idx) => {
-                        // Check if chapter has new structure (with result property) or old structure
-                        const isNewStructure = 'result' in chapter;
-                        // Use type assertion to safely access properties
-                        const chapterNumber = isNewStructure 
-                          ? ((chapter as any).index || idx+1) 
-                          : ((chapter as any).chapter || idx+1);
-                        const chapterContent = isNewStructure 
-                          ? (chapter as any).result 
-                          : chapter;
-                        
-                        return (
-                          <ContentCard
-                            key={`chapter-${idx}`}
-                            title={`Chapter ${chapterNumber}`}
-                            icon={<BookOpen className="h-4 w-4" />}
-                            result={chapterContent}
-                            id={`chapter-${idx}`}
-                          />
-                        );
-                      })}
-                      
-                      {(!results.contentResults?.chapters || results.contentResults.chapters.length === 0) && (
-                        <div className="text-center p-4 border rounded-lg bg-slate-50 text-slate-500">
-                          No chapters available
-                        </div>
-                      )}
-                    </div>
+                  <div className="text-center p-8 border rounded-lg bg-slate-50 h-56 flex items-center justify-center">
+                    <p className="text-slate-500">No chapter data available</p>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          ) : selectedContent ? (
+            // Detailed view of selected content
+            <div className="p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-medium flex items-center gap-2">
+                  {selectedContent.type === 'title' && <FileText className="h-5 w-5 text-primary" />}
+                  {selectedContent.type === 'description' && <FileText className="h-5 w-5 text-primary" />}
+                  {selectedContent.type === 'coverImage' && <Image className="h-5 w-5 text-primary" />}
+                  {selectedContent.type === 'chapter' && <BookOpen className="h-5 w-5 text-primary" />}
+                  
+                  {selectedContent.type === 'chapter' 
+                    ? `Chapter ${(selectedContent.data as any).chapter || (selectedContent.data as any).index}` 
+                    : selectedContent.type.charAt(0).toUpperCase() + selectedContent.type.slice(1)}
+                </h2>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSelectedContent(null)}
+                  className="text-xs"
+                >
+                  Back to Overview
+                </Button>
+              </div>
+              
+              {/* Content result from external component */}
+              <ContentResult
+                title=""
+                result={selectedContent.data}
+                showDetailedScores={true}
+                bookAgeRating={bookAgeRating as NumericAgeRating}
+              />
+            </div>
+          ) : (
+            // Main content view with 50/50 layout
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Book Metadata Section */}
+                <div className="space-y-4">
+                  <h3 className="text-base font-medium">Book Metadata</h3>
+                  
+                  <div className="space-y-4">
+                    {currentResults.contentResults?.title && (
+                      <ContentCard
+                        title="Title"
+                        icon={<FileText className="h-4 w-4" />}
+                        result={currentResults.contentResults.title}
+                        id="title-section"
+                      />
+                    )}
+                    
+                    {currentResults.contentResults?.description && (
+                      <ContentCard
+                        title="Description"
+                        icon={<FileText className="h-4 w-4" />}
+                        result={currentResults.contentResults.description}
+                        id="description-section"
+                      />
+                    )}
+                    
+                    {currentResults.contentResults?.coverImage && (
+                      <ContentCard
+                        title="Cover Image"
+                        icon={<Image className="h-4 w-4" />}
+                        result={currentResults.contentResults.coverImage}
+                        id="coverImage-section"
+                      />
+                    )}
+                  </div>
+                </div>
+                
+                {/* Chapters Section */}
+                <div className="space-y-4">
+                  <h3 className="text-base font-medium">Chapters</h3>
+                  
+                  <div className="space-y-4">
+                    {currentResults.contentResults?.chapters && currentResults.contentResults.chapters.map((chapter, idx) => {
+                      // Check if chapter has new structure (with result property) or old structure
+                      const isNewStructure = 'result' in chapter;
+                      // Use type assertion to safely access properties
+                      const chapterNumber = isNewStructure 
+                        ? ((chapter as any).index || idx+1) 
+                        : ((chapter as any).chapter || idx+1);
+                      const chapterContent = isNewStructure 
+                        ? (chapter as any).result 
+                        : chapter;
+                      
+                      return (
+                        <ContentCard
+                          key={`chapter-${idx}`}
+                          title={`Chapter ${chapterNumber}`}
+                          icon={<BookOpen className="h-4 w-4" />}
+                          result={chapterContent}
+                          id={`chapter-${idx}`}
+                        />
+                      );
+                    })}
+                    
+                    {(!currentResults.contentResults?.chapters || currentResults.contentResults.chapters.length === 0) && (
+                      <div className="text-center p-4 border rounded-lg bg-slate-50 text-slate-500">
+                        No chapters available
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <DialogFooter className="px-6 border-t sticky bottom-0 z-10 bg-white flex items-center py-3 flex-shrink-0">
           <div className="flex-1 flex items-center text-xs text-muted-foreground">
-            {results && (
+            {currentResults ? (
               <div className="flex items-center">
                 <span className="mr-1">Analyzed:</span>
-                <span className="font-mono">{new Date(results.timestamp).toLocaleString()}</span>
+                <span className="font-mono">{new Date(currentResults.timestamp).toLocaleString()}</span>
+              </div>
+            ) : (
+              <div className="flex items-center opacity-50">
+                <span className="mr-1">No results available</span>
               </div>
             )}
           </div>
           
+          <div className="flex gap-2">
           <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-            className="gap-1 h-8 text-xs px-3"
-          >
-            Close
-          </Button>
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="gap-1 h-8 text-xs px-3"
+            >
+              Close
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

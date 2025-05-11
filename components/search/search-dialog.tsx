@@ -9,44 +9,204 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Book, User, Tag } from "lucide-react";
+import { Search, Book, User, Tag, Loader2, XCircle, History } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getBooks } from "@/lib/api/books";
+import { searchUsersByName, addRecentSearch, getRecentSearches } from "@/lib/api/user";
+import { Book as BookType, User as UserType, Category } from "@/models";
+import { useInView } from "react-intersection-observer";
+import { useDebounce } from "use-debounce";
+import { 
+  useInfiniteQuery, 
+  keepPreviousData, 
+  useQueryClient,
+  useMutation,
+  useQuery
+} from "@tanstack/react-query";
 
-type SearchResult = {
-  id: string;
+type SearchMode = "book" | "author";
+
+// Type for recent search items
+interface RecentSearchItem {
+  id: number;
   title: string;
-  type: "book" | "author" | "category";
-  url: string;
-};
+  type: string;
+}
 
-const mockResults: SearchResult[] = [
-  { id: "1", title: "The Great Gatsby", type: "book", url: "/books/the-great-gatsby" },
-  { id: "2", title: "F. Scott Fitzgerald", type: "author", url: "/authors/f-scott-fitzgerald" },
-  { id: "3", title: "To Kill a Mockingbird", type: "book", url: "/books/to-kill-a-mockingbird" },
-  { id: "4", title: "Harper Lee", type: "author", url: "/authors/harper-lee" },
-  { id: "5", title: "Classic Literature", type: "category", url: "/categories/classic-literature" },
-  { id: "6", title: "American Fiction", type: "category", url: "/categories/american-fiction" },
-];
+// Fixed height constants for consistency
+const SEARCH_RESULTS_HEIGHT = "280px";
+const SEARCH_ITEM_HEIGHT = "36px"; // Height of a single search item
+
+// No results component with icon
+const NoResults = ({ query, mode }: { query: string; mode: SearchMode }) => (
+  <div className="flex flex-col items-center justify-center text-center h-full py-8">
+    <XCircle className="h-12 w-12 text-muted-foreground mb-3 opacity-50" />
+    <h3 className="text-base font-medium mb-1">No {mode}s found</h3>
+    <p className="text-sm text-muted-foreground">
+      We couldn't find any {mode}s matching "{query}"
+    </p>
+    <p className="text-xs text-muted-foreground mt-1">
+      Try a different search term
+    </p>
+  </div>
+);
+
+// Type for paginated API responses
+interface PaginatedResponse {
+  data: BookType[] | UserType[];
+  totalPages: number;
+  totalItems: number;
+}
 
 export function SearchDialog() {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const [results, setResults] = React.useState<SearchResult[]>([]);
+  const [searchMode, setSearchMode] = React.useState<SearchMode>("book");
+  const [recentSearches, setRecentSearches] = React.useState<RecentSearchItem[]>([]);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const queryClient = useQueryClient();
   
-  // Filter results based on query
+  // Query for fetching recent searches
+  const { data: recentSearchesData, refetch: refetchRecentSearches } = useQuery({
+    queryKey: ['recentSearches'],
+    queryFn: async () => {
+      const response = await getRecentSearches();
+      if (response.success) {
+        return response.data.map(item => ({
+          id: item.id,
+          title: item.searchValue,
+          type: item.searchType,
+        }));
+      }
+      return [];
+    },
+    enabled: false, // Don't fetch on component mount
+  });
+  
+  // Update local state when backend data changes
   React.useEffect(() => {
-    if (query.trim() === "") {
-      setResults([]);
-      return;
+    if (recentSearchesData) {
+      setRecentSearches(recentSearchesData);
     }
-    
-    const filtered = mockResults.filter(result => 
-      result.title.toLowerCase().includes(query.toLowerCase())
-    );
-    setResults(filtered);
-  }, [query]);
+  }, [recentSearchesData]);
+  
+  // Fetch recent searches when the dialog opens
+  React.useEffect(() => {
+    if (open) {
+      refetchRecentSearches();
+    }
+  }, [open, refetchRecentSearches]);
+  
+  // Store the search query in local storage for recent searches
+  const addToRecentSearches = React.useCallback((item: RecentSearchItem) => {
+    setRecentSearches(prev => {
+      // Remove if already exists
+      const filtered = prev.filter(search => !(search.title === item.title && search.type === item.type));
+      // Add to beginning and limit to 5
+      return [item, ...filtered].slice(0, 5);
+    });
+  }, []);
+  
+  // Mutation for adding recent searches to the backend
+  const addRecentSearchMutation = useMutation({
+    mutationFn: ({ searchType, searchValue }: { searchType: string; searchValue: string }) => 
+      addRecentSearch(searchType, searchValue),
+    onSuccess: () => {
+      // Refetch recent searches after a successful mutation
+      refetchRecentSearches();
+    },
+    onError: (error) => {
+      console.error("Failed to save recent search:", error);
+    }
+  });
+  
+  // Debounced search query
+  const [debouncedQuery] = useDebounce(query, 300);
+  
+  // Book search React Query
+  const {
+    data: bookResults,
+    fetchNextPage: fetchNextBookPage,
+    hasNextPage: hasMoreBooks,
+    isFetchingNextPage: isLoadingMoreBooks,
+    isFetching: isLoadingBooks,
+  } = useInfiniteQuery<PaginatedResponse>({
+    queryKey: ['searchBooks', debouncedQuery],
+    queryFn: async ({ pageParam }) => {
+      if (!debouncedQuery.trim()) return { data: [], totalPages: 0, totalItems: 0 };
+      
+      const response = await getBooks({
+        search: debouncedQuery,
+        page: pageParam as number,
+        limit: 5,
+      });
+      
+      return response.data;
+    },
+    getNextPageParam: (lastPage, pages) => {
+      return pages.length < (lastPage as PaginatedResponse).totalPages ? pages.length + 1 : undefined;
+    },
+    enabled: searchMode === 'book' && debouncedQuery.trim().length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    initialPageParam: 1,
+  });
+  
+  // Author search React Query
+  const {
+    data: authorResults,
+    fetchNextPage: fetchNextAuthorPage,
+    hasNextPage: hasMoreAuthors,
+    isFetchingNextPage: isLoadingMoreAuthors,
+    isFetching: isLoadingAuthors,
+  } = useInfiniteQuery<PaginatedResponse>({
+    queryKey: ['searchAuthors', debouncedQuery],
+    queryFn: async ({ pageParam }) => {
+      if (!debouncedQuery.trim()) return { data: [], totalPages: 0, totalItems: 0 };
+      
+      const response = await searchUsersByName(debouncedQuery, pageParam as number, 5);
+      
+      return response.data;
+    },
+    getNextPageParam: (lastPage, pages) => {
+      return pages.length < (lastPage as PaginatedResponse).totalPages ? pages.length + 1 : undefined;
+    },
+    enabled: searchMode === 'author' && debouncedQuery.trim().length > 0,
+    placeholderData: keepPreviousData,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    initialPageParam: 1,
+  });
+  
+  // Update query
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  };
+  
+  // Clear results when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      setQuery("");
+    }
+  }, [open]);
+  
+  // InView hook for infinite loading
+  const { ref: bookLoadMoreRef, inView: bookLoadMoreInView } = useInView();
+  const { ref: authorLoadMoreRef, inView: authorLoadMoreInView } = useInView();
+  
+  // Trigger load more when in view
+  React.useEffect(() => {
+    if (bookLoadMoreInView && hasMoreBooks && searchMode === "book") {
+      fetchNextBookPage();
+    }
+  }, [bookLoadMoreInView, hasMoreBooks, searchMode, fetchNextBookPage]);
+  
+  React.useEffect(() => {
+    if (authorLoadMoreInView && hasMoreAuthors && searchMode === "author") {
+      fetchNextAuthorPage();
+    }
+  }, [authorLoadMoreInView, hasMoreAuthors, searchMode, fetchNextAuthorPage]);
   
   // Listen for keyboard shortcut
   React.useEffect(() => {
@@ -64,16 +224,59 @@ export function SearchDialog() {
   
   // Focus input when dialog opens
   React.useEffect(() => {
-    if (open && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (open) {
+      // Use a shorter timeout to ensure focus happens sooner
+      const focusTimeout = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      
+      return () => clearTimeout(focusTimeout);
     }
   }, [open]);
   
   // Handle result selection
-  const handleResultClick = (result: SearchResult) => {
+  const handleBookClick = (book: BookType) => {
     setOpen(false);
     setQuery("");
-    router.push(result.url);
+    
+    // Add to local recent searches
+    addToRecentSearches({ id: book.id, title: book.title, type: "book" });
+    
+    // Save to backend
+    addRecentSearchMutation.mutate({
+      searchType: "book",
+      searchValue: book.title
+    });
+    
+    router.push(`/books/${book.id}`);
+  };
+  
+  const handleAuthorClick = (author: UserType) => {
+    setOpen(false);
+    setQuery("");
+    
+    // Add to local recent searches
+    addToRecentSearches({ id: author.id, title: author.name, type: "author" });
+    
+    // Save to backend
+    addRecentSearchMutation.mutate({
+      searchType: "author",
+      searchValue: author.name
+    });
+    
+    router.push(`/user/${author.id}`);
+  };
+  
+  const handleRecentSearchClick = (item: typeof recentSearches[0]) => {
+    setOpen(false);
+    
+    if (item.type === "book") {
+      router.push(`/books/${item.id}`);
+    } else if (item.type === "author") {
+      router.push(`/user/${item.id}`);
+    } else if (item.type === "category") {
+      router.push(`/categories/${item.id}`);
+    }
   };
   
   // Get icon based on result type
@@ -90,26 +293,27 @@ export function SearchDialog() {
     }
   };
 
-  // Popular search suggestions
-  const popularSearches = [
-    "Fiction",
-    "Fantasy",
-    "Mystery",
-    "New Releases",
-    "Award Winners"
-  ];
-
   // Determine the shortcut text based on platform
   const shortcutText = React.useMemo(() => {
     return typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac') ? '⌘K' : 'Ctrl+K';
   }, []);
+
+  // Get flattened book results from infinite query
+  const flattenedBookResults = React.useMemo(() => {
+    return bookResults?.pages.flatMap(page => page.data as BookType[]) || [];
+  }, [bookResults]);
+
+  // Get flattened author results from infinite query
+  const flattenedAuthorResults = React.useMemo(() => {
+    return authorResults?.pages.flatMap(page => page.data as UserType[]) || [];
+  }, [authorResults]);
 
   return (
     <>
       <div className="relative w-48 md:w-64 lg:w-72">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
         <button
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 pl-8 text-sm text-left text-gray-700 flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 cursor-pointer hover:bg-gray-50"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 pl-8 text-sm text-left text-gray-700 flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 cursor-pointer hover:bg-gray-50"
           onClick={() => setOpen(true)}
         >
           <span>Search...</span>
@@ -124,97 +328,196 @@ export function SearchDialog() {
           <DialogHeader className="p-4 pb-0">
             <DialogTitle className="text-lg">Search Haru's Library</DialogTitle>
           </DialogHeader>
-          <div className="px-4 pb-2 relative">
-            <div className="relative">
+          
+          {/* Tabs for switching search mode */}
+          <Tabs
+            defaultValue="book"
+            value={searchMode}
+            onValueChange={(value) => setSearchMode(value as SearchMode)}
+            className="px-4 pt-2 pb-8"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="book">Books</TabsTrigger>
+              <TabsTrigger value="author">Authors</TabsTrigger>
+            </TabsList>
+            
+            <div className="relative mt-2">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input 
                 ref={inputRef}
-                placeholder="Search books, authors, or categories..."
+                placeholder={searchMode === "book" ? "Search for books..." : "Search for authors..."}
                 className="pl-8"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={handleQueryChange}
+                autoFocus
               />
               {query && (
-                <div className="absolute right-2 top-2">
+                <div className="absolute right-2 top-[3px]">
                   <kbd className="inline-flex h-5 select-none items-center gap-1 rounded border px-1.5 font-mono text-xs font-medium text-muted-foreground">
                     ESC
                   </kbd>
                 </div>
               )}
             </div>
-            <div className="text-xs text-muted-foreground mt-2">
-              <span>Type to search or use arrow keys to navigate</span>
+            
+            <div className="text-xs text-muted-foreground mt-2 mb-1">
+              <span>Type to search {searchMode === "book" ? "books" : "authors"}</span>
             </div>
-          </div>
-          
-          {/* Search results */}
-          {results.length > 0 && (
-            <div className="max-h-[300px] overflow-y-auto p-4 pt-0">
-              <div className="mt-4 border-t pt-4">
-                <div className="space-y-1">
-                  {results.map((result) => (
-                    <button
-                      key={result.id}
-                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left"
-                      onClick={() => handleResultClick(result)}
-                    >
-                      {getResultIcon(result.type)}
-                      <span className="flex-1">{result.title}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{result.type}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* No results message */}
-          {query && results.length === 0 && (
-            <div className="p-4 pt-0">
-              <div className="mt-4 border-t pt-4 text-center text-muted-foreground">
-                No results found for "{query}"
-              </div>
-            </div>
-          )}
-          
-          {/* Popular searches - shown when no query is entered */}
-          {!query && (
-            <div className="p-4 pt-0">
-              <div className="mt-4 border-t pt-4">
-                <h3 className="text-sm font-medium mb-3">Popular searches</h3>
-                <div className="flex flex-wrap gap-2">
-                  {popularSearches.map((term, index) => (
-                    <button
-                      key={index}
-                      className="rounded-full bg-muted px-3 py-1 text-xs hover:bg-muted/80 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setQuery(term);
-                      }}
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            
+            <div className="h-[214px] overflow-hidden"> {/* Fixed height container */}
+              <TabsContent value="book" className="mt-0 h-full">
+                {/* Book search results */}
+                {query ? (
+                  <div 
+                    className="h-full overflow-y-auto scrollbar-thin"
+                    style={{ 
+                      scrollbarWidth: 'thin', 
+                      scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent'
+                    }}
+                  >
+                    {flattenedBookResults.length > 0 ? (
+                      <div className="space-y-1 p-2">
+                        {flattenedBookResults.map((book) => (
+                          <button
+                            key={book.id}
+                            className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left h-9"
+                            onClick={() => handleBookClick(book)}
+                          >
+                            <Book className="h-4 w-4 text-muted-foreground" />
+                            <span className="flex-1 truncate">{book.title}</span>
+                            <span className="text-xs text-muted-foreground capitalize shrink-0">book</span>
+                          </button>
+                        ))}
+                        {hasMoreBooks && (
+                          <div ref={bookLoadMoreRef} className="flex justify-center py-2">
+                            {isLoadingMoreBooks && <Loader2 className="h-4 w-4 animate-spin text-gray-500" />}
+                          </div>
+                        )}
+                      </div>
+                    ) : isLoadingBooks ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                      </div>
+                    ) : (
+                      <NoResults query={query} mode="book" />
+                    )}
+                  </div>
+                ) : (
+                  <div 
+                    className="h-full overflow-y-auto scrollbar-thin"
+                    style={{ 
+                      scrollbarWidth: 'thin', 
+                      scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent' 
+                    }}
+                  >
+                    {/* Recent book searches */}
+                    <div className="pt-1 px-2">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium">Recent searches</h3>
+                        <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        {recentSearches
+                          .filter(item => item.type === "book")
+                          .map((item, index) => (
+                            <button
+                              key={index}
+                              className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left h-9"
+                              onClick={() => handleRecentSearchClick(item)}
+                            >
+                              {getResultIcon(item.type)}
+                              <span className="flex-1 truncate">{item.title}</span>
+                              <span className="text-xs text-muted-foreground capitalize shrink-0">{item.type}</span>
+                            </button>
+                          ))}
+                        {recentSearches.filter(item => item.type === "book").length === 0 && (
+                          <div className="text-center text-sm text-muted-foreground p-2">
+                            No recent book searches
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
               
-              <div className="mt-6">
-                <h3 className="text-sm font-medium mb-3">Recent searches</h3>
-                <div className="space-y-1">
-                  {mockResults.slice(0, 3).map((result) => (
-                    <button
-                      key={result.id}
-                      className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left"
-                      onClick={() => handleResultClick(result)}
-                    >
-                      {getResultIcon(result.type)}
-                      <span className="flex-1">{result.title}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{result.type}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <TabsContent value="author" className="mt-0 h-full">
+                {/* Author search results */}
+                {query ? (
+                  <div 
+                    className="h-full overflow-y-auto scrollbar-thin"
+                    style={{ 
+                      scrollbarWidth: 'thin', 
+                      scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent' 
+                    }}
+                  >
+                    {flattenedAuthorResults?.length > 0 ? (
+                      <div className="space-y-1 p-2">
+                        {flattenedAuthorResults.map((author) => (
+                          <button
+                            key={author.id}
+                            className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left h-9"
+                            onClick={() => handleAuthorClick(author)}
+                          >
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="flex-1 truncate">{author.name}</span>
+                            <span className="text-xs text-muted-foreground capitalize shrink-0">author</span>
+                          </button>
+                        ))}
+                        {hasMoreAuthors && (
+                          <div ref={authorLoadMoreRef} className="flex justify-center py-2">
+                            {isLoadingMoreAuthors && <Loader2 className="h-4 w-4 animate-spin text-gray-500" />}
+                          </div>
+                        )}
+                      </div>
+                    ) : isLoadingAuthors ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                      </div>
+                    ) : (
+                      <NoResults query={query} mode="author" />
+                    )}
+                  </div>
+                ) : (
+                  <div 
+                    className="h-full overflow-y-auto scrollbar-thin"
+                    style={{ 
+                      scrollbarWidth: 'thin', 
+                      scrollbarColor: 'rgba(156, 163, 175, 0.3) transparent' 
+                    }}
+                  >
+                    {/* Recent author searches */}
+                    <div className="pt-1 px-2">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-medium">Recent searches</h3>
+                        <History className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      <div className="space-y-1">
+                        {recentSearches
+                          .filter(item => item.type === "author")
+                          .map((item, index) => (
+                            <button
+                              key={index}
+                              className="w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left h-9"
+                              onClick={() => handleRecentSearchClick(item)}
+                            >
+                              {getResultIcon(item.type)}
+                              <span className="flex-1 truncate">{item.title}</span>
+                              <span className="text-xs text-muted-foreground capitalize shrink-0">{item.type}</span>
+                            </button>
+                          ))}
+                        {recentSearches.filter(item => item.type === "author").length === 0 && (
+                          <div className="text-center text-sm text-muted-foreground p-2">
+                            No recent author searches
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
             </div>
-          )}
+          </Tabs>
         </DialogContent>
       </Dialog>
     </>

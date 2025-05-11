@@ -1,17 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useDebounce } from 'use-debounce';
 
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-} 
+// Re-export the hook for backward compatibility
+export { useDebounce }; 

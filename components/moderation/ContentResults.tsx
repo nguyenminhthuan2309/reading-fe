@@ -1,5 +1,5 @@
 import { CheckCircle2, AlertTriangle, Eye, Info } from "lucide-react";
-import { AgeRating } from "./ModerationResults";
+import { NumericAgeRating } from "./ModerationResults";
 
 interface CategoryScore {
   category: string;
@@ -18,58 +18,44 @@ interface ContentResultProps {
   result: any; // Using any to accommodate both old and new structures
   content?: string;
   showDetailedScores: boolean;
-  bookAgeRating: AgeRating; // The book's intended age rating
+  bookAgeRating: NumericAgeRating; // The book's intended age rating
 }
-
 // Helper function to format age rating for display
-const formatAgeRating = (rating: AgeRating): string => {
-  if (!rating) return "All Ages";
-  return rating.replace("_", " ");
+const formatAgeRating = (rating: NumericAgeRating): string => {
+  switch (rating) {
+    case 3: return "18+";
+    case 2: return "16+";
+    case 1: return "13+";
+    case 0: return "All";
+    default: return "All Ages";
+  }
 };
 
-// Helper functions to determine coloring based on book age rating and score
-const getScoreColorClass = (score: number, bookAgeRating: AgeRating) => {
-  // If we're 18+, everything passes
-  if (bookAgeRating === "18_PLUS") {
-    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "text-red-600" : 
-           score >= AGE_RATING.THRESHOLD_16_PLUS ? "text-amber-600" : 
-           score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-yellow-600" : "text-green-600";
-  }
-  
-  // If we're 16+, content should be below 18+ threshold
-  if (bookAgeRating === "16_PLUS") {
-    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "text-red-600 font-semibold" : 
-           score >= AGE_RATING.THRESHOLD_16_PLUS ? "text-amber-600" : 
-           score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-yellow-600" : "text-green-600";
-  }
-  
-  // If we're 13+, content should be below 16+ threshold
-  if (bookAgeRating === "13_PLUS") {
-    return score >= AGE_RATING.THRESHOLD_16_PLUS ? "text-red-600 font-semibold" : 
-           score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-yellow-600" : "text-green-600";
-  }
-  
-  // If we're 'ALL', content should be below 13+ threshold
-  return score >= AGE_RATING.THRESHOLD_13_PLUS ? "text-red-600 font-semibold" : "text-green-600";
+// Helper for text color based on score
+const getScoreColorClass = (score: number, bookAgeRating: NumericAgeRating) => {
+  if (score >= AGE_RATING.THRESHOLD_18_PLUS) return "bg-red-100 text-red-800";
+  if (score >= AGE_RATING.THRESHOLD_16_PLUS) return "bg-amber-100 text-amber-800";
+  if (score >= AGE_RATING.THRESHOLD_13_PLUS) return "bg-yellow-100 text-yellow-800";
+  return "bg-green-100 text-green-800";
 };
 
-const getBgColorClass = (score: number, bookAgeRating: AgeRating) => {
+const getBgColorClass = (score: number, bookAgeRating: NumericAgeRating) => {
   // If we're 18+, everything passes
-  if (bookAgeRating === "18_PLUS") {
+  if (bookAgeRating === 3) {
     return score >= AGE_RATING.THRESHOLD_18_PLUS ? "bg-red-500" : 
            score >= AGE_RATING.THRESHOLD_16_PLUS ? "bg-amber-500" : 
            score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-yellow-500" : "bg-green-500";
   }
   
   // If we're 16+, content should be below 18+ threshold
-  if (bookAgeRating === "16_PLUS") {
+  if (bookAgeRating === 2) {
     return score >= AGE_RATING.THRESHOLD_18_PLUS ? "bg-red-500" : 
            score >= AGE_RATING.THRESHOLD_16_PLUS ? "bg-amber-500" : 
            score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-yellow-500" : "bg-green-500";
   }
   
   // If we're 13+, content should be below 16+ threshold
-  if (bookAgeRating === "13_PLUS") {
+  if (bookAgeRating === 1) {
     return score >= AGE_RATING.THRESHOLD_16_PLUS ? "bg-red-500" : 
            score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-yellow-500" : "bg-green-500";
   }
@@ -78,43 +64,43 @@ const getBgColorClass = (score: number, bookAgeRating: AgeRating) => {
   return score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-red-500" : "bg-green-500";
 };
 
-const contentPassesForCategory = (score: number, bookAgeRating: AgeRating) => {
-  if (!bookAgeRating || bookAgeRating === "18_PLUS") return true;
-  if (bookAgeRating === "16_PLUS") return score < AGE_RATING.THRESHOLD_18_PLUS;
-  if (bookAgeRating === "13_PLUS") return score < AGE_RATING.THRESHOLD_16_PLUS;
+const contentPassesForCategory = (score: number, bookAgeRating: NumericAgeRating) => {
+  
+  
+  if (bookAgeRating === 3) return true;
+  if (bookAgeRating === 2) return score < AGE_RATING.THRESHOLD_18_PLUS;
+  if (bookAgeRating === 1) return score < AGE_RATING.THRESHOLD_16_PLUS;
   return score < AGE_RATING.THRESHOLD_13_PLUS;
 };
 
-// Helper to extract scores from a moderation result (works with both old and new structure)
-const extractScoresFromResult = (result: any): Record<string, number> => {
-  if (!result) return {};
-  
-  // If it has the old structure with category_scores, use that
-  if (result.category_scores) {
-    return result.category_scores;
+// Check if all content would pass for a given age rating
+export function wouldPassForAgeRating(result: any, targetRating: NumericAgeRating): boolean {
+  // If result has explicit flagged property, use that
+  if (result && result.flagged !== undefined) {
+    return !result.flagged;
   }
   
-  // Otherwise extract scores directly from the result properties
-  const scores: Record<string, number> = {};
-  const moderationCategories = [
-    'sexual', 'sexual/minors', 'harassment', 'harassment/threatening',
-    'hate', 'hate/threatening', 'illicit', 'illicit/violent',
-    'self-harm', 'self-harm/intent', 'self-harm/instructions',
-    'violence', 'violence/graphic'
-  ];
+  // If no results
+  if (!result) return true;
   
-  moderationCategories.forEach(category => {
-    if (typeof result[category] === 'number') {
-      scores[category] = result[category];
-    } else {
-      scores[category] = 0; // Default to 0 if missing
-    }
-  });
+  // If no category scores
+  if (!result.category_scores) return true;
   
-  return scores;
+  // Convert to array of scores
+  const scores = extractScoresFromResult(result);
+  
+  // Check if all categories pass for the target rating
+  return Object.values(scores).every(score => contentPassesForCategory(score as number, targetRating));
+}
+
+// Extract scores from result consistently
+const extractScoresFromResult = (result: any): Record<string, number> => {
+  if (!result) return {};
+  if (result.category_scores) return result.category_scores;
+  return {};
 };
 
-export function ContentResult({ title, result, content, showDetailedScores, bookAgeRating = "ALL" }: ContentResultProps) {
+export const ContentResult = ({ title, result, content, showDetailedScores, bookAgeRating }: ContentResultProps) => {
   const scores = extractScoresFromResult(result);
   const sortedScores: CategoryScore[] = Object.entries(scores)
     .map(([category, score]) => ({ 
@@ -123,8 +109,9 @@ export function ContentResult({ title, result, content, showDetailedScores, book
     }))
     .sort((a, b) => b.score - a.score);
 
-  // Determine if any categories fail based on book age rating
-  const hasFailingCategories = sortedScores.some(({ score }) => !contentPassesForCategory(score, bookAgeRating));
+  // Use the flagged property directly if available, otherwise calculate it
+  const hasFailingCategories = result?.flagged ?? 
+    sortedScores.some(({ score }) => !contentPassesForCategory(score, bookAgeRating));
 
   return (
     <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
@@ -221,16 +208,21 @@ export function ContentResult({ title, result, content, showDetailedScores, book
       )}
     </div>
   );
-}
+};
 
-interface TopScoreSummaryProps {
+interface ContentResultDetailedProps {
   title: string;
   scores: CategoryScore[];
   chapterTitle?: string;
-  bookAgeRating: AgeRating;
+  bookAgeRating: NumericAgeRating;
 }
 
-export function TopScoreSummary({ title, scores, chapterTitle, bookAgeRating = "ALL" }: TopScoreSummaryProps) {
+export function TopScoreSummary({ 
+  title, 
+  scores, 
+  chapterTitle, 
+  bookAgeRating = 0 
+}: ContentResultDetailedProps) {
   return (
     <div className="bg-white p-3 rounded-md border shadow-sm">
       <h4 className="text-xs font-semibold mb-2 flex items-center gap-1">
@@ -238,6 +230,7 @@ export function TopScoreSummary({ title, scores, chapterTitle, bookAgeRating = "
         {title}
       </h4>
       {scores.slice(0, 3).map((item, idx) => {
+        // Check if this individual score passes for the given age rating
         const passes = contentPassesForCategory(item.score, bookAgeRating);
         return (
           <div key={`top-${title}-${idx}`} className="flex justify-between items-center text-xs mb-1.5 pb-1.5 border-b last:border-0 last:mb-0 last:pb-0">

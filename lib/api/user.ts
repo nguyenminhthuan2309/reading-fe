@@ -1,4 +1,4 @@
-import { ApiResponse, ApiResponseStatus } from '@/models/api';
+import { ApiResponse, ApiResponseStatus, PaginatedData } from '@/models/api';
 import { patch, updateImage } from '@/lib/api/base';
 import { post, get } from '@/lib/api/base';
 import { Category, User, UserPreferences } from '@/models';
@@ -186,4 +186,35 @@ export async function updateUserFavorites(body: {userId?: number, categories: nu
  */
 export async function updateUserStatus(userId: number, statusId: number): Promise<ApiResponse<User>> {
   return await patch<User>(`/user/status/${userId}`, { statusId });
+}
+
+/**
+ * Search users by name
+ * @param name Name to search for
+ * @returns ApiResponse with the users data
+ */
+export async function searchUsersByName(name: string, page: number = 1, limit: number = 10): Promise<ApiResponse<PaginatedData<User>>> {
+  return await get(`/user/search?search=${name}&page=${page}&limit=${limit}`);
+}
+
+/**
+ * Add a recent search to user's search history
+ * @param searchType Type of search (book, author, etc)
+ * @param searchValue The search term
+ * @returns ApiResponse with success status
+ */
+export async function addRecentSearch(searchType: string, searchValue: string): Promise<ApiResponse<{ success: boolean }>> {
+  return await post('/user/recent-searches', {
+    searchType,
+    searchValue,
+  });
+}
+
+/**
+ * Get user's recent searches
+ * @param limit Maximum number of recent searches to retrieve
+ * @returns ApiResponse with recent searches data
+ */
+export async function getRecentSearches(limit: number = 5): Promise<ApiResponse<Array<{ id: number; searchType: string; searchValue: string; createdAt: string }>>> {
+  return await get(`/user/recent-searches?limit=${limit}`);
 }

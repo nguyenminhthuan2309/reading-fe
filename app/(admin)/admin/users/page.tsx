@@ -92,7 +92,7 @@ export default function UsersPage() {
   const { user } = useUserStore();
 
   // Debounce search query
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
 
   // Get users query
   const {

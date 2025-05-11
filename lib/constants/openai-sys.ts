@@ -41,8 +41,28 @@ Return your analysis as a JSON object with the following structure for each inpu
         "violence/graphic": float
     }
 And with conditions:
+- If chapter have properties has score make sure to clarify which chapter it is by following the format:
+    {
+      "chapter": 1,
+      "title": "Chapter 1",
+      "category_scores": {
+        "reason": "string",
+        "harassment": float,
+        "harassment/threatening": float,
+        "sexual": float,
+        "hate": float,
+        "hate/threatening": float,
+        "illicit": float,
+        "illicit/violent": float,
+        "self-harm/intent": float,
+        "self-harm/instructions": float,
+        "self-harm": float,
+        "sexual/minors": float,
+        "violence": float,
+        "violence/graphic": float
+      }
+    }
 - If the score is 0, don't include it in the object.
-- If chapter have properties has score make sure to clarify which chapter it is by chapter: index of chapter.
 `;
 
 export const OPENAI_IMAGE_MODERATION_SYSTEM_PROMPT = `

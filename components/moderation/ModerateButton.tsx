@@ -1,186 +1,303 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield, Loader2, ChevronLeft } from "lucide-react";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Shield, Eye, RefreshCcw, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { MODERATION_MODELS, ModerationModelType } from "@/lib/hooks/useOpenAI";
-
+import { Badge } from "@/components/ui/badge";
+import { Book } from "@/models/book";
+import { getModerationResults } from "@/lib/api/books";
+import { toast } from "sonner";
+import { ModerationResultsResponse } from "@/models/openai";
+import { ExtendedBook } from "@/lib/hooks/useAdminBooks";
 interface ModerateButtonProps {
-  selectedModel: ModerationModelType;
-  onModelSelect: (model: ModerationModelType) => void;
-  onModerate: () => void;
+  bookId: number;
+  onOpenResults: (model: ModerationModelType,  book: ExtendedBook,isViewing?: boolean, result?: ModerationResultsResponse) => void;
+  onRunModeration: (model: ModerationModelType, isEdit?: boolean) => void;
+  book: ExtendedBook;
   isLoading?: boolean;
 }
 
+interface ModelStatus {
+  model: ModerationModelType;
+  passed: boolean;
+}
+
 export function ModerateButton({
-  selectedModel,
-  onModelSelect,
-  onModerate,
-  isLoading = false
+  bookId,
+  onOpenResults,
+  onRunModeration,
+  book,
+  isLoading = false,
 }: ModerateButtonProps) {
-  const [showModelSelection, setShowModelSelection] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [isFetchingModeration, setIsFetchingModeration] = useState(false);
 
-  const toggleModelSelection = () => {
-    setShowModelSelection(prev => !prev);
+  const [moderationResults, setModerationResults] = useState<ModerationResultsResponse[]>([]);
+  const [modelStatuses, setModelStatuses] = useState<ModelStatus[]>([]);
+
+  // Parse moderated models from book.moderated string
+  const moderatedModels = book.moderated 
+    ? book.moderated.split(',').map(m => m.trim()) 
+    : [];
+
+  // Helper to check if a model has been run
+  const isModelModerated = (model: string) => {
+    return moderatedModels.some(m => m.includes(model.toLowerCase()));
   };
 
-  const modelLabels = {
-    [MODERATION_MODELS.OMNI]: 'Basic Moderation (Free)',
-    [MODERATION_MODELS.GPT4O]: 'GPT-4o ($2.50/1M tokens)',
-    [MODERATION_MODELS.O4_MINI]: 'o4-mini ($1.10/1M tokens)'
+  // Helper to check if content is flagged
+  const checkContentFlagged = (content: any) => {
+    if (!content) return false;
+    
+    // Check if content has explicit flagged property
+    if (content.flagged !== undefined) {
+      return content.flagged;
+    }
+    
+    // Check category scores if available
+    if (content.category_scores) {
+      // If any score is high, consider it flagged
+      // This is a simplified check - you may want to use your threshold logic
+      const scores = Object.values(content.category_scores) as number[];
+      return scores.some(score => score > 0.5);
+    }
+    
+    return false;
   };
 
-  return (
-    <div className="relative">
-      {/* Model Selection UI - Shown when toggleModelSelection is clicked */}
-      {showModelSelection && (
-        <div className="absolute right-0 top-full mt-2 p-4 bg-white rounded-md border shadow-md z-20 w-[320px]">
-          <div className="flex justify-between items-start mb-3">
-            <h4 className="font-medium text-sm">Select Moderation Model</h4>
-          </div>
+  // Function to check if all content passes moderation
+  const checkAllContentPasses = (moderationData: any) => {
+    if (!moderationData) return false;
+    
+    try {
+      // Parse title, description, and cover image if they're strings
+      const title = typeof moderationData.title === 'string' ? 
+        JSON.parse(moderationData.title) : moderationData.title;
+      
+      const description = typeof moderationData.description === 'string' ? 
+        JSON.parse(moderationData.description) : moderationData.description;
+      
+      const coverImage = typeof moderationData.coverImage === 'string' ? 
+        JSON.parse(moderationData.coverImage) : moderationData.coverImage;
+      
+      // Parse chapters
+      let chapters = [];
+      if (moderationData.chapters) {
+        if (typeof moderationData.chapters === 'string') {
+          chapters = JSON.parse(moderationData.chapters);
+        } else if (Array.isArray(moderationData.chapters)) {
+          chapters = moderationData.chapters.map((ch: any) => {
+            if (ch.result && typeof ch.result === 'string') {
+              return { ...ch, result: JSON.parse(ch.result) };
+            }
+            return ch;
+          });
+        }
+      }
+      
+      // Check if any content is flagged
+      const titleFlagged = checkContentFlagged(title);
+      const descriptionFlagged = checkContentFlagged(description);
+      const coverImageFlagged = checkContentFlagged(coverImage);
+      
+      // Check if any chapter is flagged
+      const anyChapterFlagged = chapters.some((ch: any) => {
+        const chapterResult = ch.result || ch;
+        return checkContentFlagged(chapterResult);
+      });
+      
+      // Content passes if nothing is flagged
+      return !(titleFlagged || descriptionFlagged || coverImageFlagged || anyChapterFlagged);
+    } catch (error) {
+      console.error("Error parsing moderation data:", error);
+      return false;
+    }
+  };
+
+  // Handle moderate button click
+  const handleModerateClick = async () => {
+    // Always open the popover
+    setOpen(true);
+    
+    // If the book has already been moderated, fetch results to check status
+    if (book.moderated) {
+      setIsFetchingModeration(true);
+      try {
+        // Get existing moderation results
+        const response = await getModerationResults(bookId);
+        if (response.code === 200 && response.data) {
+          // Determine model status
+          const statuses: ModelStatus[] = [];
           
-          <div className="space-y-3">
-            {/* Omni Moderation - Free */}
-            <div className="flex items-start">
-              <input 
-                type="radio" 
-                id="model-omni" 
-                name="model" 
-                className="mt-1"
-                checked={selectedModel === MODERATION_MODELS.OMNI} 
-                onChange={() => onModelSelect(MODERATION_MODELS.OMNI)}
-              />
-              <div className="ml-2">
-                <label htmlFor="model-omni" className="text-sm font-medium flex items-center">
-                  Basic Moderation
-                  <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">Free</span>
-                </label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Basic content moderation with standard detection
-                </p>
-              </div>
-            </div>
-            
-            {/* GPT-4o */}
-            <div className="flex items-start">
-              <input 
-                type="radio" 
-                id="model-gpt4o" 
-                name="model" 
-                className="mt-1"
-                checked={selectedModel === MODERATION_MODELS.GPT4O} 
-                onChange={() => onModelSelect(MODERATION_MODELS.GPT4O)}
-              />
-              <div className="ml-2">
-                <label htmlFor="model-gpt4o" className="text-sm font-medium flex items-center">
-                  GPT-4o
-                  <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs">$2.50/1M tokens</span>
-                </label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Advanced detection with high accuracy and detailed feedback
-                </p>
-              </div>
-            </div>
-            
-            {/* o4-mini */}
-            <div className="flex items-start">
-              <input 
-                type="radio" 
-                id="model-o4mini" 
-                name="model" 
-                className="mt-1"
-                checked={selectedModel === MODERATION_MODELS.O4_MINI} 
-                onChange={() => onModelSelect(MODERATION_MODELS.O4_MINI)}
-              />
-              <div className="ml-2">
-                <label htmlFor="model-o4mini" className="text-sm font-medium flex items-center">
-                  o4-mini
-                  <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">$1.10/1M tokens</span>
-                </label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Balanced option with good detection at lower cost
-                </p>
-              </div>
-            </div>
-          </div>
+          setModerationResults(response.data);
+          response.data.forEach((result) => {
+            const model = result.model as ModerationModelType;
+            const allPasses = checkAllContentPasses(result);
+            statuses.push({
+              model: model,
+              passed: allPasses
+            });
+          });
           
-          <div className="mt-4 pt-3 border-t flex justify-between">
-            <button 
-              type="button" 
-              className="text-xs text-muted-foreground hover:text-foreground"
-              onClick={toggleModelSelection}
+          // Update model statuses
+          setModelStatuses(statuses);
+        }
+      } catch (error) {
+        console.error("Error fetching moderation results:", error);
+        toast.error("Error loading moderation results");
+      } finally {
+        setIsFetchingModeration(false);
+      }
+    }
+  };
+
+  const handleRun = (model: ModerationModelType) => {
+    onRunModeration(model, false);
+    setOpen(false);
+  };
+
+  const handleRerun = (model: ModerationModelType) => {
+    onRunModeration(model, true);
+    setOpen(false);
+  };
+
+  const handleView = (model: ModerationModelType) => {
+    onOpenResults(model, book, true, moderationResults.find(result => result.model === model));
+    setOpen(false);
+  };
+
+  // Get status for a specific model
+  const getModelStatus = (model: ModerationModelType) => {
+    return modelStatuses.find(status => status.model === model);
+  };
+
+  // Render a model option row
+  const ModelOption = ({ model, label }: { model: ModerationModelType; label: string }) => {
+    const moderated = isModelModerated(model);
+    const status = getModelStatus(model);
+    
+    return (
+      <div className="py-2 px-1 border-b last:border-0 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">{label}</span>
+          {moderated && (
+            <Badge 
+              variant="outline" 
+              className={`text-xs ${status?.passed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}
             >
-              Cancel
-            </button>
+              {status?.passed ? (
+                <div className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  <span>Passed</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  <span>Failed</span>
+                </div>
+              )}
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {moderated ? (
+            <>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 text-xs" 
+                onClick={() => handleView(model)}
+              >
+                <Eye className="h-3.5 w-3.5 mr-1" />
+                View
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 text-xs" 
+                onClick={() => handleRerun(model)}
+                disabled={isLoading}
+              >
+                <RefreshCcw className="h-3.5 w-3.5 mr-1" />
+                Rerun
+              </Button>
+            </>
+          ) : (
             <Button 
+              variant="outline" 
               size="sm" 
-              onClick={() => {
-                toggleModelSelection();
-                onModerate();
-              }}
+              className="h-7 text-xs" 
+              onClick={() => handleRun(model)}
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader2 size={14} className="mr-1 animate-spin" />
-                  Moderating...
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  Running...
                 </>
-              ) : "Run Moderation"}
+              ) : (
+                <>
+                  <Shield className="h-3.5 w-3.5 mr-1" />
+                  Run
+                </>
+              )}
             </Button>
-          </div>
+          )}
         </div>
-      )}
-      
-      {/* Split Moderation Button */}
-      <div className="flex items-stretch h-9">
+      </div>
+    );
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <Button
-          type="button"
           variant="outline"
-          onClick={onModerate}
-          disabled={isLoading}
-          className="rounded-r-none border-r-0 px-3"
+          size="sm"
+          className="h-8 px-3 text-xs gap-1.5"
+          disabled={isLoading || isFetchingModeration}
+          onClick={handleModerateClick}
         >
-          {isLoading ? (
+          {isLoading || isFetchingModeration ? (
             <>
-              <Loader2 size={16} className="animate-spin mr-2" />
-              Moderating...
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              {isFetchingModeration ? "Loading..." : "Moderating..."}
             </>
           ) : (
             <>
-              <Shield size={16} className="mr-2" />
-              <span>Moderate</span>
-             
+              <Shield className="h-3.5 w-3.5" />
+              Moderate
             </>
           )}
         </Button>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={toggleModelSelection}
-                disabled={isLoading}
-                className="rounded-l-none px-2"
-              >
-                 <span className="text-xs text-muted-foreground">
-                {selectedModel === MODERATION_MODELS.OMNI ? '(omni-moderation-latest)' : 
-                selectedModel === MODERATION_MODELS.GPT4O ? '(gpt-4o)' : 
-                '(o4-mini)'}
-              </span>
-                <ChevronLeft size={16} className={`transition-transform ${showModelSelection ? 'rotate-90' : '-rotate-90'}`} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p className="text-xs">{modelLabels[selectedModel]}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-    </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-100 p-0" align="end">
+        <div className="px-4 py-2 border-b bg-muted/50">
+          <h3 className="text-sm font-medium">Select Moderation Model</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Choose a model to check content against age rating standards
+          </p>
+        </div>
+        <div className="divide-y px-4">
+          <ModelOption 
+            model={MODERATION_MODELS.OMNI} 
+            label="Basic Moderation" 
+          />
+          <ModelOption 
+            model={MODERATION_MODELS.GPT4O} 
+            label="GPT-4o (Recommended)" 
+          />
+          <ModelOption 
+            model={MODERATION_MODELS.O4_MINI} 
+            label="o4-mini (Faster)" 
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 } 

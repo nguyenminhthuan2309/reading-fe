@@ -25,18 +25,9 @@ import {
   ChevronsUp
 } from "lucide-react";
 import Link from "next/link";
-import { DataTable } from "@/components/books/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tabs,
   TabsContent,
@@ -44,8 +35,9 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { AccessStatusEnum, Chapter, ChapterAccessStatus } from "@/models/book";
-import { ModerationResults } from "@/components/moderation";
+import { AccessStatusEnum, Chapter, ChapterAccessStatus, BookType, BOOK_TYPES } from "@/models/book";
+import { ModerationResults, NumericAgeRating } from "@/components/moderation/ModerationResults";
+import { ModerateButton } from "@/components/moderation/ModerateButton";
 import { ModerationModelType, MODERATION_MODELS } from "@/lib/hooks/useOpenAI";
 import { 
   useUpdateBookStatus, 
@@ -59,6 +51,16 @@ import { ADMIN_KEYS } from "@/lib/constants/query-keys";
 import { updateBookStatus, updateBook, getChaptersByBookId } from "@/lib/api/books";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import { useOpenAI } from "@/lib/hooks/useOpenAI";
+import { extractChapterContent } from "@/lib/utils";
+import { 
+  isContentFlagged, 
+  AGE_RATING_THRESHOLDS,
+  AgeRating
+} from "@/lib/api/openai";
+import { getModerationResults } from "@/lib/api/books";
+import { EnhancedModerationResult, ModerationResultsResponse, ModerationResultsPayload } from "@/models/openai";
+import { saveModerateResultsStatic } from "@/lib/hooks/useModerationResults";
+import { parseStoredModerationResult, processAllModerationResults } from "@/lib/utils/moderation";
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -98,6 +100,19 @@ function getStatusBadge(accessStatusId: number) {
   }
 }
 
+// Helper function to safely get the age rating threshold
+const getAgeRatingThreshold = (rating: number) => {
+  // Ensure rating is valid (0-3)
+  const safeRating = Math.min(Math.max(0, rating), 3) as 0 | 1 | 2 | 3;
+  return AGE_RATING_THRESHOLDS[safeRating];
+};
+
+// Helper function to check if content is flagged, explicitly handling the threshold
+const checkContentFlagged = (scores: Record<string, number>, rating: number) => {
+  const safeRating = Math.min(Math.max(0, rating), 3) as AgeRating;
+  return isContentFlagged(scores, safeRating);
+};
+
 export default function BooksPage() {
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<"pending" | "published" | "blocked">("pending");
@@ -106,13 +121,20 @@ export default function BooksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchApplied, setSearchApplied] = useState("");
   const [selectedBook, setSelectedBook] = useState<ExtendedBook | null>(null);
-  const [showModerationDialog, setShowModerationDialog] = useState(false);
-  const [isModerating, setIsModerating] = useState(false);
   const [expandedRows, setExpandedRows] = useState<{[key: number]: boolean}>({});
-  const [chaptersData, setChaptersData] = useState<{[key: number]: Chapter[]}>({});
+  const [chaptersData, setChaptersData] = useState<Record<number, Chapter[]>>({});
   const [loadingChapters, setLoadingChapters] = useState<{[key: number]: boolean}>({});
   const [selectedRows, setSelectedRows] = useState<ExtendedBook[]>([]);
   const [expandAll, setExpandAll] = useState(false);
+  const [moderationResults, setModerationResults] = useState<EnhancedModerationResult | null>(null);
+  const [moderationDialogOpen, setModerationDialogOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModerationModelType>(MODERATION_MODELS.GPT4O);
+  const [checkingModeration, setCheckingModeration] = useState(false);
+  const [isViewingModeration, setIsViewingModeration] = useState(false);
+  const [isEditingModeration, setIsEditingModeration] = useState(false);
+
+  // New state to track available results for different models
+  const [availableModelResults, setAvailableModelResults] = useState<Record<string, ModerationResultsResponse>>({});
 
   // Use React Query to fetch books
   const {
@@ -218,51 +240,130 @@ export default function BooksPage() {
     }
   };
 
-  const handleViewModerationResults = (book: ExtendedBook) => {
+  // Function to view existing moderation results
+  const handleViewModerationResults = async (model: ModerationModelType, book: ExtendedBook, isViewing: boolean = false, result?: ModerationResultsResponse) => {
+    // Set model selection and the selected book
+    setSelectedModel(model);
     setSelectedBook(book);
-    setShowModerationDialog(true);
+    setIsViewingModeration(isViewing); // Set viewing mode based on parameter
+    setIsEditingModeration(false); // Reset edit mode
+    
+    // If we have specific result provided, use it directly
+    if (result) {
+      // Store this result in available results
+      setAvailableModelResults(prev => ({
+        ...prev,
+        [result.model]: result
+      }));
+      
+      // Use utility function to parse and check result
+      const enhancedResults = parseStoredModerationResult(result, book.ageRating as NumericAgeRating);
+      
+      // Set moderation results and open dialog
+      setModerationResults(enhancedResults);
+      setModerationDialogOpen(true);
+    } else {
+      // If no specific result is provided, fetch all available results for the book first
+      try {
+        setCheckingModeration(true);
+        const response = await getModerationResults(book.id);
+        if (response.code === 200 && response.data) {
+          // Store all available results
+          const resultsMap: Record<string, ModerationResultsResponse> = {};
+          response.data.forEach(result => {
+            resultsMap[result.model] = result;
+          });
+          
+          setAvailableModelResults(resultsMap);
+          
+          // Check if we have results for the selected model
+          const resultForModel = resultsMap[model];
+          if (resultForModel) {
+            // If we have results for the selected model, recursively call with that result
+            handleViewModerationResults(model, book, isViewing, resultForModel);
+          } else {
+            // If no results for this model, run moderation
+            handleRunModeration(model, book, false);
+          }
+        } else {
+          // If no results at all, run moderation
+          handleRunModeration(model, book, false);
+        }
+      } catch (error) {
+        console.error("Error fetching moderation results:", error);
+        toast.error("Failed to fetch moderation results");
+        handleRunModeration(model, book, false);
+      } finally {
+        setCheckingModeration(false);
+      }
+    }
   };
 
-  const handleModerateBook = async (book: ExtendedBook) => {
-    setIsModerating(true);
+  // Function to run content moderation
+  const handleRunModeration = async (model: ModerationModelType, book: ExtendedBook, isEdit: boolean = false) => {
+    // Set loading state and book
+    setCheckingModeration(true);
+    setSelectedModel(model);
+    setSelectedBook(book);
+    setIsViewingModeration(false); // Reset viewing mode
+    setIsEditingModeration(isEdit); // Set edit mode based on parameter
+    
     try {
-      // Prepare chapters for moderation
-      const chapters = book.chapters?.map((chapter, index) => ({
-        id: chapter.id,
-        chapter: index + 1,
-        title: chapter.title,
-        content: chapter.content
-      })) || [];
-
       // Call moderation API
-      const result = await moderateContent({
-        title: book.title,
-        description: book.description,
-        chapters: chapters,
-        coverImage: book.cover,
-        model: MODERATION_MODELS.OMNI
-      });
+      const results = await checkContentModeration(model, book);
+      
+      // Update moderation results and open dialog
+      setModerationResults(results);
+      
+      // Automatically save results if book ID is available
+      if (book.id) {
+        // Prepare the moderation data
+        const moderationData: ModerationResultsPayload = {
+          title: results.contentResults?.title 
+            ? JSON.stringify(results.contentResults.title) 
+            : null,
+          description: results.contentResults?.description 
+            ? JSON.stringify(results.contentResults.description) 
+            : null,
+          coverImage: results.contentResults?.coverImage 
+            ? JSON.stringify(results.contentResults.coverImage) 
+            : null,
+          chapters: results.contentResults?.chapters 
+            ? JSON.stringify(results.contentResults.chapters)
+            : null,
+          model: results.model,
+          bookId: book.id,
+        };
 
-      console.log('Moderation result', result);
+        try {
+          // Save results using the static function
+          const savedResult = await saveModerateResultsStatic(book.id, moderationData, isEdit);
+          
+          // Store the saved result in available results
+          if (savedResult) {
+            setAvailableModelResults(prev => ({
+              ...prev,
+              [model]: savedResult
+            }));
+          }
+          
+          // Re-fetch the book data
+          queryClient.invalidateQueries({
+            queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
+          });
 
-      // Show moderation results
-      setSelectedBook({
-        ...book,
-        moderationResults: result
-      });
-      setShowModerationDialog(true);
-
-      // Invalidate queries to refresh the data
-      queryClient.invalidateQueries({
-        queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
-      });
-
-      toast.success("Book moderated successfully");
+        } catch (saveError) {
+          console.error("Error saving moderation results:", saveError);
+          toast.error("Failed to save moderation results automatically");
+        }
+      }
+      
+      setModerationDialogOpen(true);
     } catch (error) {
-      toast.error("Failed to moderate book");
-      console.error("Moderation error:", error);
+      console.error("Error checking moderation:", error);
+      toast.error("Failed to check moderation");
     } finally {
-      setIsModerating(false);
+      setCheckingModeration(false);
     }
   };
 
@@ -554,6 +655,46 @@ export default function BooksPage() {
       ),
     },
     {
+      id: "bookType",
+      accessorKey: "bookType.name",
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge variant="outline" className="capitalize">
+          {row.original.bookType?.name?.toLowerCase() || "Unknown"}
+        </Badge>
+      ),
+    },
+    {
+      id: "ageRating",
+      accessorKey: "ageRating",
+      header: "Age Rating",
+      cell: ({ row }) => {
+        const ageRating = row.original.ageRating;
+        let badgeClass = "bg-gray-100 text-gray-800";
+        let displayText = "Unknown";
+        
+        if (ageRating === 3) {
+          badgeClass = "bg-red-200 text-red-800 font-medium";
+          displayText = "18+";
+        } else if (ageRating === 2) {
+          badgeClass = "bg-orange-200 text-orange-800 font-medium";
+          displayText = "16+";
+        } else if (ageRating === 1) {
+          badgeClass = "bg-amber-200 text-amber-800 font-medium";
+          displayText = "13+";
+        } else if (ageRating === 0) {
+          badgeClass = "bg-green-200 text-green-800 font-medium";
+          displayText = "All";
+        }
+        
+        return (
+          <Badge variant="outline" className={badgeClass}>
+            {displayText}
+          </Badge>
+        );
+      },
+    },
+    {
       id: "author.name",
       accessorKey: "author.name",
       header: ({ column }) => {
@@ -616,14 +757,14 @@ export default function BooksPage() {
       header: "Moderation",
       cell: ({ row }) => (
         <div>
-          {row.original.moderationResults ? (
+          {row.original.moderated ? (
             <Badge 
               variant="outline" 
-              className={`${row.original.moderationResults.passed ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'} cursor-pointer`}
-              onClick={() => handleViewModerationResults(row.original)}
+              className={`${row.original.moderated ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'} cursor-pointer`}
+              onClick={() => handleViewModerationResults(MODERATION_MODELS.GPT4O, row.original, isViewingModeration)}
             >
               <Shield className="h-3 w-3 mr-1" />
-              {row.original.moderationResults.passed ? 'Passed' : 'Review Required'}
+              {row.original.moderated ? 'Passed' : 'Review Required'}
             </Badge>
           ) : (
             <Badge variant="outline" className="bg-gray-100 text-gray-800">
@@ -668,21 +809,13 @@ export default function BooksPage() {
                   <XCircle className="h-4 w-4" />
                   <span className="sr-only">Reject book</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 cursor-pointer"
-                  onClick={() => handleModerateBook(book)}
-                  disabled={isModerating}
-                  title="Moderate Book"
-                >
-                  {isModerating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Shield className="h-4 w-4" />
-                  )}
-                  <span className="sr-only">Moderate book</span>
-                </Button>
+                <ModerateButton
+                  bookId={book.id}
+                  book={book}
+                  onOpenResults={(model, book, isViewing, result) => handleViewModerationResults(model, book, isViewing, result)}
+                  onRunModeration={(model, isEdit) => handleRunModeration(model, book, isEdit)}
+                  isLoading={checkingModeration && selectedBook?.id === book.id}
+                />
               </>
             )}
             {book.accessStatus?.id === AccessStatusEnum.BLOCKED && (
@@ -789,7 +922,7 @@ export default function BooksPage() {
   ];
 
   // Update the search implementation
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
 
   useEffect(() => {
     setSearchApplied(debouncedSearchQuery);
@@ -849,6 +982,8 @@ export default function BooksPage() {
         : column.id === "title" ? "Title" 
         : column.id === "expand" ? "" 
         : column.id === "author.name" ? "Author" 
+        : column.id === "bookType" ? "Type"
+        : column.id === "ageRating" ? "Age Rating"
         : column.id === "categories" ? "Categories" 
         : column.id === "createdAt" ? "Submitted" 
         : column.id === "accessStatus.id" ? "Status" 
@@ -908,6 +1043,40 @@ export default function BooksPage() {
         );
       }
       
+      if (column.id === "bookType") {
+        return (
+          <Badge variant="outline" className={`${book.bookType?.name === BOOK_TYPES.MANGA ? 'bg-pink-100 text-pink-800' : 'bg-purple-100 text-purple-800'} capitalize`}>
+            {book.bookType?.name?.toLowerCase() || "Unknown"}
+          </Badge>
+        );
+      }
+      
+      if (column.id === "ageRating") {
+        const ageRating = book.ageRating;
+        let badgeClass = "bg-gray-100 text-gray-800";
+        let displayText = "Unknown";
+        
+        if (ageRating === 3) {
+          badgeClass = "bg-red-200 text-red-800 font-medium";
+          displayText = "18+";
+        } else if (ageRating === 2) {
+          badgeClass = "bg-orange-200 text-orange-800 font-medium";
+          displayText = "16+";
+        } else if (ageRating === 1) {
+          badgeClass = "bg-amber-200 text-amber-800 font-medium";
+          displayText = "13+";
+        } else if (ageRating === 0) {
+          badgeClass = "bg-green-200 text-green-800 font-medium";
+          displayText = "All";
+        }
+        
+        return (
+          <Badge variant="outline" className={badgeClass}>
+            {displayText}
+          </Badge>
+        );
+      }
+      
       if (column.id === "author.name") {
         return <div>{book.author?.name || "Unknown"}</div>;
       }
@@ -940,14 +1109,13 @@ export default function BooksPage() {
       if (column.id === "moderated") {
         return (
           <div>
-            {book.moderationResults ? (
+            {book.moderated ? (
               <Badge 
                 variant="outline" 
-                className={`${book.moderationResults.passed ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'} cursor-pointer`}
-                onClick={() => handleViewModerationResults(book)}
+                className={`${book.moderated ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}
               >
                 <Shield className="h-3 w-3 mr-1" />
-                {book.moderationResults.passed ? 'Passed' : 'Review Required'}
+                {book.moderated ? book.moderated : 'Review Required'}
               </Badge>
             ) : (
               <Badge variant="outline" className="bg-gray-100 text-gray-800">
@@ -989,21 +1157,13 @@ export default function BooksPage() {
                   <XCircle className="h-4 w-4" />
                   <span className="sr-only">Reject book</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 cursor-pointer"
-                  onClick={() => handleModerateBook(book)}
-                  disabled={isModerating}
-                  title="Moderate Book"
-                >
-                  {isModerating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Shield className="h-4 w-4" />
-                  )}
-                  <span className="sr-only">Moderate book</span>
-                </Button>
+                <ModerateButton
+                  bookId={book.id}
+                  book={book}
+                  onOpenResults={(model, book, isViewing, result) => handleViewModerationResults(model, book, isViewing, result)}
+                  onRunModeration={(model, isEdit) => handleRunModeration(model, book, isEdit)}
+                  isLoading={checkingModeration && selectedBook?.id === book.id}
+                />
               </>
             )}
             {book.accessStatus?.id === AccessStatusEnum.BLOCKED && (
@@ -1045,7 +1205,7 @@ export default function BooksPage() {
               {columns.map((column) => (
                 <th
                   key={column.id}
-                  className={`px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.id === "select" && "w-[32px] pr-2"} ${column.id === "expand" && "w-[32px] pl-0 pr-0"}`}
+                  className={`px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider ${column.id === "select" && "w-[32px] pr-2"} ${column.id === "expand" && "w-[32px] pl-0 pr-0"}`}
                 >
                   {renderColumnHeader(column)}
                 </th>
@@ -1165,7 +1325,7 @@ export default function BooksPage() {
                   {chapterColumns.map((column) => (
                     <th
                       key={column.accessorKey || column.id}
-                      className={`px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.accessorKey === "chapter" && "w-[100px]"} ${column.id === "actions" && "w-[50px]"}`}
+                      className={`px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider ${column.accessorKey === "chapter" && "w-[100px]"} ${column.id === "actions" && "w-[50px]"}`}
                     >
                       {column.header}
                     </th>
@@ -1231,6 +1391,110 @@ export default function BooksPage() {
         )}
       </div>
     );
+  };
+
+  // Helper function to check content moderation
+  const checkContentModeration = async (model: ModerationModelType, book: ExtendedBook): Promise<EnhancedModerationResult> => {
+    if (!book) {
+      throw new Error("No book selected for moderation");
+    }
+
+    // Get chapters data if needed
+    let chaptersResponse;
+    if (!chaptersData[book.id]) {
+      const response = await getChaptersByBookId(book.id);
+      if (response.code === 200) {
+        chaptersResponse = response.data;
+        setChaptersData((prev: Record<number, Chapter[]>) => ({...prev, [book.id]: response.data}));
+      } else {
+        throw new Error("Failed to load chapters");
+      }
+    } else {
+      chaptersResponse = chaptersData[book.id];
+    }
+
+    // Filter chapters that are in pending status
+    const pendingChapters = chaptersResponse?.filter(
+      (chapter: Chapter) => chapter.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW
+    ) || [];
+
+    // Prepare chapters for moderation
+    const chapters = pendingChapters.map((chapter: Chapter, index: number) => ({
+      id: chapter.id,
+      chapter: index + 1,
+      title: chapter.title,
+      content: book.bookType.name === BOOK_TYPES.NOVEL && typeof chapter.content === 'string'
+        ? extractChapterContent(chapter.content)
+        : JSON.parse(chapter.content as string)
+    }));
+
+    // Call moderation API
+    const result = await moderateContent({
+      title: book.title,
+      description: book.description,
+      chapters: chapters,
+      coverImage: book.cover,
+      model: model
+    });
+    
+    // Process the moderation results to add flagged property to each content item
+    const ageRating = book.ageRating as NumericAgeRating || 0;
+    
+    if (result && result.contentResults) {
+      // Process title
+      const title = result.contentResults.title as any;
+      if (title && title.category_scores) {
+        title.flagged = checkContentFlagged(
+          title.category_scores as Record<string, number>, 
+          ageRating as number
+        );
+      }
+      
+      // Process description
+      const description = result.contentResults.description as any;
+      if (description && description.category_scores) {
+        description.flagged = checkContentFlagged(
+          description.category_scores as Record<string, number>, 
+          ageRating as number
+        );
+      }
+      
+      // Process cover image
+      const coverImage = result.contentResults.coverImage as any;
+      if (coverImage && coverImage.category_scores) {
+        coverImage.flagged = checkContentFlagged(
+          coverImage.category_scores as Record<string, number>, 
+          ageRating as number
+        );
+      }
+      
+      // Process chapters
+      const chapters = result.contentResults.chapters as any[];
+      if (chapters && chapters.length > 0) {
+        chapters.forEach(chapter => {
+          if (chapter.result && chapter.result.category_scores) {
+            chapter.result.flagged = checkContentFlagged(
+              chapter.result.category_scores as Record<string, number>,
+              ageRating as number
+            );
+          }
+        });
+      }
+      
+      // Determine overall flagged status (failed if any content is flagged)
+      const titleFlagged = title?.flagged || false;
+      const descriptionFlagged = description?.flagged || false;
+      const coverImageFlagged = coverImage?.flagged || false;
+      const anyChapterFlagged = chapters?.some(chapter => chapter.result?.flagged) || false;
+      
+      // Set overall flagged status
+      (result as any).flagged = titleFlagged || descriptionFlagged || coverImageFlagged || anyChapterFlagged;
+      
+      // Set passed property for clearer UI feedback
+      (result as any).passed = !(result as any).flagged;
+    }
+    
+    return result as EnhancedModerationResult;
   };
 
   return (
@@ -1302,12 +1566,28 @@ export default function BooksPage() {
       {/* Moderation Results Dialog */}
       {selectedBook && (
         <ModerationResults
-          open={showModerationDialog}
-          onOpenChange={setShowModerationDialog}
-          results={selectedBook.moderationResults}
-          selectedModel={MODERATION_MODELS.OMNI}
-          onModelChange={() => {}}
-          bookAgeRating={selectedBook.ageRating?.toString() as any}
+          open={moderationDialogOpen}
+          onOpenChange={setModerationDialogOpen}
+          results={moderationResults}
+          selectedModel={selectedModel}
+          onModelChange={(model) => {
+            setSelectedModel(model);
+            // Check if we have results for this model
+            if (availableModelResults[model]) {
+              // If we have results, view them
+              handleViewModerationResults(model, selectedBook, isViewingModeration, availableModelResults[model]);
+            } else {
+              // If not, keep the dialog open but clear current results - this will trigger the empty state
+              // with a "Run" button
+              setModerationResults(null);
+            }
+          }}
+          onRecheck={(isEdit: boolean) => handleRunModeration(selectedModel, selectedBook as ExtendedBook, isEdit)}
+          isLoading={checkingModeration}
+          bookAgeRating={selectedBook?.ageRating as NumericAgeRating || 0}
+          bookId={selectedBook?.id}
+          isViewing={isViewingModeration}
+          isEdit={isEditingModeration}
         />
       )}
     </div>

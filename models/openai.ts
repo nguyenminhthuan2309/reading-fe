@@ -34,7 +34,7 @@ export interface EnhancedModerationRequest {
   }>;
 }
 
-export interface ModerationResult {
+export interface ModerationResultItem {
   flagged: boolean;
   categories: {
     sexual: boolean;
@@ -69,6 +69,13 @@ export interface ModerationResult {
   category_applied_input_types: Record<string, string[]>;
 }
 
+export interface ModerationResult {
+  id: string;
+  model: string;
+  results: ModerationResultItem[];
+  timestamp: string;
+}
+
 export interface ShortenModerationResult{
   reason?: string;
   sexual?: number;
@@ -88,16 +95,15 @@ export interface ShortenModerationResult{
 
 export interface EnhancedModerationResult {
   model: string;
-  flagged?: boolean;
-  categories?: Record<string, boolean>;
-  category_scores?: Record<string, number>;
-  contentResults?: {
-    title?: ShortenModerationResult;
-    description?: ShortenModerationResult;
-    coverImage?: ShortenModerationResult;
-    chapters?: (ShortenModerationResult & {chapter: number})[];
-  };
   timestamp: string;
+  flagged?: boolean;
+  passed?: boolean;
+  contentResults?: {
+    title?: any;
+    description?: any;
+    coverImage?: any;
+    chapters?: any[];
+  };
 }
 
 export interface ModerationResponse {
@@ -125,3 +131,27 @@ export interface ImageModerationInput {
 }
 
 export type ModerationInput = TextModerationInput | ImageModerationInput;
+
+export interface ModerationResultsPayload {
+  bookId: number;
+  title: string | null;
+  description: string | null;
+  coverImage: string | null;
+  chapters: string | null;
+  model: string;
+}
+
+export interface ModerationResultsResponse {
+  id: number;
+  book: {id: number, title: string};
+  title: string | null;
+  description: string | null;
+  coverImage: string | null;
+  chapters: string | {
+    chapterId: number;
+    result: string;
+  }[];
+  model: string;
+  createdAt: string;
+  updatedAt: string;
+}

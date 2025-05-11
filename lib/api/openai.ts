@@ -7,14 +7,14 @@ import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 // Age rating thresholds for content moderation
 export const AGE_RATING_THRESHOLDS = {
-  ALL: 0,            // All ages: no content above 0 score
-  "13_PLUS": 0.05,   // 13+: scores below 0.05
-  "16_PLUS": 0.1,    // 16+: scores below 0.1
-  "18_PLUS": 0.2     // 18+: scores below 0.2
+  0: 0,            // All ages: no content above 0 score
+  1: 0.05,   // 13+: scores below 0.05
+  2: 0.1,    // 16+: scores below 0.1
+  3: 0.2     // 18+: scores below 0.2
 };
 
 // Age rating type
-export type AgeRating = "ALL" | "13_PLUS" | "16_PLUS" | "18_PLUS";
+export type AgeRating = 0 | 1 | 2 | 3;
 
 // Initialize the OpenAI client
 // Note: The API key should be handled securely, this is just for demonstration
@@ -54,7 +54,7 @@ export const MODERATION_MODELS = {
  * @param ageRating Target age rating for the content
  * @returns Boolean indicating if the content should be flagged
  */
-export function isContentFlagged(scores: Record<string, number>, ageRating: AgeRating = "ALL"): boolean {
+export function isContentFlagged(scores: Record<string, number>, ageRating: AgeRating = 0): boolean {
   if (!scores || Object.keys(scores).length === 0) return false;
   
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
@@ -125,8 +125,6 @@ export async function moderateContent(
         };
       }
     }
-
-    console.log('params.chapters', params.chapters);
     
     // Check chapters with new structure if available
     if (params.chapters && params.chapters.length > 0) {
@@ -230,7 +228,7 @@ async function moderateContentWithGPT(
     if (params.title) {
       contentParts.push({ 
         type: "text" as const,
-        text: params.title 
+        text: `Title is: ${params.title}` 
       });
     }
     
@@ -238,7 +236,7 @@ async function moderateContentWithGPT(
     if (params.description) {
       contentParts.push({ 
         type: "text" as const,
-        text: params.description 
+        text: `Description is: ${params.description}` 
       });
     }
     
@@ -251,8 +249,6 @@ async function moderateContentWithGPT(
         }
       });
     } 
-
-    console.log('params.chapters', params.chapters);
     
     const chapters: any[] = [];
     let chapterImageGroups: Record<number, string[]> = {};
@@ -271,8 +267,6 @@ async function moderateContentWithGPT(
           
         chapterImageGroups[chapter.chapter] = params.chapterImages!.slice(startIdx, endIdx);
       });
-      
-      console.log('Chapter image groups:', chapterImageGroups);
     }
     
     // Process chapters with new structure if available
@@ -333,9 +327,6 @@ async function moderateContentWithGPT(
       }));
       chapters.push(...images);
     }
-
-    console.log('Content parts:', contentParts);
-    console.log('Chapters with images:', chapters);
     
     // Add user message with all content
     messages.push({
@@ -373,11 +364,9 @@ async function moderateContentWithGPT(
     const contentResults: Record<string, any> = {};
     
     // Helper function to normalize content results
-    const normalizeContentResult = (contentResult: any): any => {
-      if (!contentResult) return {};
-      
+    const normalizeContentResult = (contentResult: any): any => { 
       // Ensure category_scores object exists
-      const category_scores = contentResult.category_scores || {};
+      const category_scores = contentResult?.category_scores || {};
       
       // Ensure all categories have a value (default to 0 for missing)
       const normalized_scores = allCategories.reduce((acc, category) => {
@@ -388,98 +377,31 @@ async function moderateContentWithGPT(
       // Remove flagged property - let the component handle flagging based on age rating
       return {
         category_scores: normalized_scores,
-        ...(contentResult.reason ? { reason: contentResult.reason } : {})
+        ...(contentResult?.reason ? { reason: contentResult.reason } : {})
       };
     };
     
-    // Process title results if available
-    if (result.title) {
-      contentResults.title = normalizeContentResult(result.title);
-    }
     
-    // Process description results if available
-    if (result.description) {
-      contentResults.description = normalizeContentResult(result.description);
-    }
-    
-    // Process cover image results if available
-    if (result.coverImage) {
-      contentResults.coverImage = normalizeContentResult(result.coverImage);
-    }
-    
-    // Process chapters if available
-    if (result.chapters && Array.isArray(result.chapters) && result.chapters.length > 0) {
-      contentResults.chapters = [];
-      
+    contentResults.title = normalizeContentResult(result.title);
+    contentResults.description = normalizeContentResult(result.description);
+    contentResults.coverImage = normalizeContentResult(result.coverImage);
+    contentResults.chapters = [];
+
+    if (params.chapters && params.chapters.length > 0) {
       // Handle chapter structure with scores
-      result.chapters.forEach((chapterResult: Record<string, any>, index: number) => {
-        // Try to extract chapter number from keys or use index
-        let chapterNumber = index;
-        let chapterTitle = `Chapter ${index + 1}`;
-        
-        // Check if chapters array exists in params for reference
-        if (params.chapters && params.chapters[index]) {
-          chapterNumber = params.chapters[index].chapter || index;
-          chapterTitle = params.chapters[index].title || `Chapter ${chapterNumber}`;
-        }
-        
-        // Get associated chapter images for this chapter
-        let chapterImages: string[] = [];
-        if (chapterImageGroups && chapterNumber in chapterImageGroups) {
-          chapterImages = chapterImageGroups[chapterNumber];
-        }
-        
+      params.chapters.forEach((chapter) => {
+        // Map result to chapter
+        const chapterResult = result.chapters?.find((c: any) => c.chapter === chapter.chapter) || {};
         // Normalize chapter result
         const normalizedChapterResult = normalizeContentResult(chapterResult);
         
         // Convert results to chapter moderation format
         const chapterModeration: Record<string, any> = {
-          id: params.chapters?.[index]?.id?.toString() || index.toString(),
-          index: chapterNumber,
-          title: chapterTitle,
+          id: chapter.id?.toString(),
+          chapter: chapter.chapter,
+          title: chapter.title,
           result: normalizedChapterResult
         };
-        
-        // Process chapter image results if available
-        if (result.chapterImages && Array.isArray(result.chapterImages)) {
-          // Find corresponding image results for this chapter
-          const chapterImageResults = chapterImages.map((_, imageIndex) => {
-            const imageResultIndex = Object.keys(chapterImageGroups).reduce((acc, chapNum) => {
-              const numChap = parseInt(chapNum);
-              if (numChap < chapterNumber && numChap in chapterImageGroups) {
-                // Add the number of images in previous chapters
-                acc += chapterImageGroups[numChap].length;
-              }
-              return acc;
-            }, 0) + imageIndex;
-            
-            // Get corresponding image result or use empty object
-            return imageResultIndex < result.chapterImages.length ? 
-              normalizeContentResult(result.chapterImages[imageResultIndex]) : {};
-          });
-          
-          // Combine image results with chapter result (calculate max scores)
-          chapterImageResults.forEach(imageResult => {
-            if (imageResult && imageResult.category_scores) {
-              Object.keys(imageResult.category_scores).forEach(key => {
-                if (typeof imageResult.category_scores[key] === 'number') {
-                  // Use max score between chapter and image
-                  chapterModeration.result.category_scores[key] = Math.max(
-                    chapterModeration.result.category_scores[key] || 0,
-                    imageResult.category_scores[key] || 0
-                  );
-                }
-              });
-              
-              // Combine reasons if both have violations
-              if (imageResult.reason && !chapterModeration.result.reason) {
-                chapterModeration.result.reason = imageResult.reason;
-              } else if (imageResult.reason && chapterModeration.result.reason) {
-                chapterModeration.result.reason += "; " + imageResult.reason;
-              }
-            }
-          });
-        }
         
         contentResults.chapters.push(chapterModeration);
       });

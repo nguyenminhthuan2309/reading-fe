@@ -80,14 +80,6 @@ interface BookData {
   ageRating: number;
 }
 
-// Map AgeRatingEnum to API's AgeRating type
-const ageRatingMap: Record<number, AgeRating> = {
-  [AgeRatingEnum.EVERYONE]: "ALL",
-  [AgeRatingEnum.TEEN]: "13_PLUS",
-  [AgeRatingEnum.MATURE]: "16_PLUS",
-  [AgeRatingEnum.ADULT]: "18_PLUS",
-};
-
 // Create extended LocalChapter type that includes chapterAccessStatus
 type ExtendedLocalChapter = LocalChapter & {
   chapterAccessStatus?: string;

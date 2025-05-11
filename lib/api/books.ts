@@ -1,6 +1,8 @@
 import { get, post, put, del, delWithBody, uploadFile, patch } from '../api';
 import { ApiResponse, PaginatedData } from '@/models/api';
 import { Book, Chapter, BookFilters,  ReadingHistoryItem, ReadingHistoryFilters, BookUpdatePayload, BookCreatePayload, BookReview, BookReviewFilters, Category, ChaptersBatchPayload, ChapterAccessStatus } from '@/models/book';
+import { ModerationResultsPayload } from '@/models/openai';
+import { ModerationResultsResponse } from '@/models/openai';
 
 /**
  * Get a list of books with optional filters
@@ -354,4 +356,26 @@ export async function updateReadingHistory(bookId: number, chapterId: number): P
     `/book/reading-history`,
     { bookId, chapterId }
   );
+}
+
+/**
+ * Get moderation results for a book
+ */
+
+export async function getModerationResults(bookId: number): Promise<ApiResponse<ModerationResultsResponse[]>> {
+  return get<ModerationResultsResponse[]>(`/book/${bookId}/moderation`);
+}
+
+/**
+ * Create moderation results for a book
+ */
+export async function createModerationResults(bookId: number, moderationData: ModerationResultsPayload): Promise<ApiResponse<ModerationResultsResponse>> {
+  return post<ModerationResultsResponse>(`/book/${bookId}/moderation`, moderationData);
+}
+
+/**
+ * Update moderation results for a book
+ */
+export async function updateModerationResults(bookId: number, moderationData: ModerationResultsPayload): Promise<ApiResponse<ModerationResultsResponse>> {
+  return patch<ModerationResultsResponse>(`/book/${bookId}/moderation`, moderationData);
 } 
