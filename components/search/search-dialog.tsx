@@ -8,7 +8,6 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Search, Book, User, Tag, Loader2, XCircle, History } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,9 +33,6 @@ interface RecentSearchItem {
   type: string;
 }
 
-// Fixed height constants for consistency
-const SEARCH_RESULTS_HEIGHT = "280px";
-const SEARCH_ITEM_HEIGHT = "36px"; // Height of a single search item
 
 // No results component with icon
 const NoResults = ({ query, mode }: { query: string; mode: SearchMode }) => (
@@ -73,7 +69,7 @@ export function SearchDialog() {
     queryKey: ['recentSearches'],
     queryFn: async () => {
       const response = await getRecentSearches();
-      if (response.success) {
+      if (response.code === 200) {
         return response.data.map(item => ({
           id: item.id,
           title: item.searchValue,
@@ -239,9 +235,6 @@ export function SearchDialog() {
     setOpen(false);
     setQuery("");
     
-    // Add to local recent searches
-    addToRecentSearches({ id: book.id, title: book.title, type: "book" });
-    
     // Save to backend
     addRecentSearchMutation.mutate({
       searchType: "book",
@@ -254,10 +247,7 @@ export function SearchDialog() {
   const handleAuthorClick = (author: UserType) => {
     setOpen(false);
     setQuery("");
-    
-    // Add to local recent searches
-    addToRecentSearches({ id: author.id, title: author.name, type: "author" });
-    
+
     // Save to backend
     addRecentSearchMutation.mutate({
       searchType: "author",
