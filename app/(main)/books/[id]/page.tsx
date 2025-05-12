@@ -11,24 +11,58 @@ import { BookReview } from "@/components/books/book-review";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBookById, getChaptersByBookId } from "@/lib/api/books";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import { useUserStore } from "@/lib/store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FollowButton } from "@/components/books/follow-button";
-import { ChapterAccessStatus } from "@/models/book";
+import { ChapterAccessStatus, Chapter, AgeRatingEnum, AGE_RATINGS } from "@/models/book";
+import { PurchaseChapterDialog } from "@/components/books/purchase-chapter-dialog";
+
+// A component to display the age rating badge
+const AgeRatingBadge = ({ ageRatingId }: { ageRatingId: number }) => {
+  // Default to "Everyone" if rating not found
+  const rating = AGE_RATINGS.find(r => r.id === ageRatingId) || AGE_RATINGS[0];
+  
+  // Determine styling based on rating
+  let bgClass = 'bg-green-100 text-green-800 border-green-200';
+  
+  switch (ageRatingId) {
+    case AgeRatingEnum.ADULT: // 18+
+      bgClass = 'bg-red-100 text-red-800 border-red-200';
+      break;
+    case AgeRatingEnum.MATURE: // 16+
+      bgClass = 'bg-orange-100 text-orange-800 border-orange-200';
+      break;
+    case AgeRatingEnum.TEEN: // 13+
+      bgClass = 'bg-amber-100 text-amber-800 border-amber-200';
+      break;
+    case AgeRatingEnum.EVERYONE: // All ages
+    default:
+      bgClass = 'bg-green-100 text-green-800 border-green-200';
+      break;
+  }
+  
+  return (
+    <div className={`px-3 py-1 rounded-full text-sm font-medium border ${bgClass}`}>
+      {rating.name}
+    </div>
+  );
+};
+
 export default function BookPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
   const { user } = useUserStore();
-  
+  const queryClient = useQueryClient();
+
   // Fetch book data with React Query directly in the component
-  const { 
-    data: book, 
-    isLoading: isLoadingBook, 
+  const {
+    data: book,
+    isLoading: isLoadingBook,
     error: bookError
   } = useQuery({
     queryKey: BOOK_KEYS.DETAIL(id),
@@ -63,29 +97,23 @@ export default function BookPage() {
     },
     enabled: !!id && !!book,
   });
-  
+
   // Mock purchase state
   const [isPurchased, setIsPurchased] = useState(false);
   const [readProgress, setReadProgress] = useState(0.35); // Mock reading progress 35%
-  
+
   // Chapter visibility state
   const [visibleChapters, setVisibleChapters] = useState(10);
   const [showAllChapters, setShowAllChapters] = useState(false);
-  
-  // Constants
-  const FREE_PREVIEW_CHAPTERS = 3;
-  
+
+
   // Tab control
   const [activeTab, setActiveTab] = useState("reviews");
-  
-  // Function to determine if a chapter is free to preview
-  const isChapterPreviewable = (chapterIndex: number) => {
-    return chapterIndex < FREE_PREVIEW_CHAPTERS;
-  };
-  
+
+
   // Check if current user is the book owner
   const isOwner = user && book?.author?.id === user.id;
-  
+
   // Handle viewing more chapters
   const handleViewMoreChapters = () => {
     if (showAllChapters) {
@@ -96,12 +124,16 @@ export default function BookPage() {
       setShowAllChapters(true);
     }
   };
-  
+
   // Calculate reading time (average 8 minutes per chapter)
   const calculateReadingTime = (chapterNumber: number) => {
     return Math.round(chapterNumber * 8);
   };
-  
+
+  // Add state variables at the appropriate place in the component
+  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+
   // Loading state
   if (isLoadingBook) {
     return (
@@ -110,7 +142,7 @@ export default function BookPage() {
         <div className="mb-6">
           <Skeleton className="h-10 w-20" />
         </div>
-        
+
         <div className="flex flex-col lg:flex-row lg:items-start gap-8">
           {/* Left side: Book details skeleton */}
           <div className="flex-1">
@@ -127,38 +159,38 @@ export default function BookPage() {
                   <Skeleton className="h-10 w-10 rounded-lg" />
                 </div>
               </div>
-              
+
               {/* Book meta info skeleton */}
               <div className="flex-1 md:pt-2">
                 <Skeleton className="h-10 w-3/4 mb-4" />
                 <Skeleton className="h-5 w-1/2 mb-4" />
-                
+
                 <div className="flex flex-wrap gap-2 mb-4">
                   <Skeleton className="h-6 w-16 rounded-full" />
                   <Skeleton className="h-6 w-20 rounded-full" />
                   <Skeleton className="h-6 w-14 rounded-full" />
                 </div>
-                
+
                 <div className="flex flex-wrap gap-4 mb-5">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-4 w-24" />
                 </div>
-                
+
                 <Skeleton className="h-24 w-full mb-5 rounded-lg" />
-                
+
                 <Skeleton className="h-6 w-40 mb-2" />
                 <Skeleton className="h-20 w-full" />
               </div>
             </div>
-            
+
             {/* Tabs skeleton */}
             <div className="mt-8">
               <div className="flex gap-2 mb-8">
                 <Skeleton className="h-10 w-20" />
                 <Skeleton className="h-10 w-20" />
               </div>
-              
+
               <div>
                 <Skeleton className="h-8 w-40 mb-4" />
                 <div className="space-y-4">
@@ -178,7 +210,7 @@ export default function BookPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Right side: Related Books skeleton */}
           <div className="lg:w-1/4 lg:top-4">
             <div className="rounded-sm p-4 shadow-sm bg-white/10">
@@ -203,21 +235,21 @@ export default function BookPage() {
       </div>
     );
   }
-  
+
   // Error state
   if (bookError) {
     // Check if it's a 404 error
-    const is404 = bookError instanceof Error && 
+    const is404 = bookError instanceof Error &&
       bookError.message.includes('Book not found')
-    
+
     // If it's a 404 error, show the "Book not found" message
     if (is404) {
       return (
         <div className="container mx-auto px-4 py-4">
           {/* Back button at top left */}
           <div className="mb-8">
-            <Button 
-              variant="link" 
+            <Button
+              variant="link"
               className="flex items-center gap-2 pl-0 text-gray-600 hover:text-gray-900"
               onClick={() => router.back()}
             >
@@ -225,7 +257,7 @@ export default function BookPage() {
               <span>Back</span>
             </Button>
           </div>
-          
+
           <div className="flex flex-col items-center justify-center text-center">
             <div className="max-w-md">
               <h1 className="text-9xl font-bold text-red-500 mb-2">404</h1>
@@ -236,14 +268,14 @@ export default function BookPage() {
         </div>
       );
     }
-    
+
     // For other types of errors, show the general error message
     return (
       <div className="container mx-auto px-4 py-12 pt-4">
         {/* Back button at top left */}
         <div className="mb-8">
-          <Button 
-            variant="link" 
+          <Button
+            variant="link"
             className="flex items-center gap-2 pl-0 text-gray-600 hover:text-gray-900"
             onClick={() => router.back()}
           >
@@ -251,7 +283,7 @@ export default function BookPage() {
             <span>Back</span>
           </Button>
         </div>
-        
+
         <div className="flex flex-col items-center justify-center text-center">
           <div className="max-w-md">
             <h1 className="text-9xl font-bold text-red-500 mb-2">ERROR</h1>
@@ -262,7 +294,7 @@ export default function BookPage() {
       </div>
     );
   }
-  
+
   // If book not found, show an error message
   if (!book) {
     return (
@@ -271,8 +303,8 @@ export default function BookPage() {
           <h1 className="text-3xl font-bold mb-4">Book not found</h1>
           <p className="text-gray-600 mb-8">The book you are looking for does not exist or may have been removed.</p>
           <div className="mt-6">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className="flex items-center gap-2 pl-0 hover:bg-transparent"
               onClick={() => router.back()}
             >
@@ -284,13 +316,13 @@ export default function BookPage() {
       </div>
     );
   }
-  
+
   return (
-    <div className="container mx-auto px-4 py-8 pt-4">
+    <div className="container mx-auto px-4 py-8 pt-4 md:pt-6">
       {/* Back button */}
       <div className="mb-6">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="flex items-center gap-2 pl-0 hover:bg-transparent"
           onClick={() => router.back()}
         >
@@ -298,7 +330,7 @@ export default function BookPage() {
           <span>Back</span>
         </Button>
       </div>
-      
+
       <div className="flex flex-col lg:flex-row lg:items-start gap-8">
         {/* Left side: Book details */}
         <div className="flex-1">
@@ -314,20 +346,20 @@ export default function BookPage() {
                   priority
                 />
               </div>
-              
+
               {/* Chapter info and reading progress */}
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex items-center">
                   <BookOpen className="h-4 w-4 text-gray-500 mr-1.5" />
                   <span className="text-sm text-gray-700">{book.totalChapters} Chapters</span>
                 </div>
-                
+
                 {readProgress > 0 && isPurchased ? (
                   <div className="flex items-center">
                     <span className="text-xs text-gray-600 mr-2">{Math.round(readProgress * 100)}%</span>
                     <div className="relative h-1.5 w-12 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="absolute top-0 left-0 h-full bg-red-600 rounded-full" 
+                      <div
+                        className="absolute top-0 left-0 h-full bg-red-600 rounded-full"
                         style={{ width: `${readProgress * 100}%` }}
                       />
                     </div>
@@ -338,41 +370,45 @@ export default function BookPage() {
                   </div>
                 )}
               </div>
-              
+
               {/* CTA Buttons */}
               <div className="mt-3 flex items-center gap-2">
 
-                {/* TODO: Add chapter id */}
-                <Link href={isPurchased ? `/books/${book.id}/read${readProgress > 0 ? `?chapter=${Math.ceil(readProgress * book.totalChapters)}&id=${1}` : ''}` : '#'} className="flex-1">
-                  <Button 
-                    className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-                    disabled={!isPurchased}
-                    onClick={(e) => !isPurchased && e.preventDefault()}
-                  >
-                    <BookOpen size={18} />
-                    {isPurchased ? (readProgress > 0 ? 'Continue' : 'Read') : 'Purchase to Read'}
-                  </Button>
-                </Link>
-                
-                {/* Follow Button */}
-                <FollowButton 
-                  bookId={Number(id)} 
-                  size="default"
-                  isFollowed={book.isFollowed} 
-                />
-                
+                {/* Show purchase/read button only if not the author */}
+                {!isOwner && (
+                  <Link href={isPurchased ? `/books/${book.id}/read${readProgress > 0 ? `?chapter=${Math.ceil(readProgress * book.totalChapters)}&id=${1}` : ''}` : '#'} className="flex-1">
+                    <Button
+                      className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                      disabled={!isPurchased}
+                      onClick={(e) => !isPurchased && e.preventDefault()}
+                    >
+                      <BookOpen size={18} />
+                      {isPurchased ? (readProgress > 0 ? 'Continue' : 'Read') : 'Purchase to Read'}
+                    </Button>
+                  </Link>
+                )}
+
+                {/* Show follow button only if not the author */}
+                {!isOwner && (
+                  <FollowButton
+                    bookId={Number(id)}
+                    size="default"
+                    isFollowed={book.isFollowed}
+                  />
+                )}
+
                 {/* Edit Button (only shown if user is the author) */}
                 {isOwner && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Link href={`/books/${book.id}/edit`}>
+                        <Link href={`/books/${book.id}/edit`} className="flex-1">
                           <Button
                             variant="outline"
-                            size="icon"
-                            className="h-10 w-10 rounded-lg border bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+                            className="h-10 w-full flex items-center justify-center gap-2 rounded-lg border bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
                           >
                             <PencilLine className="h-5 w-5" />
+                            Edit Book
                           </Button>
                         </Link>
                       </TooltipTrigger>
@@ -384,7 +420,7 @@ export default function BookPage() {
                 )}
               </div>
             </div>
-            
+
             {/* Book meta info */}
             <div className="flex-1 md:pt-2">
               {/* Book title */}
@@ -397,7 +433,7 @@ export default function BookPage() {
                   </Link>
                 </p>
               </div>
-            
+
               {/* Categories */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {book.categories?.map((category) => (
@@ -405,8 +441,11 @@ export default function BookPage() {
                     {category.name}
                   </span>
                 ))}
+                
+                {/* Age Rating Badge */}
+                <AgeRatingBadge ageRatingId={book.ageRating || AgeRatingEnum.EVERYONE} />
               </div>
-              
+
               {/* Book stats */}
               <div className="flex flex-wrap gap-4 mb-5">
                 <div className="flex items-center">
@@ -415,9 +454,8 @@ export default function BookPage() {
                       <Star
                         key={i}
                         size={14}
-                        className={`${
-                          i < Math.floor(book.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                        }`}
+                        className={`${i < Math.floor(book.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                          }`}
                       />
                     ))}
                   </div>
@@ -436,55 +474,57 @@ export default function BookPage() {
                   <span className="text-sm text-gray-700">{book.totalPurchases} purchases</span>
                 </div>
               </div>
-              
+
               {/* Summary */}
               <div className="mb-5">
                 <h2 className="text-xl font-bold mb-2">Summary</h2>
                 <p className="text-gray-700 line-clamp-4 mb-2">{book.description}</p>
               </div>
-              
+
               {/* Price and purchase info */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-lg">
-                      {book.totalPrice.toFixed(2)} HARU
-                    </h3>
-                    <p className="text-xs text-gray-500">One-time purchase - get full content and future chapters</p>
-                  </div>
-                  
-                  {isPurchased ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-3 py-1">
-                      Purchased
-                    </Badge>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="default" 
-                        className="bg-black hover:bg-gray-800 flex items-center gap-2 opacity-70 cursor-not-allowed" 
-                        onClick={() => setIsPurchased(true)}
-                        disabled={true}
-                      >
-                        <ShoppingCart size={16} />
-                        Purchase
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex items-center gap-2"
-                        onClick={() => setActiveTab("chapters")}
-                      >
-                        <BookOpen size={16} />
-                        Preview
-                      </Button>
+              {!isOwner && (
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-lg">
+                        {book.totalPrice.toFixed(2)} HARU
+                      </h3>
+                      <p className="text-xs text-gray-500">One-time purchase - get full content and future chapters</p>
                     </div>
-                  )}
+
+                    {isPurchased ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-3 py-1">
+                        Purchased
+                      </Badge>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          className="bg-black hover:bg-gray-800 flex items-center gap-2 opacity-70 cursor-not-allowed"
+                          onClick={() => setIsPurchased(true)}
+                          disabled={true}
+                        >
+                          <ShoppingCart size={16} />
+                          Purchase
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-2"
+                          onClick={() => setActiveTab("chapters")}
+                        >
+                          <BookOpen size={16} />
+                          Preview
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-          
+
           {/* Tabs for reviews and chapters */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6 md:mt-8">
             <TabsList className="mb-8">
               <TabsTrigger value="reviews" className="text-base">
                 Reviews
@@ -493,11 +533,11 @@ export default function BookPage() {
                 Chapters
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="reviews">
               <BookReview bookId={id} />
             </TabsContent>
-            
+
             <TabsContent value="chapters">
               <div className="space-y-3">
                 {isLoadingChapters ? (
@@ -519,7 +559,7 @@ export default function BookPage() {
                 ) : chaptersData && chaptersData.length > 0 ? (
                   // Display actual chapters data
                   chaptersData.slice(0, showAllChapters ? undefined : visibleChapters).map((chapter, index) => (
-                    <div 
+                    <div
                       key={chapter.id}
                       className="p-4 border rounded-lg flex justify-between items-center hover:bg-accent/50 transition-colors"
                     >
@@ -531,16 +571,29 @@ export default function BookPage() {
                           {index === 0 ? "The Beginning" : (chapter.chapter ? `Chapter ${chapter.chapter}` : `Chapter ${index + 1}`)}
                         </p>
                       </div>
-                      <Link href={isPurchased || isChapterPreviewable(index) ? `/books/${book.id}/read?chapter=${chapter.chapter}&id=${chapter.id}` : '#'}>
-                        <Button 
-                          variant={isPurchased ? "outline" : isChapterPreviewable(index) ? "outline" : "ghost"} 
+                      {isPurchased || !chapter.isLocked ? (
+                        <Link href={`/books/${book.id}/read?chapter=${chapter.chapter}&id=${chapter.id}`}>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                          >
+                            Read
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button
                           size="sm"
-                          disabled={!isPurchased && !isChapterPreviewable(index)}
-                          className={!isPurchased && !isChapterPreviewable(index) ? "text-gray-400 border-gray-200" : ""}
+                          variant="default"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedChapter(chapter);
+                            setPurchaseDialogOpen(true);
+                          }}
                         >
-                          {isPurchased ? "Read" : isChapterPreviewable(index) ? "Preview" : "Locked"}
+                          Unlock
                         </Button>
-                      </Link>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -549,7 +602,7 @@ export default function BookPage() {
                     <p>No chapters available for this book yet.</p>
                   </div>
                 )}
-                
+
                 {/* View more button - only show if we have more than 10 chapters */}
                 {chaptersData && chaptersData.length > 10 && (
                   <div className="flex justify-center mt-6">
@@ -567,14 +620,14 @@ export default function BookPage() {
                     </Button>
                   </div>
                 )}
-                
-                {!isPurchased && (
+
+                {!isPurchased && !isOwner && (
                   <div className="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <p className="text-center mb-3 text-gray-700">
                       Purchase this book to unlock all {book.totalChapters} chapters.
                     </p>
-                    <Button 
-                      variant="default" 
+                    <Button
+                      variant="default"
                       onClick={() => {
                         setIsPurchased(true);
                         setActiveTab("chapters");
@@ -591,9 +644,9 @@ export default function BookPage() {
             </TabsContent>
           </Tabs>
         </div>
-        
+
         {/* Right side: Related Books */}
-        <div className="lg:w-1/4 lg:top-4">
+        <div className="lg:w-1/4 lg:top-4 mt-8 lg:mt-0">
           <div className="rounded-sm p-4 shadow-sm bg-white/10">
             <h2 className="text-xl font-bold mb-4">Related Books</h2>
             <RelatedBooks bookId={id} compactView={true} />
@@ -607,6 +660,19 @@ export default function BookPage() {
           </div>
         </div>
       </div>
+
+      {/* Purchase Chapter Dialog */}
+      {selectedChapter && (
+        <PurchaseChapterDialog
+          chapter={selectedChapter}
+          open={purchaseDialogOpen}
+          onOpenChange={setPurchaseDialogOpen}
+          onSuccess={() => {
+            // Refetch chapters data after successful purchase
+            queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.BOOK_CHAPTERS(id) });
+          }}
+        />
+      )}
     </div>
   );
 } 

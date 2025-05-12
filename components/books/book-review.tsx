@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { getBookReviews, postBookReview } from "@/lib/api/books";
 import { BookReview as BookReviewType } from "@/models/book";
 import { BOOK_KEYS, COMMENT_KEYS } from "@/lib/constants/query-keys";
+import { useUserStore } from "@/lib/store";
+import Link from "next/link";
 
 interface BookReviewProps {
   bookId: string;
@@ -19,6 +21,7 @@ interface BookReviewProps {
 
 export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
   const queryClient = useQueryClient();
+  const { user, isLoggedIn } = useUserStore();
   const [newReview, setNewReview] = useState("");
   const [rating, setRating] = useState(5);
   const [commentsPage, setCommentsPage] = useState(1);
@@ -125,44 +128,56 @@ export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
       {!hidePostForm && (
         <div className="mb-8 border rounded-md p-4">
           <h3 className="font-medium mb-3">Write a Review</h3>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Share your thoughts about this book..."
-              value={newReview}
-              onChange={(e) => setNewReview(e.target.value)}
-              className="min-h-[100px]"
-            />
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Rating:</span>
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      className="focus:outline-none"
-                    >
-                      <Star
-                        size={20}
-                        className={`${
-                          star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
+          
+          {isLoggedIn ? (
+            <div className="space-y-4">
+              <Textarea
+                placeholder="Share your thoughts about this book..."
+                value={newReview}
+                onChange={(e) => setNewReview(e.target.value)}
+                className="min-h-[100px]"
+              />
               
-              <Button 
-                onClick={handlePostReview} 
-                disabled={!newReview.trim() || isSubmittingReview}
-              >
-                {isSubmittingReview ? "Posting..." : "Post Review"}
-              </Button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Rating:</span>
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className="focus:outline-none"
+                      >
+                        <Star
+                          size={20}
+                          className={`${
+                            star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={handlePostReview} 
+                  disabled={!newReview.trim() || isSubmittingReview}
+                >
+                  {isSubmittingReview ? "Posting..." : "Post Review"}
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col text-center space-y-3">
+              <p className="text-muted-foreground">You need to be logged in to write reviews.</p>
+              <Link href="/signin" className="mx-auto">
+                <Button variant="default">
+                  Login to Review
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       )}
       

@@ -252,7 +252,7 @@ export function ModerateButton({
       </div>
     );
   };
-
+      
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -282,7 +282,7 @@ export function ModerateButton({
           <p className="text-xs text-muted-foreground mt-0.5">
             Choose a model to check content against age rating standards
           </p>
-        </div>
+      </div>
         <div className="divide-y px-4">
           <ModelOption 
             model={MODERATION_MODELS.OMNI} 
@@ -296,7 +296,7 @@ export function ModerateButton({
             model={MODERATION_MODELS.O4_MINI} 
             label="o4-mini (Faster)" 
           />
-        </div>
+    </div>
       </PopoverContent>
     </Popover>
   );

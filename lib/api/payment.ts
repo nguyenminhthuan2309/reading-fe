@@ -35,3 +35,12 @@ export async function checkPaymentStatus(requestId: string, orderId: string): Pr
     return await get<TransactionStatus>(`/transaction/check-status?${queryParams.toString()}`);
   
 } 
+
+/**
+ * Purchases a chapter
+ * @param chapterId - The ID of the chapter to purchase
+ * @returns Promise with purchase information
+ */
+export async function purchaseChapter(chapterId: number): Promise<ApiResponse<any>> {
+    return await post<any>('/transaction/chapter', { chapterId });
+} 

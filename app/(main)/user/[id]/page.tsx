@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { 
@@ -204,18 +204,6 @@ export default function UserProfilePage() {
           const mergedUser: User = {
             ...structuredClone(INITIAL_USER_DATA),
             ...fetchedUser,
-            // Ensure these nested objects are properly merged
-            readingStats: {
-              ...INITIAL_USER_DATA.readingStats,
-              ...(fetchedUser.readingStats || {})
-            },
-            // Ensure preferences is never undefined
-            preferences: {
-              ...defaultPreferences,
-              ...(fetchedUser.preferences || {}),
-              // Ensure favoriteGenres is always present
-              favoriteGenres: fetchedUser.preferences?.favoriteGenres || []
-            }
           };
           
           setUserData(mergedUser);
@@ -224,13 +212,17 @@ export default function UserProfilePage() {
       
       // If we get here, either there was an error or no data
       return userData;
-    }
+    },
+    staleTime: 0,
   });
   
   if (userQuery.isLoading) {
     return (
-      <div className="container mx-auto px-4 py-12 flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[70vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+          <p className="text-lg font-medium">Loading profile...</p>
+        </div>
       </div>
     );
   }

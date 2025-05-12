@@ -2,7 +2,7 @@
 
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Menu, X, Volume2, VolumeX, Volume1, MessageCircle, Plus, Minus, Maximize2, ScrollText, BookOpen, SlidersHorizontal, Square, SkipForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, X, Volume2, VolumeX, Volume1, MessageCircle, Plus, Minus, Maximize2, ScrollText, BookOpen, SlidersHorizontal, Square, SkipForward, Lock } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { PictureBookReader } from "@/components/books/picture-book-reader";
@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import NovelContent, { extractTextContent } from "@/components/novel/NovelContent";
 import { NovelBookReader } from "@/components/books/novel-book-reader";
+import { PurchaseChapterDialog } from "@/components/books/purchase-chapter-dialog";
 
 // Define reading mode type for type safety (keep for reference)
 type ReadingMode = 'scroll' | 'flip';
@@ -194,6 +195,10 @@ export default function ReadPage() {
   
   // Add a ref to track the last word position
   const lastReadWordPositionRef = useRef<number>(0);
+  
+  // Add state for purchase dialog
+  const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false);
+  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -587,6 +592,9 @@ export default function ReadPage() {
     }
   };
   
+  // Check if the current chapter is locked
+  const isCurrentChapterLocked = chapterData?.isLocked;
+  
   // If loading, show a skeleton UI
   if (isLoadingBook || isLoadingChapter || isLoadingChapterList) {
     return (
@@ -810,7 +818,7 @@ export default function ReadPage() {
             <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <Menu size={20} />
             </Button>
-            <Link href={`/books/${bookData.id}`}>
+            <Link href={`/books/${bookData?.id}`}>
               <Button variant="ghost" size="icon">
                 <ChevronLeft size={20} />
               </Button>
@@ -818,9 +826,9 @@ export default function ReadPage() {
           </div>
           
           <div className="flex flex-col items-center">
-            <h1 className="text-base font-medium">{bookData.title}</h1>
+            <h1 className="text-base font-medium">{bookData?.title}</h1>
             <p className="text-xs text-muted-foreground text-center">
-              Chapter {chapterData.chapter}
+              Chapter {chapterData?.chapter}
             </p>
           </div>
           
@@ -857,22 +865,52 @@ export default function ReadPage() {
             
             <div className="space-y-1">
               {chapterList && chapterList.sort((a, b) => a.chapter - b.chapter).map((chapter) => (
-                <Link 
-                  key={chapter.id} 
-                  href={`/books/${bookId}/read?chapter=${chapter.chapter}&id=${chapter.id}`}
-                  onClick={toggleSidebar}
-                >
-                  <div 
-                    className={`p-3 rounded-md text-sm ${
-                      chapterId === chapter.id || (!chapterId && chapterNumber === chapter.chapter)
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'hover:bg-accent'
-                    }`}
-                  >
-                    Chapter {chapter.chapter}
-                    {chapter.chapter === 1 && <span className="ml-2 opacity-70">(The Beginning)</span>}
-                  </div>
-                </Link>
+                <div key={chapter.id} className="flex items-center">
+                  {chapter.isLocked ? (
+                    // For locked chapters
+                    <div className="flex-1 p-2 rounded-md text-sm flex items-center justify-between group">
+                      <div className="flex flex-col gap-0.5 text-muted-foreground">
+                        <span className="text-xs font-semibold">Chapter {chapter.chapter}</span>
+                        <span className="text-sm flex items-center gap-1">
+                          <Lock size={12} className="text-amber-500" />
+                          {chapter.title || `Chapter ${chapter.chapter}`}
+                        </span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                        onClick={() => {
+                          setSelectedChapter(chapter);
+                          setIsPurchaseDialogOpen(true);
+                          toggleSidebar();
+                        }}
+                      >
+                        Unlock
+                      </Button>
+                    </div>
+                  ) : (
+                    // For unlocked chapters
+                    <Link 
+                      href={`/books/${bookId}/read?chapter=${chapter.chapter}&id=${chapter.id}`}
+                      onClick={toggleSidebar}
+                      className="flex-1"
+                    >
+                      <div 
+                        className={`p-2 rounded-md text-sm ${
+                          chapterId === chapter.id || (!chapterId && chapterNumber === chapter.chapter)
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'hover:bg-accent'
+                        }`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold">Chapter {chapter.chapter}</span>
+                          <span>{chapter.title || `Chapter ${chapter.chapter}`}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -915,20 +953,38 @@ export default function ReadPage() {
       <div className={`flex-1 container max-w-4xl mx-auto px-4 py-8 transition-all duration-300 ${
         commentsOpen ? 'pr-[384px] sm:pr-96' : ''
       }`}>
-        {bookType === "Manga" ? (
+        {isCurrentChapterLocked ? (
+          // Show locked chapter message
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6">
+              <Lock className="h-10 w-10 text-amber-500" />
+            </div>
+            <h2 className="text-2xl font-bold mb-3">This Chapter is Locked</h2>
+            <p className="text-gray-600 max-w-md mb-6">
+              You need to unlock this chapter before you can read it. 
+              Unlock it now to continue reading the story.
+            </p>
+            <Button 
+              onClick={() => setIsPurchaseDialogOpen(true)}
+              className="px-8 bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              Unlock Chapter {chapterData?.chapter}
+            </Button>
+          </div>
+        ) : bookType === "Manga" ? (
           <PictureBookReader 
             bookData={bookData}
             currentChapter={chapterData}
-            nextChapter={chapterList?.find(chapter => chapter.chapter === chapterData.chapter + 1)}
+            nextChapter={chapterList?.find(chapter => chapter.chapter === chapterData?.chapter + 1)}
             images={pictureBookImages}
-            captions={pictureBookImages.map((_, index) => `Chapter ${chapterData.chapter} - Page ${index + 1}`)}
+            captions={pictureBookImages.map((_, index) => `Chapter ${chapterData?.chapter} - Page ${index + 1}`)}
             isFlipMode={readingMode === 'flip'}
           />
         ) : (
           <NovelBookReader
             bookData={bookData}
             currentChapter={chapterData}
-            nextChapter={chapterList?.find(chapter => chapter.chapter === chapterData.chapter + 1)}
+            nextChapter={chapterList?.find(chapter => chapter.chapter === chapterData?.chapter + 1)}
             content={typeof chapterContent === 'string' ? chapterContent : ''}
             isFlipMode={readingMode === 'flip'}
             className="mx-auto"
@@ -950,7 +1006,8 @@ export default function ReadPage() {
       </div>
 
       {/* Floating buttons */}
-      <div className="fixed bottom-24 right-8 flex flex-col gap-4 z-30 transition-all duration-300">
+      {!isCurrentChapterLocked && (
+      <div className="fixed bottom-36 right-2 flex flex-col gap-4 z-30 transition-all duration-300">
         {/* Comments/Reviews button group */}
         <div className={`bg-background/80 backdrop-blur-sm shadow-lg rounded-full p-1 border ${commentsOpen ? 'mr-[384px] sm:mr-96' : ''} transition-all duration-300`}>
           <TooltipProvider>
@@ -1178,7 +1235,29 @@ export default function ReadPage() {
             </div>
           </div>
         )}
-      </div>
+      </div>)}
+
+      {/* Purchase Chapter Dialog */}
+      {(selectedChapter || chapterData) && (
+        <PurchaseChapterDialog
+          chapter={selectedChapter || chapterData}
+          open={isPurchaseDialogOpen}
+          onOpenChange={(open) => {
+            setIsPurchaseDialogOpen(open);
+            if (!open) {
+              // Reset selected chapter when dialog closes
+              setSelectedChapter(null);
+            }
+          }}
+          onSuccess={() => {
+            // Refresh chapter data after purchase
+            queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.DETAIL(chapterId || 0, chapterNumber) });
+            queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.LIST(bookId) });
+            // Reset selected chapter
+            setSelectedChapter(null);
+          }}
+        />
+      )}
     </div>
   );
 } 

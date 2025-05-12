@@ -37,7 +37,7 @@ export default function VerifyEmailPage() {
       router.push('/onboarding');
       return response.data;
     },
-    enabled: false // Don't run on component mount
+    enabled: false, // Don't run on component mount
   });
 
   // Verify email mutation

@@ -1,14 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getUsers, createManager, updateUserStatus, GetUsersParams as ApiGetUsersParams } from '@/lib/api/user';
+import { getCurrentUser } from '@/lib/api/auth';
 import { toast } from 'sonner';
-import { USER_KEYS } from '@/lib/constants/query-keys';
-
+import { AUTH_KEYS, USER_KEYS } from '@/lib/constants/query-keys';
+import { useUserStore } from '@/lib/store';
 interface GetUsersParams {
   page: number;
   limit: number;
   name?: string;
   role?: number;
   status?: number;
+}
+
+export function useMe() {
+  const queryClient = useQueryClient();
+  const { setUser } = useUserStore();
+
+  // Get User Info
+  const { data: userData, isSuccess, isError, refetch: refetchUserInfo } = useQuery({
+    queryKey: AUTH_KEYS.ME,
+    queryFn: async () => {
+      const response = await getCurrentUser();
+      setUser(response.data);
+      return response.data;
+    },
+    
+  });
+
+
+  return { userData, isSuccess, isError, refetchUserInfo };
 }
 
 export function useUsers(params: GetUsersParams) {

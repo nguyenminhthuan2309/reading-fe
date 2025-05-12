@@ -55,7 +55,11 @@ interface PaginatedResponse {
   totalItems: number;
 }
 
-export function SearchDialog() {
+interface SearchDialogProps {
+  variant?: 'default' | 'mobile';
+}
+
+export function SearchDialog({ variant = 'default' }: SearchDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [searchMode, setSearchMode] = React.useState<SearchMode>("book");
@@ -298,25 +302,45 @@ export function SearchDialog() {
     return authorResults?.pages.flatMap(page => page.data as UserType[]) || [];
   }, [authorResults]);
 
+  // Determine button styling based on variant
+  const buttonClass = variant === 'mobile' 
+    ? "w-full flex items-center justify-center gap-2 bg-muted py-2 px-4 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring" 
+    : "h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground";
+
   return (
     <>
-      <div className="relative w-48 md:w-64 lg:w-72">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+      {variant === 'mobile' ? (
         <button
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 pl-8 text-sm text-left text-gray-700 flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 cursor-pointer hover:bg-gray-50"
           onClick={() => setOpen(true)}
+          className={buttonClass}
         >
-          <span>Search...</span>
-          <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-gray-200 bg-gray-100 px-1.5 font-mono text-[10px] font-medium text-gray-600">
-            {shortcutText}
-          </kbd>
+          <Search className="h-4 w-4 mr-2" />
+          <span>Search</span>
         </button>
-      </div>
-      
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          className={buttonClass}
+          aria-label="Search"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+      )}
+
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0">
-          <DialogHeader className="p-4 pb-0">
-            <DialogTitle className="text-lg">Search Haru's Library</DialogTitle>
+        <DialogContent className="sm:max-w-[600px] p-0 gap-0">
+          <DialogHeader className="px-4 pt-4 pb-0">
+            <DialogTitle className="sr-only">Search Haru's Library</DialogTitle>
+            <div className="flex items-center gap-2 w-full">
+              <Search className="h-5 w-5 text-muted-foreground" />
+              <Input
+                ref={inputRef}
+                value={query}
+                onChange={handleQueryChange}
+                placeholder={`Search ${searchMode === "book" ? "books" : "authors"}...`}
+                className="border-0 p-0 focus-visible:ring-0 text-base"
+              />
+            </div>
           </DialogHeader>
           
           {/* Tabs for switching search mode */}

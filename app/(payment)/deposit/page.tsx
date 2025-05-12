@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +16,9 @@ import {
   LockIcon,
   InfoIcon,
   Loader2,
-  CurrencyIcon,
   Copy
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
-import { updateUserProfile } from "@/lib/api";
 import { initPayment, checkPaymentStatus } from "@/lib/api/payment";
 import {
   Tooltip,
@@ -34,7 +32,7 @@ import { TransactionStatus } from "@/models/payment";
 import { ApiResponse } from "@/models/api";
 import { toast } from "sonner";
 import { AUTH_KEYS, PAYMENT_KEYS } from "@/lib/constants/query-keys";
-
+import { useMe } from "@/lib/hooks/useUsers";
 // Define the exchange rate: 1 Haru = 1000 VND
 const HARU_TO_VND_RATE = 1000;
 const MIN_HARU_DEPOSIT = 50;
@@ -97,6 +95,7 @@ export default function DepositPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUserStore();
+  const { refetchUserInfo } = useMe();
   const queryClient = useQueryClient();
 
   // Check for query params
@@ -138,7 +137,7 @@ export default function DepositPage() {
         setStep(3);
         setSelectedPaymentMethod('momo');
         // Invalidate the 'me' query to refresh user data with updated points
-        queryClient.invalidateQueries({ queryKey: AUTH_KEYS.ME });
+        refetchUserInfo();
         return response.data;
       },
       enabled: !!orderIdParam && !!requestIdParam && !!user,

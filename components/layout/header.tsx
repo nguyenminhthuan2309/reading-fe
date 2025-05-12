@@ -31,12 +31,14 @@ import { useLanguage } from "@/lib/providers/LanguageProvider";
 import * as React from "react";
 import { Genre } from "@/models/genre";
 import { UserRoleEnum } from "@/models/user";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { useSocket } from '@/lib/hooks';
 import { useGenres } from "@/lib/hooks/useGenres";
+import { useMe } from "@/lib/hooks/useUsers";
+import { MobileMenu } from "./mobile-menu";
 
 // Custom Link component for NavigationMenu
 const ListItem = React.forwardRef<
@@ -84,14 +86,12 @@ export const getNotificationIcon = (type: any) => {
 };
 
 export default function Header() {
-  const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, isLoggedIn, logout: logoutStore } = useUserStore();
+  const {  user, isLoggedIn, logout: logoutStore } = useUserStore();
   const { theme, setTheme } = useTheme();
-  const { language, setLanguage, languageLabels } = useLanguage();
   
-  const { genres, genreGroups, isLoading: isLoadingGenres } = useGenres();
+  const {  genreGroups } = useGenres();
   
   // Use our custom notifications hook
   const { 
@@ -141,12 +141,14 @@ export default function Header() {
     <header className="bg-white text-black border-b border-gray-200 dark:bg-gray-950 dark:text-white dark:border-gray-800">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-8">
-          <Link href="/" className="flex items-center cursor-pointer">
-            <BookOpen className="h-6 w-6 text-black dark:text-white mr-2" />
-            <span className="font-bold text-xl">Haru's Library</span>
-          </Link>
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center cursor-pointer ml-0 md:ml-0">
+              <BookOpen className="h-6 w-6 text-black dark:text-white mr-2" />
+              <span className="font-bold text-xl">Haru's Library</span>
+            </Link>
+          </div>
           
-          <NavigationMenu className="text-black dark:text-white">
+          <NavigationMenu className="text-black dark:text-white hidden md:block">
             <NavigationMenuList>
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-black bg-white hover:bg-gray-100 hover:text-black focus:bg-gray-100 dark:text-white dark:bg-gray-950 dark:hover:bg-gray-800 dark:hover:text-white dark:focus:bg-gray-800")}>
@@ -202,13 +204,16 @@ export default function Header() {
         </div>
         
         <div className="flex items-center gap-4">
-          <SearchDialog />
+          {/* Search - hide on mobile */}
+          <div className="hidden md:block">
+            <SearchDialog variant="default" />
+          </div>
           
-          {/* Theme Toggle */}
+          {/* Theme Toggle - hide on mobile */}
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-9 w-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="hidden md:flex h-9 w-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Toggle theme"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
@@ -217,12 +222,12 @@ export default function Header() {
             <span className="sr-only">Toggle theme</span>
           </Button>
           
-          {/* Language Selector */}
+          {/* Language Selector - hide on mobile */}
           <Popover>
             <PopoverTrigger asChild>
               <Button 
                 variant="ghost" 
-                className="h-9 px-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2"
+                className="hidden md:flex h-9 px-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 items-center gap-2"
                 aria-label="Change language"
               >
                 <span className="text-base">🇺🇸</span>
@@ -254,14 +259,22 @@ export default function Header() {
             </PopoverContent>
           </Popover>
           
+          {/* Haru balance - hide on mobile */}
+          {isLoggedIn && user && (
+            <div className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/30">
+              <Award className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{user?.tokenBalance || 0}</span>
+            </div>
+          )}
+          
+          {/* Mobile Menu */}
+          <div className="md:hidden">
+            <MobileMenu />
+          </div>
+          
+          {/* Auth section - normal display for desktop, hide sign in on mobile */}
           {isLoggedIn && user ? (
-            <>
-              {/* Add Haru balance display */}
-              <div className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/30">
-                <Award className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{user.tokenBalance || 0}</span>
-              </div>
-              
+            <div className="hidden md:block">
               {/* Notifications */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -430,10 +443,10 @@ export default function Header() {
                   </div>
                 </HoverCardContent>
               </HoverCard>
-            </>
+            </div>
           ) : (
             <>
-              <Link href="/signin" className="text-black hover:text-black text-sm font-medium">
+              <Link href="/signin" className="hidden md:block text-black hover:text-black text-sm font-medium">
                 Sign In
               </Link>
               

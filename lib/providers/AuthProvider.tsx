@@ -31,6 +31,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (cookieToken !== token) {
         setToken(cookieToken);
       }
+
+      console.log('AuthProvider: user', user);
       
       // Try to get the user data with the token if we don't have user data yet
       if (!user) {
