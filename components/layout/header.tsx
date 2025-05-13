@@ -420,7 +420,7 @@ export default function Header() {
           
           {/* Auth section - normal display for desktop, hide sign in on mobile */}
           { user ? (
-            <div className="hidden md:flex items-center">
+            <div className="hidden md:flex items-center gap-2">
               {/* Notifications */}
               <Popover>
                 <PopoverTrigger asChild>
