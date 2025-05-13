@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, User, LogOut, PlusCircle, BookIcon, Award, Sun, Languages, Settings, Bell, X, Check, Moon, CheckSquare, Loader2, ChevronDown } from "lucide-react";
+import { BookOpen, User, LogOut, PlusCircle, BookIcon, Award, Sun, Languages, Settings, Bell, X, Check, Moon, CheckSquare, Loader2, ChevronDown, Target, Search, Plus, ArrowUpCircle } from "lucide-react";
 import { SearchDialog } from "@/components/search/search-dialog";
 import {
   NavigationMenu,
@@ -39,6 +39,8 @@ import { useSocket } from '@/lib/hooks';
 import { useGenres } from "@/lib/hooks/useGenres";
 import { useMe } from "@/lib/hooks/useUsers";
 import { MobileMenu } from "./mobile-menu";
+import { useAvailableActivities } from "@/lib/hooks/useActivities";
+import { useEffect } from "react";
 
 // Custom Link component for NavigationMenu
 const ListItem = React.forwardRef<
@@ -88,10 +90,10 @@ export const getNotificationIcon = (type: any) => {
 export default function Header() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const {  user, isLoggedIn, logout: logoutStore } = useUserStore();
+  const {  logout: logoutStore } = useUserStore();
   const { theme, setTheme } = useTheme();
-  
   const {  genreGroups } = useGenres();
+  const { userData: user } = useMe();
   
   // Use our custom notifications hook
   const { 
@@ -113,6 +115,24 @@ export default function Header() {
     enableNotifications: true
   });
 
+  const { 
+    availableActivities, 
+    isLoading: activitiesLoading, 
+    notCompletedCount,
+    createActivity
+  } = useAvailableActivities();
+
+  useEffect(() => {
+    if (availableActivities?.length > 0) {
+      const idx = availableActivities.findIndex(activity => activity.type === 'login' && activity.status === 'notstarted');
+      if (idx !== -1) {
+        createActivity({
+          activityType: 'login',
+        });
+      }
+    }
+  }, [availableActivities, createActivity]);
+
   // Handle logout directly in the component
   const handleLogout = () => {
     // Clear user from Zustand store
@@ -128,6 +148,11 @@ export default function Header() {
     if (user?.id) {
       router.push(`/me`);
     }
+  };
+
+  // Handle deposit navigation
+  const navigateToDeposit = () => {
+    router.push('/deposit');
   };
 
   // Generate username for display
@@ -209,6 +234,140 @@ export default function Header() {
             <SearchDialog variant="default" />
           </div>
           
+          {/* Haru balance & missions combined - hide on mobile */}
+          {user && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <div className="hidden md:flex md:relative items-center gap-2 px-3 py-1.5 rounded-full border border-amber-300 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 dark:border-amber-700/50 cursor-pointer hover:shadow-sm hover:from-amber-100 hover:to-amber-200 dark:hover:from-amber-800/30 dark:hover:to-amber-700/20 transition-all duration-200 group">
+                  <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-sm">
+                    <Award className="h-3 w-3" />
+                  </div>
+                  <span className="text-sm font-medium bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-300 dark:to-amber-400">{user?.tokenBalance || 0}</span>
+                  <div className="relative flex items-center justify-center">
+                    <div className={cn(
+                      "absolute inset-0 rounded-full",
+                      notCompletedCount > 0 && "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-amber-400/30 before:animate-radar after:content-[''] after:absolute after:inset-0 after:rounded-full after:bg-amber-500/20 after:animate-radar after:animation-delay-500"
+                    )}></div>
+                    <div className="flex items-center justify-center h-4 w-4 rounded-full bg-amber-200 text-amber-700 dark:bg-amber-700/50 dark:text-amber-300 group-hover:bg-amber-300 dark:group-hover:bg-amber-600 transition-colors z-10">
+                      <Plus className="h-3 w-3" />
+                    </div>
+                  </div>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0 rounded-lg border shadow-lg">
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/10 p-4 rounded-t-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-sm">
+                        <Award className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs text-amber-700 dark:text-amber-300">Your Balance</span>
+                        <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-300 dark:to-amber-400">
+                          {user?.tokenBalance || 0}
+                        </div>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-full bg-white/70 backdrop-blur-sm border-amber-200 hover:bg-amber-100 transition-all duration-200 shadow-sm"
+                      title="Deposit Haru"
+                      onClick={navigateToDeposit}
+                    >
+                      <ArrowUpCircle className="h-4 w-4 text-amber-600" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="p-4 space-y-4">
+                  {activitiesLoading ? (
+                    <div className="py-4 flex justify-center">
+                      <div className="h-5 w-5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></div>
+                    </div>
+                  ) : availableActivities && availableActivities.length > 0 ? (
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium flex items-center gap-1.5">
+                          <Target className="h-4 w-4 text-amber-500" />
+                          Available Missions
+                        </h4>
+                        {notCompletedCount > 0 && (
+                          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/50">
+                            {notCompletedCount} pending
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-amber-200 dark:scrollbar-thumb-amber-900/50">
+                        {availableActivities.map((activity) => (
+                          <div key={activity.id} className="flex items-center justify-between text-sm py-2 px-3 rounded-md bg-white dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 shadow-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-center h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/50">
+                                <Target className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                              </div>
+                              <span className="text-xs font-medium">{activity.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full" 
+                                  style={{ width: `${(activity.done / activity.total) * 100}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-muted-foreground">{activity.done}/{activity.total}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <h4 className="text-sm font-medium mb-3 flex items-center gap-1.5">
+                        <Award className="h-4 w-4 text-amber-500" />
+                        How to earn Haru tokens
+                      </h4>
+                      <ul className="space-y-2">
+                        {[
+                          { icon: <Target className="h-3.5 w-3.5 text-amber-500" />, text: "Complete missions and challenges" },
+                          { icon: <BookOpen className="h-3.5 w-3.5 text-amber-500" />, text: "Create and publish books" },
+                          { icon: <User className="h-3.5 w-3.5 text-amber-500" />, text: "Interact with the community" }
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-center gap-2 p-2 rounded-md bg-white dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 text-xs text-muted-foreground">
+                            <div className="flex items-center justify-center h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/50">
+                              {item.icon}
+                            </div>
+                            <span>{item.text}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 dark:from-amber-900/20 dark:to-amber-800/10 dark:border-amber-700/50 dark:text-amber-400 dark:hover:from-amber-800/30 dark:hover:to-amber-700/20 shadow-sm"
+                      onClick={navigateToDeposit}
+                    >
+                      <ArrowUpCircle className="h-4 w-4 mr-2" />
+                      Deposit
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 text-amber-700 border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 dark:from-amber-900/20 dark:to-amber-800/10 dark:border-amber-700/50 dark:text-amber-400 dark:hover:from-amber-800/30 dark:hover:to-amber-700/20 shadow-sm"
+                      onClick={() => router.push('/me?section=missions')}
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      All Missions
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          
           {/* Theme Toggle - hide on mobile */}
           <Button 
             variant="ghost" 
@@ -259,26 +418,13 @@ export default function Header() {
             </PopoverContent>
           </Popover>
           
-          {/* Haru balance - hide on mobile */}
-          {isLoggedIn && user && (
-            <div className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/30">
-              <Award className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{user?.tokenBalance || 0}</span>
-            </div>
-          )}
-          
-          {/* Mobile Menu */}
-          <div className="md:hidden">
-            <MobileMenu />
-          </div>
-          
           {/* Auth section - normal display for desktop, hide sign in on mobile */}
-          {isLoggedIn && user ? (
-            <div className="hidden md:block">
+          { user ? (
+            <div className="hidden md:flex items-center">
               {/* Notifications */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
+                  <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full flex items-center justify-center">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                       <Badge 
@@ -455,8 +601,37 @@ export default function Header() {
               </Link>
             </>
           )}
+          
+          {/* Mobile Menu */}
+          <div className="md:hidden">
+            <MobileMenu />
+          </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes radar {
+          0% {
+            transform: scale(0.5);
+            opacity: 0.6;
+          }
+          50% {
+            opacity: 0.3;
+          }
+          100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+        
+        .animate-radar {
+          animation: radar 2s infinite;
+        }
+        
+        .animation-delay-500 {
+          animation-delay: 0.5s;
+        }
+      `}</style>
     </header>
   );
 } 

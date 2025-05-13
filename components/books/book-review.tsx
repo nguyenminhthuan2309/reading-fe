@@ -12,6 +12,7 @@ import { getBookReviews, postBookReview } from "@/lib/api/books";
 import { BookReview as BookReviewType } from "@/models/book";
 import { BOOK_KEYS, COMMENT_KEYS } from "@/lib/constants/query-keys";
 import { useUserStore } from "@/lib/store";
+import { useAvailableActivities } from "@/lib/hooks/useActivities";
 import Link from "next/link";
 
 interface BookReviewProps {
@@ -26,6 +27,7 @@ export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
   const [rating, setRating] = useState(5);
   const [commentsPage, setCommentsPage] = useState(1);
   const commentsLimit = 10;
+  const { createActivity } = useAvailableActivities();
   
   // State to keep track of all reviews (for pagination)
   const [allReviews, setAllReviews] = useState<BookReviewType[]>([]);
@@ -98,6 +100,12 @@ export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
       // Reset to page 1 and refetch reviews
       setCommentsPage(1);
       setAllReviews([]);
+
+      // Add activity log
+      createActivity({
+        activityType: 'rate_book',
+        relatedEntityId: +bookId
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to post your review. Please try again.");

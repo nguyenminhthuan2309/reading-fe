@@ -13,11 +13,10 @@ interface GetUsersParams {
 }
 
 export function useMe() {
-  const queryClient = useQueryClient();
   const { setUser } = useUserStore();
 
   // Get User Info
-  const { data: userData, isSuccess, isError, refetch: refetchUserInfo } = useQuery({
+  const { data: userData, isSuccess, isLoading: isLoadingProfile, isFetching: isFetchingProfile,isError, refetch: refetchUserInfo } = useQuery({
     queryKey: AUTH_KEYS.ME,
     queryFn: async () => {
       const response = await getCurrentUser();
@@ -28,7 +27,7 @@ export function useMe() {
   });
 
 
-  return { userData, isSuccess, isError, refetchUserInfo };
+  return { userData, isSuccess, isLoadingProfile, isFetchingProfile, isError, refetchUserInfo };
 }
 
 export function useUsers(params: GetUsersParams) {

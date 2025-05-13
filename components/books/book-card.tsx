@@ -196,12 +196,15 @@ export function BookCard({
               </Link>
             )}
             
-            <FollowButton 
-              bookId={id} 
-              isFollowed={isFollowed} 
-              size="sm" 
-              className="h-8 px-2 rounded-lg border" 
-            />
+            {/* Only show FollowButton if not the creator */}
+            {!isCreator && (
+              <FollowButton 
+                bookId={id} 
+                isFollowed={isFollowed} 
+                size="sm" 
+                className="h-8 px-2 rounded-lg border" 
+              />
+            )}
           </div>
         </div>
       </div>

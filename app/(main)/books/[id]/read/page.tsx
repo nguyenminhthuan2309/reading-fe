@@ -307,15 +307,6 @@ export default function ReadPage() {
       });
       return;
     }
-    
-    console.log('Starting speech with settings:', {
-      voice: currentVoice.name,
-      rate: currentSpeechRate,
-      pitch: currentPitch,
-      volume: voiceVolume,
-      fromPosition: resumeFromLastPosition ? lastReadWordPositionRef.current : 0
-    });
-    
     // Stop any existing speech
     if (speechSynthesisRef.current) {
       speechSynthesisRef.current.cancel();
@@ -403,13 +394,6 @@ export default function ReadPage() {
       rate: currentSpeechRate,
       pitch: currentPitch,
       volume: voiceVolume
-    });
-    
-    console.log('Updating to:', {
-      voice: newVoice?.name || 'unchanged',
-      rate: newRate !== undefined ? newRate : 'unchanged',
-      pitch: newPitch !== undefined ? newPitch : 'unchanged',
-      volume: newVolume !== undefined ? newVolume : 'unchanged'
     });
 
     // First update all state variables immediately for UI
@@ -545,7 +529,7 @@ export default function ReadPage() {
   
   // Update reading history when chapter data is loaded
   useEffect(() => {
-    if (chapterId && bookId && !isLoadingChapter && chapterData) {
+    if (chapterId && bookId && !isLoadingChapter && chapterData && !isCurrentChapterLocked) {
       // Use the mutation instead of direct API call
       updateReadingHistoryMutation.mutate({
         bookId: Number(bookId),
@@ -564,7 +548,6 @@ export default function ReadPage() {
   
   // Restore the stopSpeech function
   const stopSpeech = () => {
-    console.log("stopSpeech", speechSynthesisRef);
     if (speechSynthesisRef.current) {
       speechSynthesisRef.current.cancel();
     }

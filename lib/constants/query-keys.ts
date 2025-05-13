@@ -94,4 +94,13 @@ export const ADMIN_KEYS = {
   }
 } as const;
 
+// Activity/Missions related query keys
+export const ACTIVITY_KEYS = {
+  AVAILABLE: ['activities', 'available'] as const,
+  ALL: ['activities'] as const,
+  USER_ACTIVITIES: (userId: string | number) => ['activities', 'user', userId] as const,
+  USER_ACTIVITY_FILTERED: (userId: string | number, params: any) => 
+    ['activities',  'filtered', params] as const,
+} as const;
+
 

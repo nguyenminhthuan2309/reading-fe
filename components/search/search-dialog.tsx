@@ -305,7 +305,7 @@ export function SearchDialog({ variant = 'default' }: SearchDialogProps) {
   // Determine button styling based on variant
   const buttonClass = variant === 'mobile' 
     ? "w-full flex items-center justify-center gap-2 bg-muted py-2 px-4 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring" 
-    : "h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground";
+    : "flex items-center relative bg-gray-100 rounded-md pr-4 pl-10 h-9 min-w-[200px] hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors text-sm text-muted-foreground border";
 
   return (
     <>
@@ -318,29 +318,25 @@ export function SearchDialog({ variant = 'default' }: SearchDialogProps) {
           <span>Search</span>
         </button>
       ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className={buttonClass}
-          aria-label="Search"
-        >
-          <Search className="h-4 w-4" />
-        </button>
+        <div className="relative">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 z-10 text-muted-foreground" />
+          <button
+            onClick={() => setOpen(true)}
+            className={buttonClass}
+            aria-label="Search"
+          >
+            <span className="truncate">Search books or authors...</span>
+            <kbd className="ml-2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <span className="text-xs">{shortcutText}</span>
+            </kbd>
+          </button>
+        </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[600px] p-0 gap-0">
           <DialogHeader className="px-4 pt-4 pb-0">
             <DialogTitle className="sr-only">Search Haru's Library</DialogTitle>
-            <div className="flex items-center gap-2 w-full">
-              <Search className="h-5 w-5 text-muted-foreground" />
-              <Input
-                ref={inputRef}
-                value={query}
-                onChange={handleQueryChange}
-                placeholder={`Search ${searchMode === "book" ? "books" : "authors"}...`}
-                className="border-0 p-0 focus-visible:ring-0 text-base"
-              />
-            </div>
           </DialogHeader>
           
           {/* Tabs for switching search mode */}

@@ -64,3 +64,10 @@ export function extractChapterContent(content: string): string {
     return result.trim();
   
 }
+
+export const toCurrentTimezone = (date: string) => {
+  const dateObj = new Date(date);
+  const offset = dateObj.getTimezoneOffset();
+  const localDate = new Date(dateObj.getTime() - offset * 60000);
+  return localDate.toISOString();
+}

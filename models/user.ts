@@ -44,34 +44,19 @@ export type User = {
   joinedDate: string;
   bio: string;
   location: string;
-  birthday?: string; // ISO date string
+  birthDate?: string; // ISO date string
   gender?: string; // Added gender field
-  readingStats: {
-    booksRead: number;
-    chaptersRead: number;
-    hoursRead: number;
-    avgRating: number;
-  };
-  tokenBalance
-  :
-  number
-  tokenEarned
-  :
-  number
-  tokenPurchased
-  :
-  number
-  tokenReceived
-  :
-  number
-  tokenSpent
-  :
-  number
-  tokenWithdrawn
-  :
-  number
+  readingStats: UserReadingStats;
+  tokenBalance: number;
+  tokenEarned: number;
+  tokenPurchased: number;
+  tokenReceived: number;
+  tokenSpent: number;
+  tokenWithdrawn: number;
   authoredBooks?: any[]; // Books created by the user
-  socialLinks?: SocialLinks; // Social media links
+  instagram?: string;
+  facebook?: string;
+  twitter?: string;
 };
 
 export interface SocialLinks {
@@ -95,13 +80,15 @@ export interface UserRole {
 export type UserPreferences = {
   theme?: 'light' | 'dark' | 'system';
   language?: string;
-  favoriteGenres?: Genre[];
-  readingSpeed?: string;
-  notifications?: {
-    email: boolean;
-    push: boolean;
-  };
+  readingMode?: 'scroll' | 'flip';
+  volume?: number;
+  readingSpeed?: 'slow' | 'medium' | 'fast';
 };
+
+export type UserReadingStats = {
+  booksRead: number;
+  chaptersRead: number;
+}
 
 export type SigninResponse = {
   accessToken: string;

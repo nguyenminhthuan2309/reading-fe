@@ -95,7 +95,6 @@ export default function DepositPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUserStore();
-  const { refetchUserInfo } = useMe();
   const queryClient = useQueryClient();
 
   // Check for query params
@@ -136,8 +135,7 @@ export default function DepositPage() {
         }
         setStep(3);
         setSelectedPaymentMethod('momo');
-        // Invalidate the 'me' query to refresh user data with updated points
-        refetchUserInfo();
+        queryClient.invalidateQueries({ queryKey: AUTH_KEYS.ME });
         return response.data;
       },
       enabled: !!orderIdParam && !!requestIdParam && !!user,

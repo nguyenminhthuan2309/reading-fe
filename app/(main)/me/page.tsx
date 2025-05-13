@@ -16,14 +16,12 @@ import {
   Book,
   BookOpen,
   Clock,
-  Heart,
   LayoutGrid,
   PlusCircle,
   Star,
   User as UserIcon,
   ChevronLeft,
   Settings,
-  Shield,
   Bookmark,
   BarChart,
   PenSquare,
@@ -35,15 +33,18 @@ import {
   Lock,
   Camera,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Wallet,
+  Coins,
+  Award
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCurrentUser, getUserById, updateUserProfile } from "@/lib/api/auth";
+import { useMutation,  useQueryClient } from "@tanstack/react-query";
+import { updateUserProfile } from "@/lib/api/auth";
 import { updatePassword } from "@/lib/api/auth";
 import { uploadAvatar } from "@/lib/api/user";
-import { useUserStore } from "@/lib/store";
-import { User, UserPreferences } from "@/models";
+import { useUserStore } from "@/lib/store/useUserStore";
+import { User } from "@/models";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import * as yup from "yup";
@@ -51,59 +52,15 @@ import { UserBooks } from "@/components/user/user-books";
 import { FollowedBooks } from "@/components/user/followed-books";
 import { AUTH_KEYS, USER_KEYS } from "@/lib/constants/query-keys";
 import { RecentlyReadBooks } from "@/components/user/recently-read-books";
-
-// Create a complete initial user data with proper types
-const defaultPreferences: Required<UserPreferences> = {
-  theme: "light",
-  language: "EN",
-  favoriteGenres: [],
-  readingSpeed: "medium",
-  notifications: {
-    email: false,
-    push: false
-  }
-};
+import { AvailableMissions } from "@/components/user/available-missions";
+import { MissionHistory } from "@/components/user/mission-history";
+import { useMe } from "@/lib/hooks/useUsers";
+import { RecentTransactions } from "@/components/user/recent-transactions";
 
 export const MAX_AVATAR_SIZE = 1 * 1024 * 1024; // 1MB in bytes
 
 
-// Initial user data
-const INITIAL_USER_DATA: User = {
-  id: 0,
-  name: '',
-  email: '',
-  username: '',
-  avatar: '',
-  bio: '',
-  location: '',
-  joinedDate: new Date().toISOString(),
-  createdAt: new Date().toISOString(),
-  birthday: '',
-  points: 0,
-  status: { id: 0, name: 'New' },
-  role: { id: 0, name: 'User' },
-  readingStats: {
-    booksRead: 0,
-    chaptersRead: 0,
-    hoursRead: 0,
-    avgRating: 0
-  },
-  tokenBalance: 0,
-  tokenEarned: 0,
-  tokenPurchased: 0,
-  tokenReceived: 0,
-  tokenSpent: 0,
-  tokenWithdrawn: 0,
-  preferences: defaultPreferences,
-  socialLinks: {
-    facebook: '',
-    twitter: '',
-    instagram: '',
-
-  }
-};
-
-type ProfilePage = "account" | "balance" | "shelf" | "bookmarks" | "history" | "analytics" | "preferences";
+type ProfilePage = "account" | "balance" | "shelf" | "bookmarks" | "history" | "analytics" | "preferences" | "missions";
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -111,7 +68,8 @@ export default function UserProfilePage() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const userId = params.id as string;
-  const { user, token } = useUserStore();
+  const { user } = useUserStore();
+  const { userData, isLoadingProfile } = useMe();
 
   // Create updatePassword mutation
   const updatePasswordMutation = useMutation({
@@ -165,9 +123,6 @@ export default function UserProfilePage() {
     }
   });
 
-  // Initialize with the default user data (non-null)
-  const [userData, setUserData] = useState<User>(structuredClone(INITIAL_USER_DATA));
-
   // Get section from URL query parameter, default to "account"
   const sectionParam = searchParams.get('section');
   const [activePage, setActivePage] = useState<ProfilePage>(sectionParam as ProfilePage || "account");
@@ -207,23 +162,19 @@ export default function UserProfilePage() {
     name: '',
     username: '',
     bio: '',
-    birthday: '',
-    socialLinks: {
-      facebook: '',
-      twitter: '',
-      instagram: '',
-
-    }
+    birthDate: '',
+    twitter: '',
+    facebook: '',
+    instagram: '',
   });
-
+  
   // Add these new states and functions
-
   const [preferencesFormData, setPreferencesFormData] = useState({
-    readingSpeed: '',
-    theme: '',
-    language: '',
-    emailNotifications: '',
-    pushNotifications: ''
+    readingMode: userData?.preferences?.readingMode,
+    theme: userData?.preferences?.theme,
+    language: userData?.preferences?.language,
+    volume: userData?.preferences?.volume || 50,
+    readingSpeed: userData?.preferences?.readingSpeed || 'medium',
   });
 
   // Add state for password change functionality
@@ -243,11 +194,7 @@ export default function UserProfilePage() {
   const [preferencesChanged, setPreferencesChanged] = useState(false);
 
   // Add state for avatar editing
-  const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-
-  // Add state for the active book filter
-  const [activeBookFilter, setActiveBookFilter] = useState<string>("all");
 
   // Add state for password validation errors
   const [passwordErrors, setPasswordErrors] = useState({
@@ -265,45 +212,6 @@ export default function UserProfilePage() {
     confirmPassword: yup.string()
       .required("Please confirm your password")
       .oneOf([yup.ref('newPassword')], "Passwords must match")
-  });
-
-  const mergeUserData = (user: User) => {
-    const mergedUser: User = {
-      ...structuredClone(INITIAL_USER_DATA),
-      ...user,
-      // Ensure these nested objects are properly merged
-      readingStats: {
-        ...INITIAL_USER_DATA.readingStats,
-        ...(user.readingStats || {})
-      },
-      // Ensure preferences is never undefined
-      preferences: {
-        ...defaultPreferences,
-        ...(user.preferences || {}),
-        // Ensure favoriteGenres is always present
-        favoriteGenres: user.preferences?.favoriteGenres || []
-      }
-    };
-
-    return mergedUser;
-  }
-
-  const userQuery = useQuery({
-    queryKey: AUTH_KEYS.ME,
-    queryFn: async () => {
-
-      const response = await getCurrentUser();
-      // Check if user doesn't exist (404 status)
-      if (response.status === 404) {
-        return null;
-      }
-
-      const mergedUser = mergeUserData(response.data);
-
-      setUserData(mergedUser);
-      return mergedUser;
-    },
-    staleTime: 0,
   });
 
   const updateUserMutation = useMutation({
@@ -330,19 +238,6 @@ export default function UserProfilePage() {
       }
     }
   });
-
-  // When user data is fetched, initialize the preferences form data
-  useEffect(() => {
-    if (userData && userData.preferences) {
-      setPreferencesFormData({
-        readingSpeed: userData.preferences.readingSpeed || 'medium',
-        theme: userData.preferences.theme || 'light',
-        language: userData.preferences.language || 'EN',
-        emailNotifications: userData.preferences.notifications?.email ? 'enabled' : 'disabled',
-        pushNotifications: userData.preferences.notifications?.push ? 'enabled' : 'disabled'
-      });
-    }
-  }, [userData]);
 
   // Add a avatarUpload mutation
   const avatarUploadMutation = useMutation({
@@ -373,7 +268,7 @@ export default function UserProfilePage() {
     },
   });
 
-  if (userQuery.isLoading) {
+  if (isLoadingProfile) {
     return (
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[70vh]">
         <div className="flex flex-col items-center gap-4">
@@ -385,7 +280,7 @@ export default function UserProfilePage() {
   }
 
   // Show user not found message if user doesn't exist
-  if (userQuery.data === null) {
+  if (!userData ) {
     return (
       <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[70vh]">
         <h1 className="text-4xl font-bold text-red-600 mb-4">User Not Found</h1>
@@ -409,9 +304,6 @@ export default function UserProfilePage() {
   // Generate a display username
   const displayUsername = userData.username || userData.name.toLowerCase().replace(/\s+/g, '');
 
-  // Ensure preferences is always accessible
-  const preferences = userData.preferences || defaultPreferences;
-
   // Function to toggle password visibility
   const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
     setShowPassword(prev => ({
@@ -426,12 +318,10 @@ export default function UserProfilePage() {
       name: userData.name,
       username: displayUsername.replace('@', ''),
       bio: userData.bio || '',
-      birthday: userData.birthday || '',
-      socialLinks: {
-        facebook: userData.socialLinks?.facebook || '',
-        twitter: userData.socialLinks?.twitter || '',
-        instagram: userData.socialLinks?.instagram || ''
-      }
+      birthDate: userData.birthDate || '',
+      twitter: userData.twitter || '',
+      facebook: userData.facebook || '',
+      instagram: userData.instagram || ''
     });
     setIsEditing(true);
   };
@@ -447,8 +337,10 @@ export default function UserProfilePage() {
       name: editFormData.name,
       username: editFormData.username,
       bio: editFormData.bio,
-      birthday: editFormData.birthday,
-      socialLinks: editFormData.socialLinks
+      birthDate: editFormData.birthDate,
+      twitter: editFormData.twitter,
+      facebook: editFormData.facebook,
+      instagram: editFormData.instagram,
     };
 
     handleProfileUpdate(updatedData);
@@ -467,10 +359,7 @@ export default function UserProfilePage() {
   const handleSocialLinkChange = (platform: string, value: string) => {
     setEditFormData(prev => ({
       ...prev,
-      socialLinks: {
-        ...prev.socialLinks,
-        [platform]: value
-      }
+      [platform]: value
     }));
   };
 
@@ -488,13 +377,11 @@ export default function UserProfilePage() {
     const updatedData = {
       preferences: {
         ...userData.preferences,
-        readingSpeed: preferencesFormData.readingSpeed,
         theme: preferencesFormData.theme as 'light' | 'dark' | 'system',
         language: preferencesFormData.language,
-        notifications: {
-          email: preferencesFormData.emailNotifications === 'enabled',
-          push: preferencesFormData.pushNotifications === 'enabled'
-        }
+        readingMode: preferencesFormData.readingMode,
+        volume: preferencesFormData.volume,
+        readingSpeed: preferencesFormData.readingSpeed,
       }
     };
 
@@ -616,10 +503,6 @@ export default function UserProfilePage() {
     avatarUploadMutation.mutate(file);
   };
 
-  // Function to handle book filter changes
-  const handleBookFilterChange = (filter: string) => {
-    setActiveBookFilter(filter);
-  };
 
   return (
     <div className="container mx-auto px-4 py-8 flex flex-col h-full min-h-[calc(100vh-80px)]">
@@ -697,8 +580,8 @@ export default function UserProfilePage() {
 
               {/* Social links */}
               <div className="flex items-center justify-center gap-3 mb-3">
-                {userData.socialLinks?.facebook && (
-                  <Link href={userData.socialLinks.facebook} target="_blank" className="text-blue-600 hover:text-blue-800">
+                {userData.facebook && (
+                  <Link href={userData.facebook} target="_blank" className="text-blue-600 hover:text-blue-800">
                     <div className="p-1.5 rounded-full bg-blue-100">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z" />
@@ -706,8 +589,8 @@ export default function UserProfilePage() {
                     </div>
                   </Link>
                 )}
-                {userData.socialLinks?.twitter && (
-                  <Link href={userData.socialLinks.twitter} target="_blank" className="text-blue-400 hover:text-blue-600">
+                {userData?.twitter && (
+                  <Link href={userData.twitter} target="_blank" className="text-blue-400 hover:text-blue-600">
                     <div className="p-1.5 rounded-full bg-blue-50">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0 0 16 3.542a6.658 6.658 0 0 1-1.889.518 3.301 3.301 0 0 0 1.447-1.817 6.533 6.533 0 0 1-2.087.793A3.286 3.286 0 0 0 7.875 6.03a9.325 9.325 0 0 1-6.767-3.429 3.289 3.289 0 0 0 1.018 4.382A3.323 3.323 0 0 1 .64 6.575v.045a3.288 3.288 0 0 0 2.632 3.218 3.203 3.203 0 0 1-.865.115 3.23 3.23 0 0 1-.614-.057 3.283 3.283 0 0 0 3.067 2.277A6.588 6.588 0 0 1 .78 13.58a6.32 6.32 0 0 1-.78-.045A9.344 9.344 0 0 0 5.026 15z" />
@@ -715,8 +598,8 @@ export default function UserProfilePage() {
                     </div>
                   </Link>
                 )}
-                {userData.socialLinks?.instagram && (
-                  <Link href={userData.socialLinks.instagram} target="_blank" className="text-pink-600 hover:text-pink-800">
+                {userData?.instagram && (
+                  <Link href={userData.instagram} target="_blank" className="text-pink-600 hover:text-pink-800">
                     <div className="p-1.5 rounded-full bg-pink-50">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                         <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233 0-2.136.008-2.388.046-3.231.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045v.002zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92zm-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217zm0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334z" />
@@ -724,7 +607,7 @@ export default function UserProfilePage() {
                     </div>
                   </Link>
                 )}
-                {!userData.socialLinks?.facebook && !userData.socialLinks?.twitter && !userData.socialLinks?.instagram && (
+                {!userData?.facebook && !userData?.twitter && !userData?.instagram && (
                   <p className="text-xs text-muted-foreground">No social links added</p>
                 )}
               </div>
@@ -758,8 +641,17 @@ export default function UserProfilePage() {
                 }`}
               onClick={() => handleNavigate("balance")}
             >
-              <Star size={16} className={activePage === "balance" ? "text-primary" : ""} />
+              <Wallet size={16} className={activePage === "balance" ? "text-primary" : ""} />
               <span>Balance</span>
+            </button>
+
+            <button
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 text-sm ${activePage === "missions" ? "bg-primary/10 text-primary font-medium" : ""
+                }`}
+              onClick={() => handleNavigate("missions")}
+            >
+              <Star size={16} className={activePage === "missions" ? "text-primary" : ""} />
+              <span>Missions</span>
             </button>
 
             {/* Book-related group with divider */}
@@ -803,6 +695,7 @@ export default function UserProfilePage() {
               <BarChart size={16} className={activePage === "analytics" ? "text-primary" : ""} />
               <span>Statistics</span>
             </button>
+
             <button
               className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 text-sm ${activePage === "preferences" ? "bg-primary/10 text-primary font-medium" : ""
                 }`}
@@ -917,14 +810,14 @@ export default function UserProfilePage() {
                           <p className="text-xs text-muted-foreground">Birthday</p>
                           {isEditing ? (
                             <DatePicker
-                              date={editFormData.birthday ? new Date(editFormData.birthday) : undefined}
-                              setDate={(date) => handleInputChange('birthday', date ? date.toISOString() : '')}
+                              date={editFormData.birthDate ? new Date(editFormData.birthDate) : undefined}
+                              setDate={(date) => handleInputChange('birthDate', date ? date.toISOString() : '')}
                               placeholder="Select your birthday"
                               className="mt-1"
                             />
                           ) : (
                             <p className="text-sm font-medium">
-                              {userData.birthday ? new Date(userData.birthday).toLocaleDateString() : "-"}
+                              {userData.birthDate ? new Date(userData.birthDate).toLocaleDateString() : "-"}
                             </p>
                           )}
                         </div>
@@ -959,14 +852,14 @@ export default function UserProfilePage() {
                             <p className="text-xs text-muted-foreground mb-1">Facebook</p>
                             {isEditing ? (
                               <Input
-                                value={editFormData.socialLinks.facebook}
+                                value={editFormData.facebook}
                                 onChange={(e) => handleSocialLinkChange('facebook', e.target.value)}
                                 placeholder="Facebook URL"
                               />
                             ) : (
                               <p className="text-sm font-medium">
-                                {userData.socialLinks?.facebook ? (
-                                  <Link href={userData.socialLinks.facebook} target="_blank" className="text-blue-600 hover:underline">
+                                {userData?.facebook ? (
+                                  <Link href={userData.facebook} target="_blank" className="text-blue-600 hover:underline">
                                     View Profile
                                   </Link>
                                 ) : (
@@ -979,14 +872,14 @@ export default function UserProfilePage() {
                             <p className="text-xs text-muted-foreground mb-1">Twitter</p>
                             {isEditing ? (
                               <Input
-                                value={editFormData.socialLinks.twitter}
+                                value={editFormData.twitter}
                                 onChange={(e) => handleSocialLinkChange('twitter', e.target.value)}
                                 placeholder="Twitter URL"
                               />
                             ) : (
                               <p className="text-sm font-medium">
-                                {userData.socialLinks?.twitter ? (
-                                  <Link href={userData.socialLinks.twitter} target="_blank" className="text-blue-600 hover:underline">
+                                {userData?.twitter ? (
+                                  <Link href={userData.twitter} target="_blank" className="text-blue-600 hover:underline">
                                     View Profile
                                   </Link>
                                 ) : (
@@ -999,14 +892,14 @@ export default function UserProfilePage() {
                             <p className="text-xs text-muted-foreground mb-1">Instagram</p>
                             {isEditing ? (
                               <Input
-                                value={editFormData.socialLinks.instagram}
+                                value={editFormData.instagram}
                                 onChange={(e) => handleSocialLinkChange('instagram', e.target.value)}
                                 placeholder="Instagram URL"
                               />
                             ) : (
                               <p className="text-sm font-medium">
-                                {userData.socialLinks?.instagram ? (
-                                  <Link href={userData.socialLinks.instagram} target="_blank" className="text-blue-600 hover:underline">
+                                {userData.instagram ? (
+                                  <Link href={userData.instagram} target="_blank" className="text-blue-600 hover:underline">
                                     View Profile
                                   </Link>
                                 ) : (
@@ -1154,7 +1047,7 @@ export default function UserProfilePage() {
                             <p className="text-xs text-muted-foreground mt-1">Password last changed: Recently</p>
                           </div>
                           <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded">
-                            <CheckCircle2 size={14} />
+                            <CheckCircle2 size={14} className="text-primary" />
                             <span className="text-xs font-medium">Secure</span>
                           </div>
                         </div>
@@ -1187,10 +1080,10 @@ export default function UserProfilePage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Haru Balance Card */}
-                <div className="lg:col-span-2 bg-secondary/20 rounded-lg border border-secondary/90 shadow-sm overflow-hidden">
+                <div className="lg:col-span-3 bg-secondary/20 rounded-lg border border-secondary/90 shadow-sm overflow-hidden">
                   <div className="px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between">
                     <h3 className="text-sm font-medium flex items-center gap-2">
-                      <Star size={16} className="text-primary" />
+                      <Wallet size={16} className="text-primary" />
                       Haru Balance
                     </h3>
                   </div>
@@ -1198,11 +1091,11 @@ export default function UserProfilePage() {
                     {/* Improved Current Balance Layout with Actions */}
                     <div className="flex flex-col sm:flex-row items-center justify-between mb-6 pb-6 border-b border-secondary/90">
                       <div className="flex items-center gap-4 mb-4 sm:mb-0">
-                        <div className="bg-primary/20 w-16 h-16 rounded-full flex items-center justify-center" title="Haru is used for premium content & purchases">
-                          <Star size={28} className="text-primary" />
+                        <div className="bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-sm w-16 h-16 rounded-full flex items-center justify-center" title="Haru is used for premium content & purchases">
+                          <Award   size={28} className="text-white" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold">{userData.points || 0}</p>
+                          <p className="text-2xl font-bold">{userData.tokenBalance || 0}</p>
                           <p className="text-sm text-muted-foreground">Available Haru</p>
                         </div>
                       </div>
@@ -1221,6 +1114,7 @@ export default function UserProfilePage() {
                           </Button>
                         </Link>
                         <Button
+                          disabled
                           variant="outline"
                           size="sm"
                           className="h-9 px-4"
@@ -1248,7 +1142,7 @@ export default function UserProfilePage() {
                           <ArrowUpCircle size={16} className="text-green-500" />
                           <p className="text-sm font-medium">Total Earned</p>
                         </div>
-                        <p className="text-xl font-bold">{(userData.points || 0) + 125}</p>
+                        <p className="text-xl font-bold">{userData.tokenEarned || 0}</p>
                       </div>
 
                       <div className="bg-secondary/30 p-4 rounded-lg border border-secondary/90">
@@ -1256,102 +1150,196 @@ export default function UserProfilePage() {
                           <ArrowDownCircle size={16} className="text-amber-500" />
                           <p className="text-sm font-medium">Total Spent</p>
                         </div>
-                        <p className="text-xl font-bold">125</p>
+                        <p className="text-xl font-bold">{userData.tokenSpent || 0}</p>
                       </div>
                     </div>
 
                     {/* Transaction History Preview */}
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-sm font-medium">Recent Transactions</p>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs">
-                          View All
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                        <div className="flex items-center justify-between text-sm py-2 border-b border-secondary/80">
-                          <div className="flex items-center gap-2">
-                            <ArrowUpCircle size={16} className="text-green-500" />
-                            <div>
-                              <p className="font-medium">Deposit</p>
-                              <p className="text-xs text-muted-foreground">Apr 17, 2024</p>
-                            </div>
-                          </div>
-                          <p className="font-medium text-green-500">+100</p>
-                        </div>
-
-                        <div className="flex items-center justify-between text-sm py-2 border-b border-secondary/80">
-                          <div className="flex items-center gap-2">
-                            <ArrowDownCircle size={16} className="text-amber-500" />
-                            <div>
-                              <p className="font-medium">Book Purchase</p>
-                              <p className="text-xs text-muted-foreground">Apr 15, 2024</p>
-                            </div>
-                          </div>
-                          <p className="font-medium text-amber-500">-75</p>
-                        </div>
-
-                        <div className="flex items-center justify-between text-sm py-2 border-b border-secondary/80">
-                          <div className="flex items-center gap-2">
-                            <ArrowUpCircle size={16} className="text-green-500" />
-                            <div>
-                              <p className="font-medium">Daily Reward</p>
-                              <p className="text-xs text-muted-foreground">Apr 14, 2024</p>
-                            </div>
-                          </div>
-                          <p className="font-medium text-green-500">+25</p>
-                        </div>
-                      </div>
-                    </div>
+                    <RecentTransactions limit={3} showViewAll={true} />
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
 
-                {/* Activity Summary Card */}
-                <div className="bg-white rounded-lg border border-secondary/90 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 bg-secondary/30 border-b border-secondary/90">
-                    <h3 className="text-sm font-medium flex items-center gap-2">
-                      <BarChart size={16} className="text-primary" />
-                      Activity Summary
-                    </h3>
-                  </div>
-                  <div className="p-4">
+          {activePage === "missions" && (
+            <div className="flex flex-col flex-grow h-full">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-secondary/90">
+                <h2 className="text-xl font-bold">Missions & Rewards</h2>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50">
+                  <Wallet className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-medium text-amber-700">{userData?.tokenBalance || 0} Haru</span>
+                </div>
+              </div>
+
+              {/* Available Missions */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Available Missions</h3>
+                <AvailableMissions />
+              </div>
+
+              {/* Completed Missions */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Completed Missions</h3>
+                <MissionHistory />
+              </div>
+            </div>
+          )}
+
+          {activePage === "history" && (
+            <div className="flex flex-col flex-grow h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Recently Read</h2>
+
+                <div className="flex gap-2">
+                  <Link href="/books">
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <BookOpen size={16} />
+                      <span className="hidden sm:inline">Browse Books</span>
+                      <span className="sm:hidden">Browse</span>
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              <RecentlyReadBooks />
+            </div>
+          )}
+
+          {activePage === "bookmarks" && (
+            <div className="flex flex-col flex-grow h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Bookmarked Books</h2>
+
+                <div className="flex gap-2">
+                  <Link href="/books">
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <BookOpen size={16} />
+                      <span className="hidden sm:inline">Browse Books</span>
+                      <span className="sm:hidden">Browse</span>
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              <FollowedBooks />
+            </div>
+          )}
+
+          {activePage === "shelf" && (
+            <div className="flex flex-col flex-grow h-full">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-secondary/90">
+                <h2 className="text-xl font-bold">My Books</h2>
+
+                <div className="flex gap-2">
+
+                  <Link href="/books/create">
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <PlusCircle size={16} />
+                      <span className="hidden sm:inline">Submit Book</span>
+                      <span className="sm:hidden">Submit</span>
+                    </Button>
+                  </Link>
+
+                </div>
+              </div>
+
+              {/* Display user books with the new status filter system */}
+              <UserBooks userId={userData.id} />
+            </div>
+          )}
+
+          {activePage === "preferences" && (
+            <div className="flex flex-col flex-grow h-full">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-secondary/90">
+                <h2 className="text-xl font-bold">User Preferences</h2>
+
+                <div className="flex gap-2">
+                  {preferencesChanged && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-8"
+                      onClick={savePreferencesEdits}
+                    >
+                      Save Changes
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-secondary/90 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-medium mb-4">Reading Preferences</h3>
                     <div className="space-y-4">
-                      {/* Activity Stats */}
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Earning Rate</p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">25 Haru / day</p>
-                          <span className="text-xs bg-green-100 text-green-800 py-0.5 px-2 rounded-full">Active</span>
-                        </div>
-                        <div className="mt-2 h-2 bg-secondary/30 rounded-full overflow-hidden">
-                          <div className="bg-primary h-full rounded-full" style={{ width: '65%' }}></div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">65% to next level</p>
-                      </div>
+                        <p className="text-sm font-medium mb-1">Reading Speed</p>
 
-                      <div className="pt-4 border-t border-secondary/90">
-                        <p className="text-xs text-muted-foreground mb-1">Reading Streak</p>
-                        <p className="text-2xl font-bold">7 days</p>
-                        <p className="text-xs text-muted-foreground">Keep reading daily to earn rewards</p>
+                        <Select
+                          value={preferencesChanged ? preferencesFormData?.readingSpeed : userData?.preferences?.readingSpeed || 'medium'}
+                          onValueChange={(value) => handlePreferencesChange('readingSpeed', value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select reading speed" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="slow">Slow</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="fast">Fast</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-
-                      <div className="pt-4 border-t border-secondary/90">
-                        <p className="text-xs text-muted-foreground mb-2">Ways to Earn Haru</p>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <CheckCircle2 size={14} className="text-green-500" />
-                            <span>Daily reading (up to 25/day)</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <CheckCircle2 size={14} className="text-green-500" />
-                            <span>Writing reviews (50/review)</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <CheckCircle2 size={14} className="text-green-500" />
-                            <span>Creating content (100+)</span>
-                          </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium mb-1">Volume</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={preferencesChanged ? preferencesFormData.volume : userData?.preferences?.volume || 50}
+                            onChange={(e) => handlePreferencesChange('volume', e.target.value)}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                          />
+                          <span className="text-xs text-muted-foreground w-8 text-right">
+                            {preferencesChanged ? preferencesFormData.volume : userData?.preferences?.volume || 50}%
+                          </span>
                         </div>
+                      </div>
+                      
+                      <div>
+                        <p className="text-sm font-medium mb-1">Theme</p>
+
+                        <Select
+                          value={preferencesChanged ? preferencesFormData?.theme : userData?.preferences?.theme}
+                          onValueChange={(value) => handlePreferencesChange('theme', value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select theme" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="light">Light</SelectItem>
+                            <SelectItem value="dark">Dark</SelectItem>
+                            <SelectItem value="system">System</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">Language</p>
+
+                        <Select
+                          value={preferencesChanged ? preferencesFormData?.language : userData?.preferences?.language}
+                          onValueChange={(value) => handlePreferencesChange('language', value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select language" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="vn">Vietnamese</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
@@ -1393,20 +1381,6 @@ export default function UserProfilePage() {
                     </div>
                     <p className="text-xl font-semibold">{userData.readingStats.chaptersRead}</p>
                     <p className="text-xs text-muted-foreground mt-1">Chapters Read</p>
-                  </div>
-                  <div className="bg-secondary/30 rounded-lg p-4 text-center flex flex-col items-center justify-center border border-secondary/90">
-                    <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-3">
-                      <Clock size={22} className="text-primary" />
-                    </div>
-                    <p className="text-xl font-semibold">{userData.readingStats.hoursRead}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Hours Read</p>
-                  </div>
-                  <div className="bg-secondary/30 rounded-lg p-4 text-center flex flex-col items-center justify-center border border-secondary/90">
-                    <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-3">
-                      <Star size={22} className="text-primary" />
-                    </div>
-                    <p className="text-xl font-semibold">{userData.readingStats.avgRating}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Avg Rating</p>
                   </div>
                   <div className="bg-secondary/30 rounded-lg p-4 text-center flex flex-col items-center justify-center border border-secondary/90">
                     <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-3">
@@ -1514,189 +1488,6 @@ export default function UserProfilePage() {
                       <div className="flex items-center gap-1 bg-primary/10 px-3 py-1 rounded-full">
                         <CheckCircle2 size={14} className="text-primary" />
                         <p className="text-xs font-medium">You're on track to meet your goals!</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activePage === "history" && (
-            <div className="flex flex-col flex-grow h-full">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Recently Read</h2>
-
-                <div className="flex gap-2">
-                  <Link href="/books">
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <BookOpen size={16} />
-                      <span className="hidden sm:inline">Browse Books</span>
-                      <span className="sm:hidden">Browse</span>
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              <RecentlyReadBooks />
-            </div>
-          )}
-
-          {activePage === "bookmarks" && (
-            <div className="flex flex-col flex-grow h-full">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Bookmarked Books</h2>
-
-                <div className="flex gap-2">
-                  <Link href="/books">
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <BookOpen size={16} />
-                      <span className="hidden sm:inline">Browse Books</span>
-                      <span className="sm:hidden">Browse</span>
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              <FollowedBooks />
-            </div>
-          )}
-
-          {activePage === "shelf" && (
-            <div className="flex flex-col flex-grow h-full">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-secondary/90">
-                <h2 className="text-xl font-bold">My Books</h2>
-
-                <div className="flex gap-2">
-
-                  <Link href="/books/create">
-                    <Button variant="outline" className="flex items-center gap-2">
-                      <PlusCircle size={16} />
-                      <span className="hidden sm:inline">Submit Book</span>
-                      <span className="sm:hidden">Submit</span>
-                    </Button>
-                  </Link>
-
-                </div>
-              </div>
-
-              {/* Display user books with the new status filter system */}
-              <UserBooks userId={userData.id} />
-            </div>
-          )}
-
-          {activePage === "preferences" && (
-            <div className="flex flex-col flex-grow h-full">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-secondary/90">
-                <h2 className="text-xl font-bold">User Preferences</h2>
-
-                <div className="flex gap-2">
-                  {preferencesChanged && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-8"
-                      onClick={savePreferencesEdits}
-                    >
-                      Save Changes
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 border border-secondary/90 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-sm font-medium mb-4">Reading Preferences</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-medium mb-1">Reading Speed</p>
-
-                        <Select
-                          value={preferencesFormData.readingSpeed}
-                          onValueChange={(value) => handlePreferencesChange('readingSpeed', value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select reading speed" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="slow">Slow</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="fast">Fast</SelectItem>
-                          </SelectContent>
-                        </Select>
-
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium mb-1">Theme</p>
-
-                        <Select
-                          value={preferencesFormData.theme}
-                          onValueChange={(value) => handlePreferencesChange('theme', value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select theme" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="light">Light</SelectItem>
-                            <SelectItem value="dark">Dark</SelectItem>
-                            <SelectItem value="system">System</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium mb-1">Language</p>
-
-                        <Select
-                          value={preferencesFormData.language}
-                          onValueChange={(value) => handlePreferencesChange('language', value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="EN">English</SelectItem>
-                            <SelectItem value="VI">Vietnamese</SelectItem>
-                            <SelectItem value="FR">French</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium mb-4">Notification Settings</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-medium mb-1">Email Notifications</p>
-
-                        <Select
-                          value={preferencesFormData.emailNotifications}
-                          onValueChange={(value) => handlePreferencesChange('emailNotifications', value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Email notifications" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="enabled">Enabled</SelectItem>
-                            <SelectItem value="disabled">Disabled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium mb-1">Push Notifications</p>
-
-                        <Select
-                          value={preferencesFormData.pushNotifications}
-                          onValueChange={(value) => handlePreferencesChange('pushNotifications', value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Push notifications" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="enabled">Enabled</SelectItem>
-                            <SelectItem value="disabled">Disabled</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
                     </div>
                   </div>

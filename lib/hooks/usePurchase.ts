@@ -18,7 +18,7 @@ export function usePurchaseChapter() {
         
         // Invalidate related queries to refetch data
         queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.DETAIL(chapterId) });
-        refetchUserInfo();
+        queryClient.invalidateQueries({ queryKey: AUTH_KEYS.ME });
       } else {
         toast.error(response.msg || "Failed to purchase chapter");
       }

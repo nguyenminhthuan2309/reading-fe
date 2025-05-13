@@ -2,7 +2,7 @@ import { ApiResponse, ApiResponseStatus, PaginatedData } from '@/models/api';
 import { patch, updateImage } from '@/lib/api/base';
 import { post, get } from '@/lib/api/base';
 import { Category, User, UserPreferences } from '@/models';
-
+import { Activity } from '@/lib/hooks/useActivities';
 /**
  * Maximum allowed file size for avatar upload (1MB)
  */
@@ -25,6 +25,17 @@ export interface GetUsersResponse {
   totalItems: number;
   totalPages: number;
   currentPage: number;
+}
+
+// Query parameters for getting activities
+export interface GetActivitiesParams {
+  type?: string;
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  earnedPoint?: number;
+  isEarnedPoint?: boolean;
+  userId?: number;
 }
 
 // Request body for creating a manager
@@ -217,4 +228,42 @@ export async function addRecentSearch(searchType: string, searchValue: string): 
  */
 export async function getRecentSearches(limit: number = 5): Promise<ApiResponse<Array<{ id: number; searchType: string; searchValue: string; createdAt: string }>>> {
   return await get(`/user/recent-searches?limit=${limit}`);
+}
+
+/**
+ * Get available activities/missions for the user
+ * @returns ApiResponse with the user's available activities/missions
+ */
+export async function getAvailableActivities(): Promise<ApiResponse<Activity[]>> {
+  return await get('/user/activities/available');
+}
+
+/**
+ * Get user activities with optional filters
+ * @param params Optional query parameters for filtering activities
+ * @returns ApiResponse with the user's activities
+ */
+export async function getUserActivities(params?: GetActivitiesParams): Promise<ApiResponse<Activity[]>> {
+  const queryParams = new URLSearchParams();
+  
+  // Add optional params if they exist
+  if (params?.type) queryParams.append('type', params.type);
+  if (params?.date) queryParams.append('date', params.date);
+  if (params?.startDate) queryParams.append('startDate', params.startDate);
+  if (params?.endDate) queryParams.append('endDate', params.endDate);
+  if (params?.earnedPoint !== undefined) queryParams.append('earnedPoint', params.earnedPoint.toString());
+  if (params?.isEarnedPoint !== undefined) queryParams.append('isEarnedPoint', params.isEarnedPoint.toString());
+  if (params?.userId !== undefined) queryParams.append('userId', params.userId.toString());
+  
+  const queryString = queryParams.toString();
+  return await get<Activity[]>(`/user/activities${queryString ? `?${queryString}` : ''}`);
+}
+
+/**
+ * Create a new user activity/mission
+ * @param activityType Type of activity (e.g., 'login', 'view', 'rate', etc.)
+ * @returns ApiResponse with the created activity data
+ */
+export async function createNewActivity(activityType: string, relatedEntityId?: number): Promise<ApiResponse<any>> {
+  return await post('/user/activities', { activityType, relatedEntityId });
 }

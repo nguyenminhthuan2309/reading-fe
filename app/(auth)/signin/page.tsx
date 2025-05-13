@@ -13,6 +13,7 @@ import { useUserStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import Cookies from "js-cookie";
+import { useAvailableActivities } from "@/lib/hooks/useActivities";
 
 // Define validation schema with Yup
 const signinSchema = yup.object({
@@ -38,6 +39,7 @@ export default function SignIn() {
   } = useForm<SigninFormData>({
     resolver: yupResolver(signinSchema),
   });
+  const { createActivity } = useAvailableActivities();
   
   const [showPassword, setShowPassword] = useState(false);
   const { setUser, setToken } = useUserStore();
@@ -69,7 +71,15 @@ export default function SignIn() {
           secure: process.env.NODE_ENV === 'production' 
         });
       }
+
+      // Update the user data in the query client
       queryClient.setQueryData(['me'], userData);
+
+      // Create a login activity
+      createActivity({
+        activityType: 'login',
+      });
+
       router.push('/');
     }
   });
