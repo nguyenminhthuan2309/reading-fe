@@ -65,7 +65,7 @@ export default function AdminLayout({
           <Link href="/">
             <Button variant="ghost" className="flex items-center cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
-              Exit Admin
+              Home
             </Button>
           </Link>
         </div>

@@ -77,6 +77,7 @@ const statusOptions = [
 
 // Role options
 const roleOptions = [
+  { value: UserRoleEnum.ALL, label: "All Roles", id: 0 },
   { value: UserRoleEnum.ADMIN, label: "Admin", id: 1 },
   { value: UserRoleEnum.MANAGER, label: "Manager", id: 2 },
   { value: UserRoleEnum.MEMBER, label: "Member", id: 3 },
@@ -86,7 +87,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<string>(UserRoleEnum.MEMBER);
+  const [selectedRole, setSelectedRole] = useState<string>(UserRoleEnum.ALL);
   const [selectedStatus, setSelectedStatus] = useState<string>(UserStatusEnum.ACTIVE);
   const pageSize = 10;
   const { user } = useUserStore();
@@ -104,7 +105,7 @@ export default function UsersPage() {
     page: currentPage,
     limit: pageSize,
     name: debouncedSearchQuery || undefined,
-    role: selectedRole === UserRoleEnum.MEMBER ? undefined : USER_ROLES.find(role => role.name === selectedRole)?.id,
+    role: selectedRole === UserRoleEnum.ALL ? undefined : USER_ROLES.find(role => role.name === selectedRole)?.id,
     status: selectedStatus === UserStatusEnum.ACTIVE ? undefined : USER_STATUSES.find(status => status.name === selectedStatus)?.id,
   });
 
@@ -373,9 +374,8 @@ export default function UsersPage() {
                 <SelectValue placeholder="Select Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
                 {roleOptions.map((role) => (
-                  <SelectItem key={role.value} value={role.value}>
+                  <SelectItem key={role.value} value={role.value} disabled={role.value === UserRoleEnum.ADMIN && user?.role?.name !== UserRoleEnum.ADMIN}>
                     {role.label}
                   </SelectItem>
                 ))}

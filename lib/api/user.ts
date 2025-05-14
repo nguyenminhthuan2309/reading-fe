@@ -235,7 +235,7 @@ export async function getRecentSearches(limit: number = 5): Promise<ApiResponse<
  * @returns ApiResponse with the user's available activities/missions
  */
 export async function getAvailableActivities(): Promise<ApiResponse<Activity[]>> {
-  return await get('/user/activities/available');
+  return await get('activities/available');
 }
 
 /**
@@ -256,7 +256,7 @@ export async function getUserActivities(params?: GetActivitiesParams): Promise<A
   if (params?.userId !== undefined) queryParams.append('userId', params.userId.toString());
   
   const queryString = queryParams.toString();
-  return await get<Activity[]>(`/user/activities${queryString ? `?${queryString}` : ''}`);
+  return await get<Activity[]>(`activities${queryString ? `?${queryString}` : ''}`);
 }
 
 /**
@@ -265,5 +265,5 @@ export async function getUserActivities(params?: GetActivitiesParams): Promise<A
  * @returns ApiResponse with the created activity data
  */
 export async function createNewActivity(activityType: string, relatedEntityId?: number): Promise<ApiResponse<any>> {
-  return await post('/user/activities', { activityType, relatedEntityId });
+  return await post('activities', { activityType, relatedEntityId });
 }

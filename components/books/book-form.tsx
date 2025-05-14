@@ -1425,6 +1425,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                     }
                   }}
                 >
+                   
                   {isSubmitting ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
@@ -1476,8 +1477,17 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                         className="gap-2 bg-green-600 hover:bg-green-700"
                         onClick={handlePublishChanges}
                       >
-                        <Shield size={16} />
-                        Publish Chapters
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Publishing...
+                          </>
+                        ) : (
+                          <>
+                            <Shield size={16} />
+                            Publish Chapters
+                          </>
+                        )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>

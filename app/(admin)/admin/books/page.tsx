@@ -35,7 +35,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { AccessStatusEnum, Chapter, ChapterAccessStatus, BookType, BOOK_TYPES } from "@/models/book";
+import { AccessStatusEnum, Chapter, ChapterAccessStatus, BookType, BOOK_TYPES, AgeRatingEnum } from "@/models/book";
 import { ModerationResults, NumericAgeRating } from "@/components/moderation/ModerationResults";
 import { ModerateButton } from "@/components/moderation/ModerateButton";
 import { ModerationModelType, MODERATION_MODELS } from "@/lib/hooks/useOpenAI";
@@ -672,17 +672,20 @@ export default function BooksPage() {
         const ageRating = row.original.ageRating;
         let badgeClass = "bg-gray-100 text-gray-800";
         let displayText = "Unknown";
+
+        console.log('ageRating', ageRating);
+        console.log('row.original', row.original);
         
-        if (ageRating === 3) {
+        if (ageRating === 4) {
           badgeClass = "bg-red-200 text-red-800 font-medium";
           displayText = "18+";
-        } else if (ageRating === 2) {
+        } else if (ageRating === 3) {
           badgeClass = "bg-orange-200 text-orange-800 font-medium";
           displayText = "16+";
-        } else if (ageRating === 1) {
+        } else if (ageRating === 2) {
           badgeClass = "bg-amber-200 text-amber-800 font-medium";
           displayText = "13+";
-        } else if (ageRating === 0) {
+        } else if (ageRating === 1) {
           badgeClass = "bg-green-200 text-green-800 font-medium";
           displayText = "All";
         }
@@ -1056,16 +1059,16 @@ export default function BooksPage() {
         let badgeClass = "bg-gray-100 text-gray-800";
         let displayText = "Unknown";
         
-        if (ageRating === 3) {
+        if (ageRating === AgeRatingEnum.ADULT) {
           badgeClass = "bg-red-200 text-red-800 font-medium";
           displayText = "18+";
-        } else if (ageRating === 2) {
+        } else if (ageRating === AgeRatingEnum.MATURE) {
           badgeClass = "bg-orange-200 text-orange-800 font-medium";
           displayText = "16+";
-        } else if (ageRating === 1) {
+        } else if (ageRating === AgeRatingEnum.TEEN) {
           badgeClass = "bg-amber-200 text-amber-800 font-medium";
           displayText = "13+";
-        } else if (ageRating === 0) {
+        } else if (ageRating === AgeRatingEnum.EVERYONE) {
           badgeClass = "bg-green-200 text-green-800 font-medium";
           displayText = "All";
         }

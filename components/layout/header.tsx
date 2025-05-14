@@ -124,7 +124,7 @@ export default function Header() {
 
   useEffect(() => {
     if (availableActivities?.length > 0) {
-      const idx = availableActivities.findIndex(activity => activity.type === 'login' && activity.status === 'notstarted');
+      const idx = availableActivities.findIndex(activity => activity.activityType === 'login' && activity.status === 'notstarted');
       if (idx !== -1) {
         createActivity({
           activityType: 'login',
@@ -298,23 +298,23 @@ export default function Header() {
                           </Badge>
                         )}
                       </div>
-                      <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-amber-200 dark:scrollbar-thumb-amber-900/50">
+                      <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-amber-200 dark:scrollbar-thumb-amber-900/50">
                         {availableActivities.map((activity) => (
                           <div key={activity.id} className="flex items-center justify-between text-sm py-2 px-3 rounded-md bg-white dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 shadow-sm">
                             <div className="flex items-center gap-2">
                               <div className="flex items-center justify-center h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/50">
                                 <Target className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                               </div>
-                              <span className="text-xs font-medium">{activity.name}</span>
+                              <span className="text-xs font-medium">{activity.title}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div 
                                   className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full" 
-                                  style={{ width: `${(activity.done / activity.total) * 100}%` }}
+                                  style={{ width: `${(activity.completedCount / activity.maxPerDay) * 100}%` }}
                                 ></div>
                               </div>
-                              <span className="text-xs text-muted-foreground">{activity.done}/{activity.total}</span>
+                              <span className="text-xs text-muted-foreground">{activity.completedCount}/{activity.maxPerDay}</span>
                             </div>
                           </div>
                         ))}

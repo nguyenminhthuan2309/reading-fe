@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useAvailableActivities } from "@/lib/hooks/useActivities";
+import { ActivityType, useAvailableActivities } from "@/lib/hooks/useActivities";
 import { BookOpen, Book, MessageSquare, Bookmark, Loader2, LogIn, Play, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
@@ -112,8 +112,8 @@ export function AvailableMissions() {
   }
 
   // Helper function to get the appropriate icon for an activity type
-  const getActivityIcon = (type: string) => {
-    switch (type.toLowerCase()) {
+  const getActivityIcon = (type: ActivityType) => {
+    switch (type) {
       case 'login':
         return <LogIn size={15} className="text-primary" />;
       case 'watch_ad':
@@ -122,18 +122,21 @@ export function AvailableMissions() {
         return <Star size={15} className="text-primary" />;
       case 'complete_book':
         return <Book size={15} className="text-primary" />;
+      case 'comment_chapter':
+        return <MessageSquare size={15} className="text-primary" />;
       default:
         return <BookOpen size={15} className="text-primary" />;
     }
   };
 
   const handleStartMission = (activity: any) => {
-    switch (activity.type.toLowerCase()) {
+    switch (activity.activityType.toLowerCase()) {
       case 'watch_ad':
         setVideoOpen(true);
         break;
       case 'rate_book':
       case 'complete_book':
+      case 'comment_chapter':
         router.push('/me?section=history');
         break;
       default:
@@ -163,18 +166,18 @@ export function AvailableMissions() {
             <div className="p-3 flex items-start justify-between">
               <div className="flex-1">
                 <h4 className="text-sm font-medium flex items-center gap-1.5 mb-1.5">
-                  {getActivityIcon(activity.type)}
-                  {activity.name}
+                  {getActivityIcon(activity.activityType)}
+                  {activity.title}
                   {!!(activity.earnedPoint && activity.earnedPoint > 0) && <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">+{activity.earnedPoint} Haru</span>}
                 </h4>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-amber-400 to-amber-500  h-full rounded-full"
-                      style={{ width: `${(activity.done / activity.total) * 100}%` }}
+                      style={{ width: `${(activity.completedCount / activity.maxPerDay) * 100}%` }}
                     ></div>
                   </div>
-                  <span className="text-xs text-muted-foreground">{activity.done}/{activity.total}</span>
+                  <span className="text-xs text-muted-foreground">{activity.completedCount}/{activity.maxPerDay}</span>
                   {activity.status !== 'done' ? (
                     <Button
                       variant="default"

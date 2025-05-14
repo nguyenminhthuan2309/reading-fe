@@ -3,6 +3,7 @@ import { Genre } from './genre';
 
 // User role enum
 export enum UserRoleEnum {
+  ALL = 'ALL',
   ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
   MEMBER = 'MEMBER'

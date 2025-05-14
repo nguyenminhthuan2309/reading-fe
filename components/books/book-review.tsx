@@ -22,7 +22,7 @@ interface BookReviewProps {
 
 export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
   const queryClient = useQueryClient();
-  const { user, isLoggedIn } = useUserStore();
+  const { isLoggedIn } = useUserStore();
   const [newReview, setNewReview] = useState("");
   const [rating, setRating] = useState(5);
   const [commentsPage, setCommentsPage] = useState(1);
@@ -85,14 +85,7 @@ export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
       return response.data;
     },
     onSuccess: () => {
-       // Add activity log
-      if (newReview.trim().length > 100) {
-        createActivity({
-          activityType: 'rate_book',
-          relatedEntityId: +bookId
-        });
-      }
-
+    
       // Reset form
       setNewReview("");
       // Reset rating back to 5

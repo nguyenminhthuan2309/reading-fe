@@ -8,17 +8,19 @@ import { useMe } from "./useUsers";
 
 export interface Activity {
   id: number;
-  name: string;
+  title: string;
   status: "notstarted" | "inprogress" | "done";
-  done: number;
-  total: number;
-  type: string;
+  completedCount: number;
+  maxPerDay: number;
+  activityType: ActivityType;
   points?: number;
   createdAt?: string;
   currentStreak?: number;
   earnedPoint?: number;
   activity?: ActivityCategory;
 }
+
+export type ActivityType = "login" | "watch_ad" | "rate_book" | "complete_book" | "comment_chapter";
 
 export interface ActivityCategory {
   activityType: string;
