@@ -85,6 +85,14 @@ export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
       return response.data;
     },
     onSuccess: () => {
+       // Add activity log
+      if (newReview.trim().length > 100) {
+        createActivity({
+          activityType: 'rate_book',
+          relatedEntityId: +bookId
+        });
+      }
+
       // Reset form
       setNewReview("");
       // Reset rating back to 5
@@ -101,11 +109,7 @@ export function BookReview({ bookId, hidePostForm = false }: BookReviewProps) {
       setCommentsPage(1);
       setAllReviews([]);
 
-      // Add activity log
-      createActivity({
-        activityType: 'rate_book',
-        relatedEntityId: +bookId
-      });
+     
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to post your review. Please try again.");
