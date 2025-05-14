@@ -1406,6 +1406,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   )}
                 </Button>
               )}
+              <div>submitting: {isSubmitting.toString()}</div>
+              <div>isSavingDraft: {isSavingDraft.toString()}</div>
+              
               { initialData?.accessStatus.id !== AccessStatusEnum.PENDING &&
                 <Button
                   type="submit"
@@ -1426,7 +1429,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   }}
                 >
                    
-                  {isSubmitting ? (
+                  {isSubmitting || isSavingDraft ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
                       {isEditing ? 'Saving...' : 'Publishing...'}
