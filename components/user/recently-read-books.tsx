@@ -133,7 +133,9 @@ export function RecentlyReadBooks({ limitPage = 10 }: RecentlyReadBooksProps) {
                       />
                     </div>
                     <div>
-                      <div className="font-medium">{item.title}</div>
+                      <Link href={`/books/${item.id}`}>
+                        <div className="font-medium hover:underline hover:text-destructive hover:cursor-pointer">{item.title}</div>
+                      </Link>
                       <div className="text-xs text-muted-foreground">by {item.author.name}</div>
                     </div>
                   </div>
@@ -160,7 +162,7 @@ export function RecentlyReadBooks({ limitPage = 10 }: RecentlyReadBooksProps) {
                     </Button>
                     {item.chaptersRead.length > 0 && (
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/books/${item.id}/read/${item.chaptersRead[0].id}`}>
+                        <Link href={`/books/${item.id}/read/?chapter=${item.chaptersRead[0].chapter}&id=${item.chaptersRead[0].id}`}>
                           <Play className="h-4 w-4" />
                           <span className="sr-only">Continue Reading</span>
                         </Link>

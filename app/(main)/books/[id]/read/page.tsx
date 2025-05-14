@@ -21,6 +21,7 @@ import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import { NovelBookReader } from "@/components/books/novel-book-reader";
 import { PurchaseChapterDialog } from "@/components/books/purchase-chapter-dialog";
 import { useTextToSpeech } from "@/lib/hooks/useTextToSpeak";
+import { useUserStore } from "@/lib/store";
 
 // Define reading mode type for type safety (keep for reference)
 type ReadingMode = 'scroll' | 'flip';
@@ -37,9 +38,9 @@ export default function ReadPage() {
   const chapterNumber = chapterParam ? parseInt(chapterParam) : 1;
   const chapterIdParam = searchParams.get("id");
   const chapterId = chapterIdParam ? parseInt(chapterIdParam) : undefined;
-
   const bookReaderRef = useRef<HTMLDivElement>(null);
-
+  const {user} = useUserStore();
+  
   const { play, isPlaying, isPaused, pause, resume, voices, updateSettings, settings } =
   useTextToSpeech(bookReaderRef,{ pitch: 1, rate: 1, volume: 0.5 });
 
@@ -158,6 +159,8 @@ export default function ReadPage() {
   
   // State for comments sidebar visibility
   const [commentsOpen, setCommentsOpen] = useState(false);
+
+  const isOwner = bookData?.author.id === user?.id;
   
  
   
@@ -247,8 +250,8 @@ export default function ReadPage() {
   
   // Update reading history when chapter data is loaded
   useEffect(() => {
-    if (chapterId && bookId && !isLoadingChapter && chapterData && !isCurrentChapterLocked) {
-      // Use the mutation instead of direct API call
+    if (chapterId && bookId && !isLoadingChapter && chapterData && !isCurrentChapterLocked && !!user && !isOwner) {
+      
       updateReadingHistoryMutation.mutate({
         bookId: Number(bookId),
         chapterId

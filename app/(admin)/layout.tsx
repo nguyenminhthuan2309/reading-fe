@@ -57,7 +57,10 @@ export default function AdminLayout({
             >
               {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
             </Button>
-            <h1 className="text-xl font-bold">Haru's Library Admin</h1>
+
+            <Link href="/">
+              <h1 className="text-xl font-bold">Haru's Library Admin</h1>
+            </Link>
           </div>
           <Link href="/">
             <Button variant="ghost" className="flex items-center cursor-pointer">
