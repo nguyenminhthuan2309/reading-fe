@@ -149,7 +149,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       }
       return response.data;
     },
-    enabled: isEditing && initialData?.totalChapters > 0
+    enabled: isEditing
   });
 
   // Create mutation for updating a chapter
@@ -1455,8 +1455,17 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                           handlePublishChanges();
                         }}
                       >
-                        <Shield size={16} />
-                        Publish
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Publishing...
+                          </>
+                        ) : (
+                          <>
+                            <Shield size={16} />
+                            Publish
+                          </>
+                        )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
