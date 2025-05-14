@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Upload, File, FileText, AlertCircle } from 'lucide-react';
-import useDocumentConverter from '@/hooks/useDocumentConverter';
+import useDocumentConverter from '@/lib/hooks/useDocumentConverter';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import TiptapEditor from '@/components/editor/TiptapEditor';
