@@ -138,7 +138,7 @@ export default function Header() {
     // Clear user from Zustand store
     logoutStore();
     // Clear user from React Query cache
-    queryClient.setQueryData(['me'], null);
+    queryClient.clear()
     // Redirect to sign in page
     router.push('/signin');
   };
