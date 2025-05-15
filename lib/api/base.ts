@@ -2,7 +2,7 @@ import { ApiResponse, ApiResponseStatus } from "@/models/api";
 import { useUserStore } from '@/lib/store';
 import { toast } from 'sonner';
 import axios, { AxiosInstance, AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
-
+import { useRouter } from 'next/navigation';
 // API base URL from environment variables
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
 
@@ -23,8 +23,8 @@ interface RequestOptions {
 const handle401Error = () => {
   // Get the logout function from Zustand store
   const logout = useUserStore.getState().logout;
-
   const token = useUserStore.getState().token;
+  const router = useRouter();
 
   
   // Show error and redirect to login for all 401 errors
@@ -38,6 +38,7 @@ const handle401Error = () => {
   
   // Logout and redirect to login page
   logout();
+  router.push('/login');
 };
 
 // Add response interceptor for global error handling

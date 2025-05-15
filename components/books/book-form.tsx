@@ -1406,8 +1406,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   )}
                 </Button>
               )}
-              <div>submitting: {isSubmitting.toString()}</div>
-              <div>isSavingDraft: {isSavingDraft.toString()}</div>
               
               { initialData?.accessStatus.id !== AccessStatusEnum.PENDING &&
                 <Button
