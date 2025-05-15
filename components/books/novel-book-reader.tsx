@@ -5,7 +5,7 @@ import NovelContent, { extractTextContent } from "@/components/novel/NovelConten
 import HTMLFlipBook from "react-pageflip";
 import { Button } from "@/components/ui/button";
 import { BookOpen, ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
-import { FlipBook } from "./flip-book";
+import { FlipBookWrapper } from "./flip-book";
 import { Book, Chapter } from "@/models/book";
 // Define type for flip book reference
 interface PageFlipRef {
@@ -65,7 +65,7 @@ export function NovelBookReader({
     <div className={`w-full ${className}`}>
       {isFlipMode ? (
         // Custom implementation for text-based flip book
-        <FlipBook
+        <FlipBookWrapper
           bookData={bookData}
           currentChapter={currentChapter}
           nextChapter={nextChapter}

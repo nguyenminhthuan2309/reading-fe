@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { FlipBook } from "@/components/books/flip-book";
+import { FlipBookWrapper } from "@/components/books/flip-book";
 import { PictureImage } from "@/components/books/picture-image";
 import { Book, Chapter } from "@/models/book";
 
@@ -26,7 +26,7 @@ export function PictureBookReader({
     <div className="w-full">
       {isFlipMode ? (
         // Flip Book Mode
-        <FlipBook 
+        <FlipBookWrapper 
           bookData={bookData}
           currentChapter={currentChapter}
           nextChapter={nextChapter}

@@ -159,7 +159,7 @@ export function FlipBook({
   bookType = 'manga',
   pages,
   bookData,
-  currentChapter ,
+  currentChapter,
   nextChapter,
   captions = [],
   className,
@@ -169,6 +169,19 @@ export function FlipBook({
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(pages.length);
   const bookRef = useRef<PageRef>(null);
+
+  // Add cleanup effect for chapter changes
+  useEffect(() => {
+    // Reset current page when chapter changes
+    setCurrentPage(initialPage);
+    
+    // Cleanup function
+    return () => {
+      // Force reset any internal state when unmounting or when chapter changes
+      setCurrentPage(0);
+      setTotalPages(0);
+    };
+  }, [currentChapter.id, initialPage]);
 
   useEffect(() => {
     // If the initial page prop changes, flip to that page
@@ -180,7 +193,7 @@ export function FlipBook({
   useEffect(() => {
     // Update total pages if pages array changes
     setTotalPages(pages.length + 2);
-}, [pages]);
+  }, [pages]);
 
   // Handle page change
   const handlePageFlip = (e: { data: number }) => {
@@ -226,6 +239,7 @@ export function FlipBook({
       <div className="relative w-full max-w-2xl mx-auto mb-8">
         <div className="book-container relative overflow-hidden">
           <HTMLFlipBook
+            key={`flip-book-${currentChapter.id}`}
             width={500}
             height={700}
             size="stretch"
@@ -323,6 +337,22 @@ export function FlipBook({
           <ChevronRight className="h-6 w-6" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+// Add a wrapper component to handle clean remounting
+export function FlipBookWrapper(props: FlipBookProps) {
+  const [key, setKey] = useState<string>(`flipbook-${props.currentChapter.id}`);
+  
+  // Force remount when chapter changes
+  useEffect(() => {
+    setKey(`flipbook-${props.currentChapter.id}-${Date.now()}`);
+  }, [props.currentChapter.id]);
+  
+  return (
+    <div key={key} className="w-full">
+      <FlipBook {...props} />
     </div>
   );
 } 
