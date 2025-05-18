@@ -80,6 +80,7 @@ export default function SignIn() {
         activityType: 'login',
       });
 
+      queryClient.clear();
       router.push('/');
     }
   });
