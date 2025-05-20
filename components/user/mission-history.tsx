@@ -31,6 +31,10 @@ export function MissionHistory() {
     );
   }
 
+  const sortedActivities = completedActivities.sort((a, b) => {
+    return new Date(b.createdAt || Date.now().toString()).getTime() - new Date(a.createdAt || Date.now().toString()).getTime();
+  });
+
   return (
     <div className="bg-white rounded-lg border border-secondary/90 shadow-sm overflow-hidden">
       <div className="px-4 py-3 bg-secondary/30 border-b border-secondary/90">
@@ -38,7 +42,7 @@ export function MissionHistory() {
       </div>
       <div className="p-4">
         <div className="space-y-4">
-          {completedActivities.map((activity) => (
+          {sortedActivities.map((activity) => (
             <div key={activity.id} className="flex items-center justify-between py-2 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
