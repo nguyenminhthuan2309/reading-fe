@@ -4,6 +4,18 @@ import { Payment, TransactionStatus } from '@/models/payment';
 import { User } from '@/models/user';
 import { Chapter } from '@/models/book';
 import { TransactionStatisticsResponse, AnalyticsTimeRangeParams } from '@/models/analytics';
+
+export interface MomoResponse {
+    message: string;
+    resultCode: number;
+}
+
+export interface CheckPaymentStatusResponse {
+    momoResponse: MomoResponse;
+    orderId: string;
+    transactionId: string;
+}
+
 export interface DepositHistoryParams {
     page: number;
     limit: number;
@@ -65,13 +77,13 @@ export async function makePaymentWithMoMo(amount: number): Promise<ApiResponse<P
  * @param orderId - The order ID to check
  * @returns Promise with transaction status
  */
-export async function checkPaymentStatus(requestId: string, orderId: string): Promise<ApiResponse<TransactionStatus>> {
+    export async function checkPaymentStatus(requestId: string, orderId: string): Promise<ApiResponse<CheckPaymentStatusResponse>> {
 
     const queryParams = new URLSearchParams();
     queryParams.append('requestId', requestId);
     queryParams.append('orderId', orderId);
   
-    return await get<TransactionStatus>(`/transaction/check-status?${queryParams.toString()}`);
+    return await get<CheckPaymentStatusResponse>(`/transaction/check-status?${queryParams.toString()}`);
   
 } 
 

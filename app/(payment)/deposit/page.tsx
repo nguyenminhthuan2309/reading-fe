@@ -16,10 +16,15 @@ import {
   LockIcon,
   InfoIcon,
   Loader2,
-  Copy
+  Copy,
+  Crown,
+  Gift,
+  Plus,
+  XCircle,
+  RefreshCw
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
-import { initPayment, checkPaymentStatus } from "@/lib/api/payment";
+import { initPayment, checkPaymentStatus, CheckPaymentStatusResponse } from "@/lib/api/payment";
 import {
   Tooltip,
   TooltipContent,
@@ -35,14 +40,50 @@ import { AUTH_KEYS, PAYMENT_KEYS } from "@/lib/constants/query-keys";
 import { useMe } from "@/lib/hooks/useUsers";
 // Define the exchange rate: 1 Haru = 1000 VND
 const HARU_TO_VND_RATE = 1000;
-const MIN_HARU_DEPOSIT = 50;
+const MIN_HARU_DEPOSIT = 30;
+
+// Define deposit packages with bonus information
+const DEPOSIT_PACKAGES = [
+  {
+    id: 1,
+    coins: 30,
+    bonus: 0,
+    vnd: 30000,
+    isVip: false,
+    description: "Basic package"
+  },
+  {
+    id: 2,
+    coins: 100,
+    bonus: 10,
+    vnd: 100000,
+    isVip: false,
+    description: "10% bonus"
+  },
+  {
+    id: 3,
+    coins: 200,
+    bonus: 40,
+    vnd: 200000,
+    isVip: false,
+    description: "20% bonus"
+  },
+  {
+    id: 4,
+    coins: 500,
+    bonus: 0,
+    vnd: 500000,
+    isVip: true,
+    description: "VIP package - Daily reward: 1 coin for 30 days"
+  }
+];
 
 // Stepper component
 const DepositStepper = ({ currentStep }: { currentStep: number }) => {
   const steps = [
     { number: 1, title: "Amount" },
     { number: 2, title: "Payment" },
-    { number: 3, title: "Success" }
+    { number: 3, title: currentStep === 4 ? "Error" : "Success" }
   ];
 
   return (
@@ -53,7 +94,9 @@ const DepositStepper = ({ currentStep }: { currentStep: number }) => {
             {/* Step circle */}
             <div className={`flex items-center justify-center h-10 w-10 rounded-full z-10 ${
               currentStep === step.number 
-                ? step.number === 3 
+                ? step.number === 3 && currentStep === 4
+                  ? 'bg-red-500 text-white' 
+                  : step.number === 3 
                   ? 'bg-green-500 text-white' 
                   : 'bg-amber-500 text-white'
                 : currentStep > step.number
@@ -75,7 +118,9 @@ const DepositStepper = ({ currentStep }: { currentStep: number }) => {
             {/* Step title */}
             <span className={`text-xs mt-2 font-medium ${
               currentStep === step.number 
-                ? step.number === 3 
+                ? step.number === 3 && currentStep === 4
+                  ? 'text-red-600' 
+                  : step.number === 3 
                   ? 'text-green-600' 
                   : 'text-amber-600'
                 : currentStep > step.number 
@@ -96,6 +141,8 @@ export default function DepositPage() {
   const searchParams = useSearchParams();
   const { user } = useUserStore();
   const queryClient = useQueryClient();
+  const { refetchUserInfo } = useMe();
+
 
   // Check for query params
   const orderIdParam = searchParams?.get('orderId') || '';
@@ -104,38 +151,65 @@ export default function DepositPage() {
 
   // If amount param is provided in VND, convert back to Haru
   const haruAmountFromParam = amountParamStr && !isNaN(parseInt(amountParamStr))
-    ? Math.round(parseInt(amountParamStr) / HARU_TO_VND_RATE)
+    ? (() => {
+        const vndAmount = parseInt(amountParamStr);
+        const matchingPackage = DEPOSIT_PACKAGES.find(pkg => pkg.vnd === vndAmount);
+        return matchingPackage ? matchingPackage.coins : Math.round(vndAmount / HARU_TO_VND_RATE);
+      })()
     : undefined;
   const [amount, setAmount] = useState<number>(
     haruAmountFromParam && haruAmountFromParam >= MIN_HARU_DEPOSIT
       ? haruAmountFromParam
-      : MIN_HARU_DEPOSIT
+      : DEPOSIT_PACKAGES[0].coins
   );
-  const [step, setStep] = useState(1); // 1: Amount, 2: Payment Method, 3: Success
+  const [step, setStep] = useState(1); // 1: Amount, 2: Payment Method, 3: Success, 4: Error
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<{ message: string; resultCode?: number } | null>(null);
   
   // React Query mutation for initiating payment
   const paymentMutation = useMutation({
-    mutationFn: (haruAmount: number) => initPayment(haruAmount * HARU_TO_VND_RATE),
+    mutationFn: (haruAmount: number) => {
+      // Find the package that matches the amount to get the correct VND value
+      const matchingPackage = DEPOSIT_PACKAGES.find(pkg => pkg.coins === haruAmount);
+      const vndAmount = matchingPackage ? matchingPackage.vnd : haruAmount * HARU_TO_VND_RATE;
+      return initPayment(vndAmount);
+    },
     onSuccess: (res) => {
       if ((res.status === 200 || res.status === 201 )&& res.data.url) {
         window.location.href = res.data.url;
       }
     }
   });
+
   
   // React Query for checking transaction status
   const { data: transactionData, isLoading: isCheckingTransaction, error: transactionError } = 
     useQuery({
       queryKey: PAYMENT_KEYS.TRANSACTION(String(orderIdParam), requestIdParam),
       queryFn: async () => {
-        const response: ApiResponse<TransactionStatus> = await checkPaymentStatus(requestIdParam, orderIdParam);
-        if (response.status !== 200) {
+        const response: ApiResponse<CheckPaymentStatusResponse> = await checkPaymentStatus(requestIdParam, orderIdParam);
+        if (response.code !== 200) {
           throw new Error(response.msg || 'Failed to check payment status');
         }
+        
+        // Check MoMo result code
+        if (response.data.momoResponse.resultCode !== 0) {
+          setPaymentError({
+            message: response.data.momoResponse.message || 'Payment failed',
+            resultCode: response.data.momoResponse.resultCode
+          });
+          setStep(4); // Error step
+          setSelectedPaymentMethod('momo');
+          return response.data;
+        }
+        
+        // Success case
         setStep(3);
         setSelectedPaymentMethod('momo');
-        queryClient.invalidateQueries({ queryKey: AUTH_KEYS.ME });
+        setPaymentError(null);
+
+        // Force refetch the user data
+        refetchUserInfo();
         return response.data;
       },
       enabled: !!orderIdParam && !!requestIdParam && !!user,
@@ -186,12 +260,16 @@ export default function DepositPage() {
   };
   
   // Helper function to format VND amount
-  const formatVND = (amount: number) => {
+  const formatVND = (haruAmount: number) => {
+    // Find the package that matches the amount to get the correct VND value
+    const matchingPackage = DEPOSIT_PACKAGES.find(pkg => pkg.coins === haruAmount);
+    const vndAmount = matchingPackage ? matchingPackage.vnd : haruAmount * HARU_TO_VND_RATE;
+    
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
       maximumFractionDigits: 0
-    }).format(amount * HARU_TO_VND_RATE);
+    }).format(vndAmount);
   };
   
   // Copy handler
@@ -225,7 +303,12 @@ export default function DepositPage() {
       <Card className="bg-secondary/20 border-secondary/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {step === 3 ? (
+            {step === 4 ? (
+              <>
+                <XCircle size={20} className="text-red-500" />
+                Deposit Failed
+              </>
+            ) : step === 3 ? (
               <>
                 <CheckCircle2 size={20} className="text-green-500" />
                 Deposit Successful
@@ -240,7 +323,8 @@ export default function DepositPage() {
           <CardDescription>
             {step === 1 && "Add funds to your Haru balance"}
             {step === 2 && "Select your payment method"}
-            {step === 3 && `${amount} Haru has been added to your account`}
+            {step === 3 && `${amount} Haru purchase completed successfully`}
+            {step === 4 && "Your payment could not be processed"}
           </CardDescription>
         </CardHeader>
         
@@ -249,7 +333,7 @@ export default function DepositPage() {
             <div className="space-y-6">
               <div>
                 <label className="text-sm font-medium block mb-2">
-                  Amount to Deposit
+                  Custom Amount (Optional)
                 </label>
                 <div className="flex items-center">
                   <div className="bg-secondary/30 flex items-center justify-center w-10 h-10 rounded-l-md border border-secondary/40">
@@ -261,6 +345,7 @@ export default function DepositPage() {
                     value={amount}
                     onChange={handleAmountChange}
                     className="rounded-l-none"
+                    placeholder="Enter custom amount"
                   />
                 </div>
                 <div className="flex justify-between items-center mt-2">
@@ -269,23 +354,53 @@ export default function DepositPage() {
                     = {formatVND(amount)}
                   </p>
                 </div>
+                <p className="text-xs text-amber-600 mt-1">
+                  💡 Use recommended packages below for bonus coins and special benefits
+                </p>
               </div>
               
               <div>
                 <label className="text-sm font-medium block mb-2">
-                  Quick Amounts
+                  Available Packages
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[50, 100, 200, 500, 1000, 2000].map((value) => (
-                    <Button
-                      key={value}
-                      variant={amount === value ? "default" : "outline"}
-                      className="h-12"
-                      onClick={() => handleQuickAmount(value)}
-                    >
-                      {value}
-                    </Button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2">
+                  {DEPOSIT_PACKAGES.map((pkg) => {
+                    const isSelected = amount === pkg.coins;
+                    
+                    return (
+                      <Button
+                        key={pkg.id}
+                        variant="outline"
+                        className={`relative h-auto p-3 flex flex-col items-center justify-center ${
+                          isSelected 
+                            ? 'bg-yellow-100 border-yellow-400 text-yellow-800' 
+                            : pkg.isVip 
+                            ? 'border-yellow-300' 
+                            : ''
+                        }`}
+                        onClick={() => handleQuickAmount(pkg.coins)}
+                      >
+                        {pkg.isVip && (
+                          <Crown size={10} className="absolute top-1 right-1 text-yellow-500" />
+                        )}
+                        
+                        <div className="text-base font-bold mb-1">
+                          {pkg.coins}
+                          {pkg.bonus > 0 && (
+                            <span className="text-green-600 text-xs ml-1">+{pkg.bonus}</span>
+                          )}
+                        </div>
+                        
+                        <div className="text-xs opacity-70">
+                          {new Intl.NumberFormat('vi-VN', {
+                            style: 'currency',
+                            currency: 'VND',
+                            maximumFractionDigits: 0
+                          }).format(pkg.vnd)}
+                        </div>
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -343,22 +458,43 @@ export default function DepositPage() {
               </div>
               
               <div className="mt-6 p-4 border border-secondary/30 rounded-md bg-secondary/10">
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Amount:</span>
-                  <span className="font-medium">{amount} Haru</span>
-                </div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm">Fee:</span>
-                  <span className="font-medium">0 Haru</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-secondary/30">
-                  <span className="text-sm font-medium">Total:</span>
-                  <span className="font-medium">{amount} Haru</span>
-                </div>
-                <div className="flex justify-between mt-2 pt-2 border-t border-secondary/30">
-                  <span className="text-sm font-medium">Amount in VND:</span>
-                  <span className="font-medium text-primary">{formatVND(amount)}</span>
-                </div>
+                {(() => {
+                  const selectedPackage = DEPOSIT_PACKAGES.find(pkg => pkg.coins === amount);
+                  return (
+                    <>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm">Coins to purchase:</span>
+                        <span className="font-medium">{amount} Haru</span>
+                      </div>
+                      {selectedPackage?.bonus && selectedPackage.bonus > 0 && (
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm flex items-center gap-1">
+                            <Gift size={14} className="text-green-500" />
+                            Bonus included:
+                          </span>
+                          <span className="font-medium text-green-600">+{selectedPackage.bonus} Haru</span>
+                        </div>
+                      )}
+                      {selectedPackage?.isVip && (
+                        <div className="flex justify-between mb-2">
+                          <span className="text-sm flex items-center gap-1">
+                            <Crown size={14} className="text-yellow-500" />
+                            VIP Benefit:
+                          </span>
+                          <span className="font-medium text-yellow-600">Daily rewards</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm">Payment fee:</span>
+                        <span className="font-medium">0 VND</span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t border-secondary/30">
+                        <span className="text-sm font-medium">Amount to pay:</span>
+                        <span className="font-medium text-primary">{formatVND(amount)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
               
               {(paymentMutation.error || transactionError) && (
@@ -384,38 +520,86 @@ export default function DepositPage() {
                 </div>
                 <h3 className="text-xl font-bold mb-2">Deposit Complete!</h3>
                 <p className="text-muted-foreground mb-6">
-                  {amount} Haru has been successfully added to your account
+                  Your {amount} Haru purchase was successful
                 </p>
                 <div className="bg-secondary/30 rounded-md p-4 mb-4">
-                  <div className="flex justify-between mb-2">
-                    <span>New Balance:</span>
-                    <span className="font-bold">{(user.points || 0) + amount} Haru</span>
+                  {(() => {
+                    const selectedPackage = DEPOSIT_PACKAGES.find(pkg => pkg.coins === amount);
+                    return (
+                      <>
+                        <div className="flex justify-between mb-2">
+                          <span>Payment Method:</span>
+                          <span>{selectedPaymentMethod === 'momo' ? 'MoMo E-Wallet' : 'Card'}</span>
+                        </div>
+                        <div className="flex justify-between mb-2">
+                          <span>Coins Purchased:</span>
+                          <div className="text-right">
+                            <span className="font-medium">{amount} Haru</span>
+                            {selectedPackage?.bonus && selectedPackage.bonus > 0 && (
+                              <p className="text-xs text-green-600 mt-0.5">+{selectedPackage.bonus} bonus coins included</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex justify-between mb-2">
+                          <span>Amount Paid:</span>
+                          <div className="text-right">
+                            <span className="font-medium">{formatVND(amount)}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between mb-2">
+                          <span>Order ID:</span>
+                          <div className="flex items-center">
+                            <span className="font-mono text-xs">{transactionData?.orderId}</span>
+                            <Copy className="ml-2 h-4 w-4 cursor-pointer text-muted-foreground hover:text-primary" onClick={() => handleCopy(orderIdParam)} />
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {step === 4 && (
+            <div className="py-6">
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center">
+                    <XCircle size={32} className="text-red-600" />
                   </div>
+                </div>
+                <h3 className="text-xl font-bold mb-2">Payment Failed</h3>
+                <p className="text-muted-foreground mb-6">
+                  {paymentError?.message || 'Your payment could not be processed'}
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
                   <div className="flex justify-between mb-2">
                     <span>Payment Method:</span>
                     <span>{selectedPaymentMethod === 'momo' ? 'MoMo E-Wallet' : 'Card'}</span>
                   </div>
                   <div className="flex justify-between mb-2">
-                    <span>Amount Paid:</span>
-                    <div className="text-right">
-                      <span className="font-medium">{amount} Haru</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">{formatVND(amount)}</p>
-                    </div>
+                    <span>Amount Attempted:</span>
+                    <span className="font-medium">{formatVND(amount)}</span>
                   </div>
+                  {paymentError?.resultCode && (
+                    <div className="flex justify-between mb-2">
+                      <span>Error Code:</span>
+                      <span className="font-mono text-sm text-red-600">{paymentError.resultCode}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between mb-2">
                     <span>Order ID:</span>
                     <div className="flex items-center">
                       <span className="font-mono text-xs">{transactionData?.orderId}</span>
-                      <Copy className="ml-2 h-4 w-4 cursor-pointer text-muted-foreground hover:text-primary" onClick={() => handleCopy(orderIdParam)} />
+                      <Copy className="ml-2 h-4 w-4 cursor-pointer text-muted-foreground hover:text-red-500" onClick={() => handleCopy(orderIdParam)} />
                     </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Transaction ID:</span>
-                    <div className="flex items-center">
-                      <span className="font-mono text-xs">{transactionData?.transId}</span>
-                      <Copy className="ml-2 h-4 w-4 cursor-pointer text-muted-foreground hover:text-primary" onClick={() => handleCopy(requestIdParam)} />
-                    </div>
-                  </div>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-4">
+                  <p className="text-sm text-amber-800">
+                    💡 If you continue to experience issues, please contact our support team with your Order ID.
+                  </p>
                 </div>
               </div>
             </div>
@@ -490,6 +674,28 @@ export default function DepositPage() {
               <Link href="/books" className="flex-1">
                 <Button className="w-full">
                   Browse Books
+                </Button>
+              </Link>
+            </div>
+          )}
+          
+          {step === 4 && (
+            <div className="w-full flex gap-4">
+              <Button 
+                className="flex-1" 
+                variant="outline" 
+                onClick={() => {
+                  setStep(1);
+                  setPaymentError(null);
+                  setSelectedPaymentMethod(null);
+                }}
+              >
+                <RefreshCw size={16} className="mr-2" />
+                Try Again
+              </Button>
+              <Link href={`/user/${user.id}?section=balance`} className="flex-1">
+                <Button className="w-full" variant="outline">
+                  Return to Profile
                 </Button>
               </Link>
             </div>
