@@ -9,12 +9,98 @@ import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import { useUserStore } from '@/lib/store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Link from 'next/link';
 
 const predefinedMessages = [
   "What books do you recommend?",
   "How do I find a specific book?",
   "Tell me about your features"
 ];
+
+// Helper function to parse book recommendations
+function parseBookRecommendations(content: string) {
+  const lines = content.split('\n');
+  // Pattern for numbered format: "1. Book Title (Author) ::: (123)"
+  const numberedPattern = /^(\d+)\.\s+(.+?)\s+\((.+?)\)\s+:::\s+\((\d+)\)$/;
+  // Pattern for format with ID prefix: "Book Title (Author) ::: (ID: 123)"
+  const idPrefixPattern = /^(.+?)\s+\((.+?)\)\s+:::\s+\(ID:\s*(\d+)\)$/;
+  // Pattern for simple format: "Book Title (Author) ::: (123)"
+  const simplePattern = /^(.+?)\s+\((.+?)\)\s+:::\s+\((\d+)\)$/;
+  
+  return lines.map((line, index) => {
+    // Try numbered format first
+    let match = line.match(numberedPattern);
+    if (match) {
+      const [, number, title, author, id] = match;
+      return {
+        type: 'book',
+        number,
+        title,
+        author,
+        id,
+        original: line
+      };
+    }
+    
+    // Try ID prefix format
+    match = line.match(idPrefixPattern);
+    if (match) {
+      const [, title, author, id] = match;
+      return {
+        type: 'book',
+        number: null,
+        title,
+        author,
+        id,
+        original: line
+      };
+    }
+    
+    // Try simple format
+    match = line.match(simplePattern);
+    if (match) {
+      const [, title, author, id] = match;
+      return {
+        type: 'book',
+        number: null,
+        title,
+        author,
+        id,
+        original: line
+      };
+    }
+    
+    return {
+      type: 'text',
+      content: line
+    };
+  });
+}
+
+// Component to render parsed content
+function MessageContent({ content }: { content: string }) {
+  const parsedContent = parseBookRecommendations(content);
+  
+  return (
+    <div className="space-y-1">
+      {parsedContent.map((item, index) => {
+        if (item.type === 'book') {
+          return (
+            <div key={index}>
+              {item.number ? `${item.number}. ` : ''}<Link 
+                href={`/books/${item.id}`}
+                className="text-blue-500 hover:text-blue-400 underline font-medium transition-colors"
+              >
+                {item.title}
+              </Link> <span className="text-muted-foreground">({item.author})</span>
+            </div>
+          );
+        }
+        return <div key={index}>{item.content}</div>;
+      })}
+    </div>
+  );
+}
 
 export function Chat() {
   const pathname = usePathname();
@@ -104,13 +190,13 @@ export function Chat() {
                 </Avatar>
                 <div
                   className={cn(
-                    "max-w-[80%] rounded-lg p-3 whitespace-pre-wrap break-words",
+                    "max-w-[80%] rounded-lg p-3 break-words",
                     message.isUser
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground whitespace-pre-wrap"
                       : "bg-muted"
                   )}
                 >
-                  {message.content}
+                  <MessageContent content={message.content} />
                 </div>
               </div>
             ))}
