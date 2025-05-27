@@ -3,6 +3,7 @@ import { patch, updateImage } from '@/lib/api/base';
 import { post, get } from '@/lib/api/base';
 import { Category, User, UserPreferences } from '@/models';
 import { Activity } from '@/lib/hooks/useActivities';
+import { UserStatisticsResponse, AnalyticsTimeRangeParams } from '@/models/analytics';
 /**
  * Maximum allowed file size for avatar upload (1MB)
  */
@@ -266,4 +267,28 @@ export async function getUserActivities(params?: GetActivitiesParams): Promise<A
  */
 export async function createNewActivity(activityType: string, relatedEntityId?: number): Promise<ApiResponse<any>> {
   return await post('activities', { activityType, relatedEntityId });
+}
+
+/**
+ * Get user statistics (overview + chart data)
+ */
+export async function getUserStatistics(params: AnalyticsTimeRangeParams): Promise<ApiResponse<UserStatisticsResponse>> {
+  const queryParams = new URLSearchParams();
+  
+  // Add period parameter
+  if (params.period) {
+    queryParams.append('period', params.period);
+  }
+  
+  // Add date range parameters
+  if (params.startDate) {
+    queryParams.append('startDate', params.startDate);
+  }
+  if (params.endDate) {
+    queryParams.append('endDate', params.endDate);
+  }
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<UserStatisticsResponse>(`/user/statistics${queryString}`);
 }

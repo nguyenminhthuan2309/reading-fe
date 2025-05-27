@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import axios, { AxiosInstance, AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from "@tanstack/react-query";
+import { ANALYTICS_STORAGE_KEYS } from "../utils/analytics";
 // API base URL from environment variables
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
 
@@ -34,7 +35,13 @@ const handle401Error = () => {
     // Clear the token and user from the store
     useUserStore.getState().setToken(null);
     useUserStore.getState().setUser(null);
-  window.location.href = '/signin';
+
+    // Clear visits from the store
+    localStorage.removeItem(ANALYTICS_STORAGE_KEYS.VISITOR_ID);
+    sessionStorage.removeItem(ANALYTICS_STORAGE_KEYS.CURRENT_VISIT_ID);
+    sessionStorage.removeItem(ANALYTICS_STORAGE_KEYS.SESSION_START_TIME);
+
+    window.location.href = '/signin';
 
   }
   // Logout and redirect to login page

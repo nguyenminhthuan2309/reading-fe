@@ -3,6 +3,7 @@ import { post, get } from './base';
 import { Payment, TransactionStatus } from '@/models/payment';
 import { User } from '@/models/user';
 import { Chapter } from '@/models/book';
+import { TransactionStatisticsResponse, AnalyticsTimeRangeParams } from '@/models/analytics';
 export interface DepositHistoryParams {
     page: number;
     limit: number;
@@ -115,4 +116,25 @@ export async function getPurchaseChapterHistory(params: PurchaseChapterHistoryPa
     if(params.chapterId) queryParams.append('chapterId', params.chapterId?.toString() || '');
 
     return await get<PaginatedData<PurchaseChapterHistoryResponse>>(`/transaction/chapter?${queryParams.toString()}`);
+}
+
+/**
+ * Gets transaction statistics
+ * @param params - Time range parameters for the statistics
+ * @returns Promise with transaction statistics
+ */
+export async function getTransactionStatistics(params: AnalyticsTimeRangeParams): Promise<ApiResponse<TransactionStatisticsResponse>> {
+    const queryParams = new URLSearchParams();
+    
+    if (params.period) {
+        queryParams.append('period', params.period);
+    }
+    if (params.startDate) {
+        queryParams.append('startDate', params.startDate);
+    }
+    if (params.endDate) {
+        queryParams.append('endDate', params.endDate);
+    }
+
+    return await get<TransactionStatisticsResponse>(`/transaction/statistics?${queryParams.toString()}`);
 }

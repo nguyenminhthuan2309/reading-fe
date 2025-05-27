@@ -103,4 +103,23 @@ export const ACTIVITY_KEYS = {
     ['activities',  'filtered', params] as const,
 } as const;
 
+// Analytics related query keys
+export const ANALYTICS_KEYS = {
+  VISITS: {
+    ALL: ['analytics', 'visits'] as const,
+    BY_VISITOR: (visitorId: string) => ['analytics', 'visits', 'visitor', visitorId] as const,
+    BY_USER: ['analytics', 'visits', 'user'] as const,
+    BY_TIME_RANGE: (params: any) => ['analytics', 'visits', 'range', params] as const,
+    STATS: (params: any) => ['analytics', 'visits', 'stats', params] as const,
+    DETAIL: (visitId: string) => ['analytics', 'visits', 'detail', visitId] as const,
+  },
+  PAGE_VIEWS: {
+    ALL: ['analytics', 'pageViews'] as const,
+    BY_VISIT: (visitId: string) => ['analytics', 'pageViews', 'visit', visitId] as const,
+    BY_TIME_RANGE: (params: any) => ['analytics', 'pageViews', 'range', params] as const,
+    STATS: (params: any) => ['analytics', 'pageViews', 'stats', params] as const,
+  },
+  BOUNCE_RATE: (params: any) => ['analytics', 'bounceRate', params] as const,
+} as const;
+
 

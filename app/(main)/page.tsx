@@ -37,7 +37,8 @@ export default function Home() {
     // On error, don't retry and silently fail - we'll show fallback data
     retry: false,
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    enabled: isLoggedIn
   });
   
   // Fetch new releases using React Query - sorted by creation date

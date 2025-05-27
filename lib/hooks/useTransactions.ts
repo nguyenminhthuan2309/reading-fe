@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getDepositHistory, getPurchaseChapterHistory } from "../api/payment";
+import { getDepositHistory, getPurchaseChapterHistory, getTransactionStatistics } from "../api/payment";
+import { AnalyticsTimeRangeParams } from "@/models/analytics";
 
 export interface Transaction {
   id: number;
@@ -82,6 +83,26 @@ export const useTransactions = (limit: number = 10) => {
       refetchPurchases();
     }
   };
+};
+
+/**
+ * Hook to fetch transaction statistics
+ * @param params Time range parameters for the statistics
+ * @returns Object containing transaction statistics and query state
+ */
+export const useTransactionStatistics = (params: AnalyticsTimeRangeParams) => {
+  return useQuery({
+    queryKey: ['transaction-statistics', params.period, params.startDate, params.endDate],
+    queryFn: async () => {
+      const response = await getTransactionStatistics(params);
+      if (!response.status) {
+        throw new Error(response.msg || "Failed to fetch transaction statistics");
+      }
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!params.period || (!!params.startDate && !!params.endDate),
+  });
 };
 
 export default useTransactions; 

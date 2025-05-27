@@ -35,12 +35,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/lib/hooks/useNotifications";
-import { useSocket } from '@/lib/hooks';
+import { useConditionalAnalytics, useSocket } from '@/lib/hooks';
 import { useGenres } from "@/lib/hooks/useGenres";
-import { useMe } from "@/lib/hooks/useUsers";
+
 import { MobileMenu } from "./mobile-menu";
 import { useAvailableActivities } from "@/lib/hooks/useActivities";
 import { useEffect } from "react";
+import { ANALYTICS_STORAGE_KEYS } from "@/lib/utils/analytics";
 
 // Custom Link component for NavigationMenu
 const ListItem = React.forwardRef<
@@ -90,11 +91,16 @@ export const getNotificationIcon = (type: any) => {
 export default function Header() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const {  logout: logoutStore } = useUserStore();
+  const { user, logout: logoutStore } = useUserStore();
   const { theme, setTheme } = useTheme();
   const {  genreGroups } = useGenres();
-  const { userData: user } = useMe();
+  const pathname = usePathname();
   
+  // Get analytics functions for logout cleanup
+  const { clearTracking, endSession, currentVisitId, visitorId } = useConditionalAnalytics({
+    enabled: false, // We don't want to track in header, just use the cleanup functions
+    pathname
+  });
   // Use our custom notifications hook
   const { 
     notifications, 
@@ -135,10 +141,24 @@ export default function Header() {
 
   // Handle logout directly in the component
   const handleLogout = () => {
-    // Clear user from Zustand store
+    // End current analytics session if exists
+    if (currentVisitId) {
+      endSession(currentVisitId);
+    }
+
+    if (visitorId) {
+      localStorage.removeItem(ANALYTICS_STORAGE_KEYS.VISITOR_ID);
+    }
+    
+    // Clear analytics tracking state and storage
+    clearTracking();
+    
+    // Clear user from Zustand store (this also clears auth cookies)
     logoutStore();
+
     // Clear user from React Query cache
-    queryClient.clear()
+    queryClient.clear();
+    
     // Redirect to sign in page
     router.push('/signin');
   };

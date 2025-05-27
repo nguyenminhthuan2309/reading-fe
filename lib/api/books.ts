@@ -3,6 +3,7 @@ import { ApiResponse, PaginatedData } from '@/models/api';
 import { Book, Chapter, BookFilters,  ReadingHistoryItem, ReadingHistoryFilters, BookUpdatePayload, BookCreatePayload, BookReview, BookReviewFilters, Category, ChaptersBatchPayload, ChapterAccessStatus } from '@/models/book';
 import { ModerationResultsPayload } from '@/models/openai';
 import { ModerationResultsResponse } from '@/models/openai';
+import { BookStatisticsResponse, AnalyticsTimeRangeParams } from '@/models/analytics';
 
 /**
  * Get a list of books with optional filters
@@ -378,4 +379,28 @@ export async function createModerationResults(bookId: number, moderationData: Mo
  */
 export async function updateModerationResults(bookId: number, moderationData: ModerationResultsPayload): Promise<ApiResponse<ModerationResultsResponse>> {
   return patch<ModerationResultsResponse>(`/book/${bookId}/moderation`, moderationData);
+}
+
+/**
+ * Get book statistics (overview + chart data)
+ */
+export async function getBookStatistics(params: AnalyticsTimeRangeParams): Promise<ApiResponse<BookStatisticsResponse>> {
+  const queryParams = new URLSearchParams();
+  
+  // Add period parameter
+  if (params.period) {
+    queryParams.append('period', params.period);
+  }
+  
+  // Add date range parameters
+  if (params.startDate) {
+    queryParams.append('startDate', params.startDate);
+  }
+  if (params.endDate) {
+    queryParams.append('endDate', params.endDate);
+  }
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  return get<BookStatisticsResponse>(`/book/statistics${queryString}`);
 } 
