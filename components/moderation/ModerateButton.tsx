@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Shield, Eye, RefreshCcw, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Shield, Eye, RefreshCcw, Loader2, CheckCircle, XCircle, ChevronDown } from "lucide-react";
 import { MODERATION_MODELS, ModerationModelType } from "@/lib/hooks/useOpenAI";
 import { Badge } from "@/components/ui/badge";
 import { Book } from "@/models/book";
@@ -13,6 +13,7 @@ import { getModerationResults } from "@/lib/api/books";
 import { toast } from "sonner";
 import { ModerationResultsResponse } from "@/models/openai";
 import { ExtendedBook } from "@/lib/hooks/useAdminBooks";
+
 interface ModerateButtonProps {
   bookId: number;
   onOpenResults: (model: ModerationModelType,  book: ExtendedBook,isViewing?: boolean, result?: ModerationResultsResponse) => void;
@@ -118,8 +119,16 @@ export function ModerateButton({
     }
   };
 
-  // Handle moderate button click
+  // Handle moderate button click (main button - runs o4-mini by default)
   const handleModerateClick = async () => {
+    // Run moderation with o4-mini by default
+    handleRun(MODERATION_MODELS.O4_MINI);
+  };
+
+  // Handle dropdown arrow click (shows model selection)
+  const handleDropdownClick = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent main button click
+    
     // Always open the popover
     setOpen(true);
     
@@ -255,11 +264,12 @@ export function ModerateButton({
       
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <div className="flex">
+        {/* Main Moderate Button */}
         <Button
           variant="outline"
           size="sm"
-          className="h-8 px-3 text-xs gap-1.5"
+          className="h-8 px-3 text-xs gap-1.5 rounded-r-none border-r-0"
           disabled={isLoading || isFetchingModeration}
           onClick={handleModerateClick}
         >
@@ -275,14 +285,28 @@ export function ModerateButton({
             </>
           )}
         </Button>
-      </PopoverTrigger>
+        
+        {/* Dropdown Arrow Button */}
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2 rounded-l-none border-l-0"
+            disabled={isLoading || isFetchingModeration}
+            onClick={handleDropdownClick}
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+        </PopoverTrigger>
+      </div>
+      
       <PopoverContent className="w-100 p-0" align="end">
         <div className="px-4 py-2 border-b bg-muted/50">
           <h3 className="text-sm font-medium">Select Moderation Model</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             Choose a model to check content against age rating standards
           </p>
-      </div>
+        </div>
         <div className="divide-y px-4">
           <ModelOption 
             model={MODERATION_MODELS.OMNI} 
@@ -296,7 +320,7 @@ export function ModerateButton({
             model={MODERATION_MODELS.O4_MINI} 
             label="o4-mini (Faster)" 
           />
-    </div>
+        </div>
       </PopoverContent>
     </Popover>
   );
