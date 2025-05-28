@@ -18,7 +18,7 @@ import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import { useUserStore } from "@/lib/store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FollowButton } from "@/components/books/follow-button";
-import { ChapterAccessStatus, Chapter, AgeRatingEnum, AGE_RATINGS, ProgressStatusEnum, PROGRESS_STATUSES } from "@/models/book";
+import { ChapterAccessStatus, Chapter, AgeRatingEnum, AGE_RATINGS, ProgressStatusEnum, PROGRESS_STATUSES, AccessStatusEnum } from "@/models/book";
 import { PurchaseChapterDialog } from "@/components/books/purchase-chapter-dialog";
 
 // A component to display the age rating badge
@@ -144,6 +144,15 @@ export default function BookPage() {
   // Check if current user is the book owner
   const isOwner = user && book?.author?.id === user.id;
 
+  // Check if book is pending and no published chapters
+  const isPendingBook = !isOwner && book?.accessStatus?.id === AccessStatusEnum.PENDING && chaptersData?.filter(chapter => chapter.chapterAccessStatus === ChapterAccessStatus.PUBLISHED).length === 0;
+
+  // Check if book is draft
+  const isDraftBook = !isOwner && book?.accessStatus?.id === AccessStatusEnum.PRIVATE;
+
+  // Check if book is blocked
+  const isBlockedBook = !isOwner && book?.accessStatus?.id === AccessStatusEnum.BLOCKED;
+
   // Handle viewing more chapters
   const handleViewMoreChapters = () => {
     if (showAllChapters) {
@@ -267,13 +276,13 @@ export default function BookPage() {
   }
 
   // Error state
-  if (bookError) {
+  if (bookError || isPendingBook || isDraftBook || isBlockedBook) {
     // Check if it's a 404 error
     const is404 = bookError instanceof Error &&
       bookError.message.includes('Book not found')
 
     // If it's a 404 error, show the "Book not found" message
-    if (is404) {
+    if (is404 || isPendingBook || isDraftBook || isBlockedBook) {
       return (
         <div className="container mx-auto px-4 py-4">
           {/* Back button at top left */}
