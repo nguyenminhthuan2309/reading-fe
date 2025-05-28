@@ -591,7 +591,7 @@ export default function Header() {
                             className="flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
                           >
                             <Settings className="mr-2 h-4 w-4" />
-                            <span>Settings</span>
+                            <span>Management</span>
                           </Link>
                         )}
                       </div>
