@@ -130,7 +130,7 @@ export const useAvailableActivities = () => {
   });
   
   const createActivityMutation = useMutation({
-    mutationFn: ({activityType, relatedEntityId}: {activityType: string, relatedEntityId?: number}) => createNewActivity(activityType, relatedEntityId),
+    mutationFn: ({activityType, relatedEntityId}: {activityType: ActivityType, relatedEntityId?: number}) => createNewActivity(activityType, relatedEntityId),
     onSuccess: () => {
       // Invalidate the available activities query to trigger a refetch
       queryClient.invalidateQueries({ queryKey: ACTIVITY_KEYS.AVAILABLE });

@@ -292,3 +292,8 @@ export async function getUserStatistics(params: AnalyticsTimeRangeParams): Promi
   
   return get<UserStatisticsResponse>(`/user/statistics${queryString}`);
 }
+
+// Get user ballance
+export async function getUserBallance(): Promise<ApiResponse<Partial<User>>> {
+  return get<Partial<User>>(`/user/balance`);
+}

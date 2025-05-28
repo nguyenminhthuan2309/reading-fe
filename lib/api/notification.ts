@@ -9,7 +9,8 @@ export type NotificationType =
   | 'COMMENT_REPLY' 
   | 'CHAPTER_COMMENT' 
   | 'TX_SUCCESS' 
-  | 'TX_FAILED';
+  | 'TX_FAILED'
+  | 'POINTS_EARNED';
 
 export interface NotificationQueryParams {
   limit?: number;

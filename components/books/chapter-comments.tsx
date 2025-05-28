@@ -8,11 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Send, ChevronDown, Reply, Edit, Trash, X, ChevronUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { 
-  getChapterComments, 
-  addChapterComment, 
-  updateChapterComment, 
-  deleteChapterComment 
+import {
+  getChapterComments,
+  addChapterComment,
+  updateChapterComment,
+  deleteChapterComment
 } from "@/lib/api/books";
 import { PaginatedData } from "@/models/api";
 import { useUserStore } from "@/lib/store/useUserStore";
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Comment } from "@/models/book";
 import { COMMENT_KEYS } from "@/lib/constants/query-keys";
+import { useAvailableActivities } from "@/lib/hooks/useActivities";
 
 interface ChapterCommentsProps {
   bookId: number;
@@ -47,7 +48,8 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
   const router = useRouter();
   const [limit] = useState(10);
   const queryClient = useQueryClient();
-  
+  const { createActivity } = useAvailableActivities();
+
   // Get comments for this chapter using useInfiniteQuery for pagination
   const {
     data,
@@ -72,13 +74,13 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       }
     },
     getNextPageParam: (lastPage: PaginatedData<Comment>, allPages: PaginatedData<Comment>[]) => {
-      return allPages.length < lastPage.totalPages 
+      return allPages.length < lastPage.totalPages
         ? allPages.length + 1
         : undefined;
     },
     initialPageParam: 1
   });
-  
+
   // Get replies for specific comments
   const getReplies = (commentId: number) => {
     return useQuery({
@@ -100,10 +102,10 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       enabled: expandedComments.includes(commentId)
     });
   };
-  
+
   // Get the flattened comments from all pages
   const comments = data?.pages.flatMap(page => page.data) || [];
-  
+
   // Add a new comment
   const addCommentMutation = useMutation({
     mutationFn: async ({ comment, parentId }: { comment: string, parentId?: number }) => {
@@ -115,6 +117,15 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       if (replyingTo) {
         queryClient.invalidateQueries({ queryKey: COMMENT_KEYS.COMMENT_REPLIES(replyingTo.id) });
       }
+
+      // Create activity if vip user
+      if (user?.isVip) {
+        createActivity({
+          activityType: 'comment_chapter',
+          relatedEntityId: chapterId,
+        });
+      }
+
       setNewComment("");
       setReplyingTo(null);
     },
@@ -123,7 +134,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       // Keep the comment text in case of error so user doesn't lose their input
     }
   });
-  
+
   // Update a comment
   const updateCommentMutation = useMutation({
     mutationFn: async ({ commentId, comment }: { commentId: number, comment: string }) => {
@@ -132,10 +143,10 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: COMMENT_KEYS.CHAPTER_COMMENTS(chapterId) });
       // Also invalidate replies query for the parent comment if it was a reply
-      const editedComment = comments.find(c => c.id === variables.commentId) || 
-                           comments.flatMap(c => expandedComments.includes(c.id) ? 
-                             getReplies(c.id).data || [] : []).find(c => c.id === variables.commentId);
-      
+      const editedComment = comments.find(c => c.id === variables.commentId) ||
+        comments.flatMap(c => expandedComments.includes(c.id) ?
+          getReplies(c.id).data || [] : []).find(c => c.id === variables.commentId);
+
       if (editedComment?.parentId) {
         queryClient.invalidateQueries({ queryKey: COMMENT_KEYS.COMMENT_REPLIES(editedComment.parentId) });
       }
@@ -143,7 +154,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       setEditContent("");
     }
   });
-  
+
   // Delete a comment
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: number) => {
@@ -159,25 +170,25 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       setShowDeleteDialog(false);
     }
   });
-  
+
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
-    
-    addCommentMutation.mutate({ 
+
+    addCommentMutation.mutate({
       comment: newComment,
       parentId: replyingTo?.id
     });
   };
-  
+
   const handleUpdateComment = () => {
     if (!editingComment || !editContent.trim()) return;
-    
+
     updateCommentMutation.mutate({
       commentId: editingComment.id,
       comment: editContent
     });
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, action: 'comment' | 'edit') => {
     // Submit on Enter without Shift key (Shift+Enter creates a new line)
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -189,13 +200,13 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       }
     }
   };
-  
+
   const handleDeleteComment = () => {
     if (!commentToDelete) return;
-    
+
     deleteCommentMutation.mutate(commentToDelete);
   };
-  
+
   const startReply = (comment: Comment) => {
     setReplyingTo(comment);
     setEditingComment(null);
@@ -204,47 +215,47 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       setExpandedComments(prev => [...prev, comment.id]);
     }
   };
-  
+
   const startEdit = (comment: Comment) => {
     setEditingComment(comment);
     setEditContent(comment.comment);
     setReplyingTo(null);
   };
-  
+
   const confirmDelete = (commentId: number) => {
     setCommentToDelete(commentId);
     setShowDeleteDialog(true);
   };
-  
+
   const cancelAction = () => {
     setReplyingTo(null);
     setEditingComment(null);
     setEditContent("");
   };
-  
+
   const handleSignIn = () => {
     router.push('/signin?redirect=' + encodeURIComponent(window.location.pathname));
   };
-  
+
   const loadMoreComments = () => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
   };
-  
+
   const toggleReplies = (commentId: number) => {
-    setExpandedComments(prev => 
-      prev.includes(commentId) 
-        ? prev.filter(id => id !== commentId) 
+    setExpandedComments(prev =>
+      prev.includes(commentId)
+        ? prev.filter(id => id !== commentId)
         : [...prev, commentId]
     );
   };
-  
+
   const canModifyComment = (comment: Comment) => {
     if (!isLoggedIn || !user) return false;
     return String(user.id) === String(comment.user.id);
   };
-  
+
   const renderComment = (comment: Comment, isReply = false) => (
     <div key={comment.id} className={`border rounded-md p-2 space-y-1 ${isReply ? 'ml-6 mt-1 border-l-2 border-l-primary/20' : ''}`}>
       <div className="flex items-start gap-2">
@@ -259,10 +270,10 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
               {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
             </span>
           </div>
-          
+
           {editingComment?.id === comment.id ? (
             <div className="mt-1">
-              <Textarea 
+              <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className="resize-none mb-1"
@@ -270,15 +281,15 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
                 onKeyDown={(e) => handleKeyDown(e, 'edit')}
               />
               <div className="flex justify-end gap-1">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={cancelAction}
                   className="h-7 px-2 text-xs"
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   size="sm"
                   onClick={handleUpdateComment}
                   disabled={!editContent.trim() || updateCommentMutation.isPending}
@@ -293,7 +304,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
           )}
         </div>
       </div>
-      
+
       {editingComment?.id !== comment.id && (
         <div className="flex items-center justify-end gap-1">
           {canModifyComment(comment) && (
@@ -306,7 +317,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
               >
                 Edit
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -328,9 +339,9 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
               Reply
             </Button>
           )}
-          
-          
-          
+
+
+
           {(!isReply && comment.totalChildComments && comment.totalChildComments > 0) ? (
             <Button
               variant="ghost"
@@ -352,7 +363,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
           ) : null}
         </div>
       )}
-      
+
       {replyingTo?.id === comment.id && (
         <div className="mt-2 pl-6 border-l border-accent">
           <div className="flex gap-2">
@@ -366,8 +377,8 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
                   Replying to <span className="font-medium">{comment.user.name}</span>
                 </span>
               </div>
-              <Textarea 
-                placeholder="Write a reply..." 
+              <Textarea
+                placeholder="Write a reply..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 className="resize-none"
@@ -375,16 +386,16 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
                 onKeyDown={(e) => handleKeyDown(e, 'comment')}
               />
               <div className="flex justify-end">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={cancelAction}
                   className="h-7 px-2 text-xs mr-2"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={handleSubmitComment}
                   disabled={!newComment.trim() || addCommentMutation.isPending}
                   className="flex items-center gap-1 h-7 px-2 text-xs"
@@ -396,7 +407,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
           </div>
         </div>
       )}
-      
+
       {/* Show replies if expanded */}
       {!isReply && expandedComments.includes(comment.id) && (
         <div className="mt-1">
@@ -405,7 +416,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       )}
     </div>
   );
-  
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -422,7 +433,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="p-2 text-center text-destructive text-sm">
@@ -430,7 +441,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
       </div>
     );
   }
-  
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Comments list in a scrollable container */}
@@ -438,7 +449,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
         {comments && comments.length > 0 ? (
           <>
             {comments.map(comment => renderComment(comment))}
-            
+
             {hasNextPage && (
               <Button
                 variant="ghost"
@@ -462,7 +473,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
           </div>
         )}
       </div>
-      
+
       {/* Comment form - sticky at bottom */}
       <div className="sticky bottom-0 bg-background pt-2 border-t">
         {isLoggedIn ? (
@@ -475,8 +486,8 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
                   <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-2">
-                  <Textarea 
-                    placeholder="Add a comment..." 
+                  <Textarea
+                    placeholder="Add a comment..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     className="resize-none"
@@ -484,8 +495,8 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
                     onKeyDown={(e) => handleKeyDown(e, 'comment')}
                   />
                   <div className="flex justify-end">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       onClick={handleSubmitComment}
                       disabled={!newComment.trim() || addCommentMutation.isPending}
                       className="h-7 px-2 text-xs"
@@ -504,7 +515,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
           </div>
         )}
       </div>
-      
+
       {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
@@ -516,7 +527,7 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteComment}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
@@ -530,17 +541,17 @@ export function ChapterComments({ bookId, chapterId }: ChapterCommentsProps) {
 }
 
 // Make the RepliesList component more compact too
-function RepliesList({ 
-  commentId, 
+function RepliesList({
+  commentId,
   chapterId,
   getReplies
-}: { 
+}: {
   commentId: number;
   chapterId: number;
   getReplies: (commentId: number) => any;
 }) {
   const { data: replies, isLoading, error } = getReplies(commentId);
-  
+
   if (isLoading) {
     return (
       <div className="ml-6 space-y-1 py-1">
@@ -549,7 +560,7 @@ function RepliesList({
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="ml-6 p-1 text-center text-xs text-destructive">
@@ -557,7 +568,7 @@ function RepliesList({
       </div>
     );
   }
-  
+
   if (!replies || replies.length === 0) {
     return (
       <div className="ml-6 p-1 text-center text-xs text-muted-foreground">
@@ -565,7 +576,7 @@ function RepliesList({
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-2">
       {replies.map((reply: Comment) => (
@@ -582,7 +593,7 @@ function RepliesList({
                   {formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true })}
                 </span>
               </div>
-              
+
               <p className="text-xs mt-1">{reply.comment}</p>
             </div>
           </div>

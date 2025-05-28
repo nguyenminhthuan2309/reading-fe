@@ -1,3 +1,5 @@
+import { NotificationType } from "@/lib/api/notification";
+
 // Socket.io Event Types
 export enum SocketEvent {
   CONNECT = 'connect',
@@ -23,6 +25,8 @@ export enum SocketEvent {
   NOTIFICATION_NEW_CHAPTER = 'chapter_added',
   NOTIFICATION_COMMENT = 'chapter_comment',
   NOTIFICATION_COMMENT_REPLY = 'chapter_comment_reply',
+
+  NOTIFICATION_POINTS_EARNED = 'points_earned',
 }
 
 
@@ -38,9 +42,3 @@ export interface NotificationPayload {
   read?: boolean;
 }
 
-export enum NotificationType {
-  MESSAGE = 'message',
-  MENTION = 'mention',
-  INVITATION = 'invitation',
-  SYSTEM = 'system'
-} 

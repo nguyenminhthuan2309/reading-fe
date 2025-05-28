@@ -11,6 +11,7 @@ import { Socket } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { NOTIFICATION_QUERY_KEYS } from './useNotifications';
 import { toast } from 'sonner';
+import { AUTH_KEYS, USER_KEYS } from '../constants/query-keys';
 
 interface UseSocketOptions {
   autoConnect?: boolean;
@@ -98,6 +99,12 @@ export function useSocket(options: UseSocketOptions = {}): UseSocketReturn {
             
           }
         });
+      }
+
+      // If points earned, update the points in the query cache
+      if (notification.type === 'POINTS_EARNED') {
+        console.log('Invalidating user balance', user?.id);
+        queryClient.invalidateQueries({ queryKey: USER_KEYS.BALANCE(Number(user?.id)) });
       }
       
       // Invalidate notification queries to refresh data

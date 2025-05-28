@@ -15,6 +15,7 @@ export const USER_KEYS = {
   ALL: ['users'] as const,
   LIST: (params: any) => ['users', 'list', params] as const,
   DETAIL: (userId: string | number) => ['user', userId] as const,
+  BALANCE: (userId:  number) => ['user', 'balance', userId] as const,
 } as const;
 
 // Book related query keys

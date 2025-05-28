@@ -146,6 +146,11 @@ export function subscribeToNotifications(
     console.log(`Received notification on ${namespace || 'default'} namespace:`, data);
     callback(data);
   });
+
+  socket.on(SocketEvent.NOTIFICATION_POINTS_EARNED, (data) => {
+    console.log(`Received notification on ${namespace || 'default'} namespace:`, data);
+    callback(data);
+  });
   
   
   return () => {

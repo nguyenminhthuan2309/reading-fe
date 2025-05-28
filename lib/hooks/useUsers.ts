@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getUsers, createManager, updateUserStatus, GetUsersParams as ApiGetUsersParams } from '@/lib/api/user';
+import { getUsers, createManager, updateUserStatus, GetUsersParams as ApiGetUsersParams, getUserBallance } from '@/lib/api/user';
 import { getCurrentUser } from '@/lib/api/auth';
 import { toast } from 'sonner';
 import { AUTH_KEYS, USER_KEYS } from '@/lib/constants/query-keys';
@@ -83,4 +83,18 @@ export function useUpdateUserStatus() {
       toast.error(error.message || 'Failed to update user status');
     },
   });
-} 
+}
+
+export function useUserBallance(userId: number) {
+  return useQuery({
+    queryKey: USER_KEYS.BALANCE(userId),
+    queryFn: async () => {
+      const response = await getUserBallance();
+      if (response.code !== 200) {
+        throw new Error(response.msg || 'Failed to fetch user ballance');
+      }
+      return response.data;
+    },
+    enabled: !!userId,
+  });
+}

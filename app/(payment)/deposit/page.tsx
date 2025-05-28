@@ -36,7 +36,7 @@ import Link from "next/link";
 import { TransactionStatus } from "@/models/payment";
 import { ApiResponse } from "@/models/api";
 import { toast } from "sonner";
-import { AUTH_KEYS, PAYMENT_KEYS } from "@/lib/constants/query-keys";
+import { AUTH_KEYS, PAYMENT_KEYS, USER_KEYS } from "@/lib/constants/query-keys";
 import { useMe } from "@/lib/hooks/useUsers";
 // Define the exchange rate: 1 Haru = 1000 VND
 const HARU_TO_VND_RATE = 1000;
@@ -210,6 +210,7 @@ export default function DepositPage() {
 
         // Force refetch the user data
         refetchUserInfo();
+        queryClient.invalidateQueries({ queryKey: USER_KEYS.BALANCE(Number(user?.id)) });
         return response.data;
       },
       enabled: !!orderIdParam && !!requestIdParam && !!user,

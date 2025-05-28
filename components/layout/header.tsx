@@ -42,6 +42,7 @@ import { MobileMenu } from "./mobile-menu";
 import { useAvailableActivities } from "@/lib/hooks/useActivities";
 import { useEffect } from "react";
 import { ANALYTICS_STORAGE_KEYS } from "@/lib/utils/analytics";
+import { useUserBallance } from "@/lib/hooks/useUsers";
 
 // Custom Link component for NavigationMenu
 const ListItem = React.forwardRef<
@@ -83,6 +84,8 @@ export const getNotificationIcon = (type: any) => {
     return <BookIcon className="h-4 w-4 text-purple-500" />;
   } else if (typeStr.includes('tx') || typeStr.includes('system')) {
     return <Settings className="h-4 w-4 text-gray-500" />;
+  } else if (typeStr.includes('points')) {
+    return <Award className="h-4 w-4 text-amber-500" />;
   } else {
     return <Bell className="h-4 w-4" />;
   }
@@ -113,6 +116,8 @@ export default function Header() {
     isFetchingMore,
     handleLoadMore,
   } = useNotifications();
+
+  const { data: userBallance } = useUserBallance(user?.id || 0);
   
   // Initialize socket connection for notifications
   const { connected: socketConnected } = useSocket({
@@ -262,7 +267,7 @@ export default function Header() {
                   <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-sm">
                     <Award className="h-3 w-3" />
                   </div>
-                  <span className="text-sm font-medium bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-300 dark:to-amber-400">{user?.tokenBalance || 0}</span>
+                  <span className="text-sm font-medium bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-300 dark:to-amber-400">{userBallance?.tokenBalance || 0}</span>
                   <div className="relative flex items-center justify-center">
                     <div className={cn(
                       "absolute inset-0 rounded-full",

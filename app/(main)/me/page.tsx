@@ -54,7 +54,7 @@ import { AUTH_KEYS, USER_KEYS } from "@/lib/constants/query-keys";
 import { RecentlyReadBooks } from "@/components/user/recently-read-books";
 import { AvailableMissions } from "@/components/user/available-missions";
 import { MissionHistory } from "@/components/user/mission-history";
-import { useMe } from "@/lib/hooks/useUsers";
+import { useMe, useUserBallance } from "@/lib/hooks/useUsers";
 import { RecentTransactions } from "@/components/user/recent-transactions";
 
 export const MAX_AVATAR_SIZE = 1 * 1024 * 1024; // 1MB in bytes
@@ -70,6 +70,7 @@ export default function UserProfilePage() {
   const userId = params.id as string;
   const { user } = useUserStore();
   const { userData, isLoadingProfile } = useMe();
+  const { data: userBallance } = useUserBallance(Number(user?.id));
 
   // Create updatePassword mutation
   const updatePasswordMutation = useMutation({
@@ -1095,7 +1096,7 @@ export default function UserProfilePage() {
                           <Award   size={28} className="text-white" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold">{userData.tokenBalance || 0}</p>
+                          <p className="text-2xl font-bold">{userBallance?.tokenBalance || 0}</p>
                           <p className="text-sm text-muted-foreground">Available Haru</p>
                         </div>
                       </div>
@@ -1142,7 +1143,7 @@ export default function UserProfilePage() {
                           <ArrowUpCircle size={16} className="text-green-500" />
                           <p className="text-sm font-medium">Total Earned</p>
                         </div>
-                        <p className="text-xl font-bold">{userData.tokenEarned || 0}</p>
+                        <p className="text-xl font-bold">{userBallance?.tokenEarned || 0}</p>
                       </div>
 
                       <div className="bg-secondary/30 p-4 rounded-lg border border-secondary/90">
@@ -1150,7 +1151,7 @@ export default function UserProfilePage() {
                           <ArrowDownCircle size={16} className="text-amber-500" />
                           <p className="text-sm font-medium">Total Spent</p>
                         </div>
-                        <p className="text-xl font-bold">{userData.tokenSpent || 0}</p>
+                        <p className="text-xl font-bold">{userBallance?.tokenSpent || 0}</p>
                       </div>
                     </div>
 
@@ -1168,7 +1169,7 @@ export default function UserProfilePage() {
                 <h2 className="text-xl font-bold">Missions & Rewards</h2>
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50">
                   <Wallet className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm font-medium text-amber-700">{userData?.tokenBalance || 0} Haru</span>
+                  <span className="text-sm font-medium text-amber-700">{userBallance?.tokenBalance || 0} Haru</span>
                 </div>
               </div>
 

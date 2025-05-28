@@ -58,6 +58,7 @@ export type User = {
   instagram?: string;
   facebook?: string;
   twitter?: string;
+  isVip?: boolean;
 };
 
 export interface SocialLinks {

@@ -650,7 +650,7 @@ export default function BooksPage() {
               className="w-8 h-10 object-cover rounded mr-2" 
             />
           )}
-          <span>{row.getValue("title")}</span>
+          <Link href={`/books/${row.original.id}`} className="hover:underline hover:text-destructive">{row.getValue("title")}</Link>
         </div>
       ),
     },
@@ -1038,7 +1038,7 @@ export default function BooksPage() {
                 className="w-8 h-10 object-cover rounded mr-2" 
               />
             )}
-            <span>{book.title}</span>
+            <Link href={`/books/${book.id}`} className="hover:underline hover:text-destructive">{book.title}</Link>
           </div>
         );
       }
