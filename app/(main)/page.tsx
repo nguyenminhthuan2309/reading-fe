@@ -132,80 +132,69 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <BookCarousel books={trendingData} />
+      <BookCarousel books={trendingData} isLoading={isLoadingTrending} />
       
       {/* Spacer between hero and first section */}
       <div className="h-8"></div>
       
       {/* Recent Read Section */}
-      {isLoggedIn && !!readingHistoryData && readingHistoryData?.length > 0 && 
-        (<div>
+      {isLoggedIn && (
+        <div>
           <SectionCarousel 
             title="Recent Read" 
-            books={readingHistoryData} 
+            books={readingHistoryData || []} 
             linkHref="/user/reading-history" 
             className="bg-section-light"
             isLoading={isLoading}
           />
-        </div>  )
-      }
+        </div>
+      )}
       
       {/* New Releases Section */}
-      {
-        !!newReleasesData && newReleasesData?.length > 0 &&
-        <div>
-          <SectionCarousel 
-            title="New Releases" 
-            books={newReleasesData} 
-            linkHref="/books?category=new" 
-            className="bg-section-dark"
-            isLoading={isLoadingNewReleases}
-          />
-        </div>
-      }
+      <div>
+        <SectionCarousel 
+          title="New Releases" 
+          books={newReleasesData || []} 
+          linkHref="/books?category=new" 
+          className="bg-section-dark"
+          isLoading={isLoadingNewReleases}
+        />
+      </div>
       
       {/* Recently Updated Section */}
-
-      {   
-        !!recentlyUpdatedData && recentlyUpdatedData?.length > 0 &&
-        <div>
-          <SectionCarousel 
-            title="Recently Updated" 
-            books={recentlyUpdatedData} 
-            linkHref="/books?sortBy=updatedAt" 
-            className="bg-section-light"
+      <div>
+        <SectionCarousel 
+          title="Recently Updated" 
+          books={recentlyUpdatedData || []} 
+          linkHref="/books?sortBy=updatedAt" 
+          className="bg-section-light"
           isLoading={isLoadingRecentlyUpdated}
-          />
-        </div>
-      }
+        />
+      </div>
       
       {/* Top Trending Section */}
-      {
-        !!trendingData && trendingData?.length > 0 &&
-        <div>
-          <SectionCarousel 
-            title="Top Trending" 
-          books={trendingData} 
+      <div>
+        <SectionCarousel 
+          title="Top Trending" 
+          books={trendingData || []} 
           linkHref="/books?sort=trending" 
           className="bg-section-dark"
           isLoading={isLoadingTrending}
         />
       </div>
-}
       
       {/* Recommended Section */}
-      {
-        !!recommendedData && recommendedData?.length > 0 &&
+      {isLoggedIn && (
         <div>
           <SectionCarousel 
             title="Recommended For You" 
-            books={recommendedData} 
-          linkHref="/books" 
-          className="bg-section-light"
-          isLoading={isLoadingRecommended}
-        />
-      </div>
-      }
+            books={recommendedData || []} 
+            linkHref="/books" 
+            className="bg-section-light"
+            isLoading={isLoadingRecommended}
+          />
+        </div>
+      )}
       
       {/* Call to Action Section */}
       <div className="py-16">

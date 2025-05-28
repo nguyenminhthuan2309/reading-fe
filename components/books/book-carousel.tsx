@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/carousel";
 import { BookOpen, Star, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Book } from "@/models";
 
 const textShadowStyles = {
@@ -21,7 +22,12 @@ const textShadowStyles = {
   'text-shadow-md': 'text-shadow: 0 4px 8px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);',
 };
 
-export function BookCarousel({ books }: { books: Book[] | undefined }) {
+interface BookCarouselProps {
+  books: Book[] | undefined;
+  isLoading?: boolean;
+}
+
+export function BookCarousel({ books, isLoading = false }: BookCarouselProps) {
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -56,6 +62,65 @@ export function BookCarousel({ books }: { books: Book[] | undefined }) {
 
   // Take the first 3 books for the hero carousel
   const heroBooks = books?.slice(0, 3) || [];
+
+  // Show skeleton loading when loading or no books
+  if (isLoading || !books || books.length === 0) {
+    return (
+      <div className="relative border-b border-gray-200">
+        <div className="container mx-auto px-4 py-6">
+          <div className="overflow-hidden">
+            <div className="h-[400px] md:h-[480px]">
+              <div className="relative w-full h-full overflow-hidden">
+                <div className="relative h-full container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-6 py-6">
+                  {/* Book cover skeleton */}
+                  <div className="w-full max-w-[180px] md:max-w-[240px] md:w-1/3 flex-shrink-0 relative">
+                    <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg">
+                      <Skeleton className="w-full h-full" />
+                    </div>
+                  </div>
+
+                  {/* Book details skeleton */}
+                  <div className="w-full md:w-2/3 space-y-3 text-center md:text-left">
+                    <div>
+                      <div className="mb-1">
+                        <Skeleton className="h-6 w-20 rounded-full mx-auto md:mx-0" />
+                      </div>
+                      <Skeleton className="h-8 md:h-12 w-3/4 mb-1 mx-auto md:mx-0" />
+                      <Skeleton className="h-4 w-32 mx-auto md:mx-0" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full max-w-[600px] mx-auto md:mx-0" />
+                      <Skeleton className="h-4 w-5/6 max-w-[500px] mx-auto md:mx-0" />
+                      <Skeleton className="h-4 w-4/6 max-w-[400px] mx-auto md:mx-0" />
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                      <Skeleton className="h-8 w-24 rounded-full" />
+                      <Skeleton className="h-8 w-20 rounded-full" />
+                      <Skeleton className="h-8 w-28 rounded-full" />
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 pt-2 justify-center md:justify-start">
+                      <Skeleton className="h-10 w-32 rounded-full" />
+                      <Skeleton className="h-10 w-28 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Skeleton indicators */}
+            <div className="flex justify-center gap-1.5 py-3 bg-transparent relative z-10">
+              {Array(3).fill(0).map((_, index) => (
+                <Skeleton key={index} className="h-1.5 w-5 rounded-sm" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative border-b border-gray-200">
@@ -123,7 +188,7 @@ export function BookCarousel({ books }: { books: Book[] | undefined }) {
                         </div>
 
                         <div className="flex flex-wrap gap-3 pt-2">
-                          <Link href={`/read/${book.id}?chapter=1`}>
+                          <Link href={`/books/${book.id}/read?chapter=${book.readingProgress?.lastReadChapterNumber}&id=${book.readingProgress?.lastReadChapterId}`}>
                             <Button className="bg-red-600 hover:bg-red-700 text-white text-sm rounded-full px-5">
                               Start Reading
                             </Button>

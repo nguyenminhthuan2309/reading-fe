@@ -26,6 +26,11 @@ export function SectionCarousel({ title, books, linkHref, className, isLoading =
   const isFirstSection = title === "Recently Viewed";
   const { user } = useUserStore();
   
+  // Don't render if not loading and no books
+  if (!isLoading && (!books || books.length === 0)) {
+    return null;
+  }
+  
   return (
     <section className={cn(isFirstSection ? "pt-1 pb-4 group" : "py-6 group", className)}>
       <div className="container mx-auto px-4">
@@ -61,7 +66,7 @@ export function SectionCarousel({ title, books, linkHref, className, isLoading =
                   >
                     <div className="mx-1 rounded-xl overflow-hidden">
                       <div className="space-y-2">
-                        <Skeleton className="h-40 w-full rounded-t-xl" />
+                        <Skeleton className="h-56 w-full rounded-t-xl" />
                         <div className="p-3 space-y-2">
                           <Skeleton className="h-5 w-3/4" />
                           <Skeleton className="h-4 w-1/2" />

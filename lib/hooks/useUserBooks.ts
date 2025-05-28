@@ -10,10 +10,11 @@ export function useUserBooks(
   page: number = 1, 
   limit: number = 10,
   filter: BookFilter = "all",
-  accessStatusId?: number
+  accessStatusId?: number,
+  progressStatusId?: number
 ) {
   return useQuery({
-    queryKey: BOOK_KEYS.USER_BOOKS(userId, page, limit, filter, accessStatusId),
+    queryKey: BOOK_KEYS.USER_BOOKS(userId, page, limit, filter, accessStatusId, progressStatusId),
     queryFn: async () => {
       const response = await getBooks({
         userId: userId,
@@ -24,6 +25,7 @@ export function useUserBooks(
         ...(filter === "completed" && { progressStatusId: 2 }), // Completed status ID
         ...(filter === "created" && { authorId: userId }), // Books created by the user
         ...(accessStatusId && { accessStatusId }), // Add access status filter if provided
+        ...(progressStatusId && { progressStatusId }), // Add progress status filter if provided
       });
       
       if (response.status !== 200) {

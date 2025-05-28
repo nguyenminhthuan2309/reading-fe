@@ -1,10 +1,11 @@
-import { Book, AccessStatusEnum } from "@/models/book";
+import { Book, AccessStatusEnum, ProgressStatusEnum } from "@/models/book";
 import { useUserStore } from "@/lib/store";
 
 type EditPermissions = {
   canEditBasicInfo: boolean;
   canEditExistingChapters: boolean;
   canAddNewChapters: boolean;
+  canEditProgressStatus: boolean;
   canDelete: boolean;
   reasonIfDenied?: string;
 };
@@ -22,6 +23,7 @@ export function useBookEditPermissions(book?: Book | null) {
       canEditBasicInfo: true,
       canEditExistingChapters: true,
       canAddNewChapters: true,
+      canEditProgressStatus: true,
       canDelete: true
     } as EditPermissions;
   }
@@ -31,6 +33,7 @@ export function useBookEditPermissions(book?: Book | null) {
       canEditBasicInfo: false,
       canEditExistingChapters: false,
       canAddNewChapters: false,
+      canEditProgressStatus: false,
       canDelete: false,
       reasonIfDenied: "You must be logged in to edit books"
     } as EditPermissions;
@@ -44,6 +47,7 @@ export function useBookEditPermissions(book?: Book | null) {
       canEditBasicInfo: false,
       canEditExistingChapters: false,
       canAddNewChapters: false,
+      canEditProgressStatus: false,
       canDelete: false,
       reasonIfDenied: "You are not the author of this book"
     } as EditPermissions;
@@ -51,12 +55,26 @@ export function useBookEditPermissions(book?: Book | null) {
   
   // Check if book access status ID is 1 (PUBLISHED)
   if (book.accessStatus?.id === AccessStatusEnum.PUBLISHED ) {
+    // For completed books, don't allow adding chapters or editing progress status
+    if (book.progressStatus?.id === ProgressStatusEnum.COMPLETED) {
+      return {
+        canEditBasicInfo: false,
+        canEditExistingChapters: false,
+        canAddNewChapters: false,
+        canEditProgressStatus: false,
+        canDelete: false,
+        reasonIfDenied: "This book is marked as completed. You cannot add new chapters or change the progress status."
+      } as EditPermissions;
+    }
+    
+    // For ongoing published books, allow adding chapters and editing progress status
     return {
       canEditBasicInfo: false,
       canEditExistingChapters: false,
       canAddNewChapters: true,
+      canEditProgressStatus: true,
       canDelete: false,
-      reasonIfDenied: "Published books can only have new chapters added"
+      reasonIfDenied: "Published books can only have new chapters added and progress status updated"
     } as EditPermissions;
   }
   
@@ -66,6 +84,7 @@ export function useBookEditPermissions(book?: Book | null) {
       canEditBasicInfo: false,
       canEditExistingChapters: false,
       canAddNewChapters: false,
+      canEditProgressStatus: false,
       canDelete: false,
       reasonIfDenied: "Books under review cannot be edited"
     } as EditPermissions;
@@ -76,6 +95,7 @@ export function useBookEditPermissions(book?: Book | null) {
     canEditBasicInfo: true,
     canEditExistingChapters: true,
     canAddNewChapters: true,
+    canEditProgressStatus: true,
     canDelete: true
   } as EditPermissions;
 } 

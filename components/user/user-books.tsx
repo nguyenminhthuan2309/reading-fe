@@ -15,10 +15,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AccessStatusEnum } from "@/models/book";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AccessStatusEnum, ProgressStatusEnum, PROGRESS_STATUSES } from "@/models/book";
 
 type BookFilter = "all" | "inProgress" | "created" | "completed";
 type AccessStatusFilter = "all" | "published" | "draft" | "blocked" | "pending";
+type ProgressStatusFilter = "all" | "ongoing" | "completed" | "dropped";
 
 interface UserBooksProps {
   userId: number;
@@ -30,6 +38,7 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
   const [page, setPage] = useState(1);
   const [limit] = useState(limitPage);
   const [accessStatusFilter, setAccessStatusFilter] = useState<AccessStatusFilter>("all");
+  const [progressStatusFilter, setProgressStatusFilter] = useState<ProgressStatusFilter>("all");
   const { user } = useUserStore();
   
   // Map the access status filter to the actual accessStatusId
@@ -47,6 +56,20 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
         return undefined;
     }
   };
+
+  // Map the progress status filter to the actual progressStatusId
+  const getProgressStatusId = (filter: ProgressStatusFilter) => {
+    switch (filter) {
+      case "ongoing":
+        return ProgressStatusEnum.ONGOING;
+      case "completed":
+        return ProgressStatusEnum.COMPLETED;
+      case "dropped":
+        return ProgressStatusEnum.DROPPED;
+      default:
+        return undefined;
+    }
+  };
   
   const { 
     data, 
@@ -57,49 +80,79 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
     page, 
     limit, 
     "all", // Always use "all" for the main filter 
-    getAccessStatusId(accessStatusFilter)
+    getAccessStatusId(accessStatusFilter),
+    getProgressStatusId(progressStatusFilter)
+  );
+
+  // Helper function to render progress status badge
+  const renderProgressStatusBadge = (progressStatus: { id: number; name: string } | undefined) => {
+    if (!progressStatus) return null;
+    
+    let badgeClass = "";
+    switch (progressStatus.id) {
+      case ProgressStatusEnum.ONGOING:
+        badgeClass = "bg-blue-100 text-blue-800 hover:bg-blue-100";
+        break;
+      case ProgressStatusEnum.COMPLETED:
+        badgeClass = "bg-green-100 text-green-800 hover:bg-green-100";
+        break;
+      case ProgressStatusEnum.DROPPED:
+        badgeClass = "bg-gray-100 text-gray-800 hover:bg-gray-100";
+        break;
+      default:
+        badgeClass = "bg-slate-100 text-slate-800 hover:bg-slate-100";
+    }
+    
+    return <Badge className={badgeClass}>{progressStatus.name}</Badge>;
+  };
+
+  // Filter controls component
+  const FilterControls = () => (
+    <div className="flex flex-wrap gap-4 mb-6">
+      <div className="flex items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">Filters:</span>
+      </div>
+      
+      {/* Access Status Filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Access Status:</span>
+        <Select value={accessStatusFilter} onValueChange={(value: AccessStatusFilter) => setAccessStatusFilter(value)}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="blocked">Blocked</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Progress Status Filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Progress Status:</span>
+        <Select value={progressStatusFilter} onValueChange={(value: ProgressStatusFilter) => setProgressStatusFilter(value)}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Select progress" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Progress</SelectItem>
+            <SelectItem value="ongoing">Ongoing</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="dropped">Dropped</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
   
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Button
-            variant={accessStatusFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("all")}
-          >
-            All
-          </Button>
-          <Button
-            variant={accessStatusFilter === "published" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("published")}
-          >
-            Published
-          </Button>
-          <Button
-            variant={accessStatusFilter === "draft" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("draft")}
-          >
-            Draft
-          </Button>
-          <Button
-            variant={accessStatusFilter === "blocked" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("blocked")}
-          >
-            Blocked
-          </Button>
-          <Button
-            variant={accessStatusFilter === "pending" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("pending")}
-          >
-            Pending
-          </Button>
-        </div>
+        <FilterControls />
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -107,7 +160,8 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
                 <TableHead>Title</TableHead>
                 <TableHead>Chapters</TableHead>
                 <TableHead>Rating</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Access Status</TableHead>
+                <TableHead>Progress Status</TableHead>
                 <TableHead>Last Updated</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -122,6 +176,7 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
                     </div>
                   </TableCell>
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -152,43 +207,7 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
   if (!data?.data.length) {
     return (
       <div>
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Button
-            variant={accessStatusFilter === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("all")}
-          >
-            All
-          </Button>
-          <Button
-            variant={accessStatusFilter === "published" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("published")}
-          >
-            Published
-          </Button>
-          <Button
-            variant={accessStatusFilter === "draft" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("draft")}
-          >
-            Draft
-          </Button>
-          <Button
-            variant={accessStatusFilter === "blocked" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("blocked")}
-          >
-            Blocked
-          </Button>
-          <Button
-            variant={accessStatusFilter === "pending" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAccessStatusFilter("pending")}
-          >
-            Pending
-          </Button>
-        </div>
+        <FilterControls />
         <div className="text-center py-10">
           <p className="text-muted-foreground">No books found.</p>
         </div>
@@ -198,43 +217,7 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
   
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Button
-          variant={accessStatusFilter === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAccessStatusFilter("all")}
-        >
-          All
-        </Button>
-        <Button
-          variant={accessStatusFilter === "published" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAccessStatusFilter("published")}
-        >
-          Published
-        </Button>
-        <Button
-          variant={accessStatusFilter === "draft" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAccessStatusFilter("draft")}
-        >
-          Draft
-        </Button>
-        <Button
-          variant={accessStatusFilter === "blocked" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAccessStatusFilter("blocked")}
-        >
-          Blocked
-        </Button>
-        <Button
-          variant={accessStatusFilter === "pending" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setAccessStatusFilter("pending")}
-        >
-          Pending
-        </Button>
-      </div>
+      <FilterControls />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -242,7 +225,8 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
               <TableHead>Title</TableHead>
               <TableHead>Chapters</TableHead>
               <TableHead>Rating</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Access Status</TableHead>
+              <TableHead>Progress Status</TableHead>
               <TableHead>Last Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -285,6 +269,9 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
                   {book.accessStatus?.id === 4 && (
                     <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pending</Badge>
                   )}
+                </TableCell>
+                <TableCell>
+                  {renderProgressStatusBadge(book.progressStatus)}
                 </TableCell>
                 <TableCell>
                   {book.updatedAt ? format(new Date(book.updatedAt), 'MMM d, yyyy') : 'N/A'}

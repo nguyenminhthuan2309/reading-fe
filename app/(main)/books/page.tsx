@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getBooks, getGenres } from "@/lib/api/books";
-import {  BookFilters, Category, SortDirectionEnum, ReadingProgress } from "@/models/book";
+import {  BookFilters, Category, SortDirectionEnum, ReadingProgress, ProgressStatusEnum, PROGRESS_STATUSES } from "@/models/book";
 import { BookCard } from "@/components/books/book-card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Filter, PlusCircle, Search, SlidersHorizontal, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -72,6 +72,10 @@ export default function BooksPage() {
   // Parse selectedGenres from URL (comma-separated list of genres)
   const selectedGenresParam = searchParams.get("genres") || "";
   const selectedGenres = selectedGenresParam ? selectedGenresParam.split(",") as string[] : [];
+  
+  // Parse selectedProgressStatus from URL
+  const selectedProgressStatusParam = searchParams.get("progressStatus") || "";
+  const selectedProgressStatus = selectedProgressStatusParam || "";
   
   // UI state
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -171,9 +175,19 @@ export default function BooksPage() {
         }
       }
     }
+    
+    // Add progress status filter
+    if (selectedProgressStatus) {
+      const progressStatusId = PROGRESS_STATUSES.find(status => 
+        status.name.toLowerCase() === selectedProgressStatus.toLowerCase()
+      )?.id;
+      if (progressStatusId) {
+        queryFilters.progressStatusId = progressStatusId;
+      }
+    }
 
     return queryFilters;
-  }, [currentPage, pageSize, sortByParam, sortDirectionParam, searchQuery, selectedGenres, genres]);
+  }, [currentPage, pageSize, sortByParam, sortDirectionParam, searchQuery, selectedGenres, selectedProgressStatus, genres]);
   
   // Fetch books data with React Query - now with request cancellation
   const { 
@@ -285,6 +299,14 @@ export default function BooksPage() {
     });
   };
 
+  // Handle progress status filter
+  const handleProgressStatusChange = (status: string) => {
+    updateUrlParams({
+      'progressStatus': status === 'all' ? null : status,
+      'page': '1' // Reset to first page when filter changes
+    });
+  };
+
   // Filter books based on selected genres
   const filteredBooks = useMemo(() => {
     if (selectedGenres.length === 0) {
@@ -332,6 +354,7 @@ export default function BooksPage() {
     updateUrlParams({
       'search': null,
       'genres': null,
+      'progressStatus': null,
       'page': '1'
     });
     setSearchInput("");
@@ -492,7 +515,9 @@ export default function BooksPage() {
       >
         <span className="flex items-center gap-2">
           <Filter size={16} />
-          {selectedGenres.length > 0 ? `Filters (${selectedGenres.length})` : "Browse Genres"}
+          {(selectedGenres.length > 0 || selectedProgressStatus) ? 
+            `Filters (${selectedGenres.length + (selectedProgressStatus ? 1 : 0)})` : 
+            "Browse & Filter"}
         </span>
         <ChevronLeft 
           size={16} 
@@ -503,76 +528,125 @@ export default function BooksPage() {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Genre Filter Sidebar */}
         <div className={`md:w-72 flex-shrink-0 ${showMobileFilters ? 'block' : 'hidden md:block'}`}>
-          <div className="bg-white border border-secondary/40 rounded-lg p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium">Browse Genres</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={clearFilters}
-                className={`h-8 text-xs transition-opacity duration-200 ${selectedGenres.length > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                disabled={isTransitioning}
-              >
-                Clear all
-              </Button>
+          <div className="bg-white border border-secondary/40 rounded-lg p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)] space-y-6">
+            
+            {/* Progress Status Filter */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-medium">Progress Status</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={clearFilters}
+                  className={`h-8 text-xs transition-opacity duration-200 ${(selectedGenres.length > 0 || selectedProgressStatus) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                  disabled={isTransitioning}
+                >
+                  Clear all
+                </Button>
+              </div>
+              
+              <div className="space-y-2" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="progress-all" 
+                    checked={!selectedProgressStatus}
+                    onCheckedChange={() => handleProgressStatusChange('all')}
+                    className={!selectedProgressStatus ? "text-red-500 border-red-500" : ""}
+                  />
+                  <Label 
+                    htmlFor="progress-all"
+                    className={`text-sm cursor-pointer flex-1 ${!selectedProgressStatus ? 'text-red-600 font-medium' : ''}`}
+                  >
+                    All Progress Status
+                  </Label>
+                </div>
+                
+                {PROGRESS_STATUSES.map((status) => {
+                  const isSelected = selectedProgressStatus.toLowerCase() === status.name.toLowerCase();
+                  
+                  return (
+                    <div key={status.id} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`progress-${status.id}`} 
+                        checked={isSelected}
+                        onCheckedChange={() => handleProgressStatusChange(status.name)}
+                        className={isSelected ? "text-red-500 border-red-500" : ""}
+                      />
+                      <Label 
+                        htmlFor={`progress-${status.id}`}
+                        className={`text-sm cursor-pointer flex-1 ${isSelected ? 'text-red-600 font-medium' : ''}`}
+                      >
+                        {status.name}
+                      </Label>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             
-            <div className="space-y-3" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
-              {Object.entries(genreGroups).map(([group, genres]) => {
-                return (
-                  <Collapsible 
-                  key={group}
-                  open={expandedCategories.includes(group)}
-                  onOpenChange={() => toggleCategory(group)}
-                  className="border-b border-border pb-2 last:border-0 last:pb-0"
-                  >
-                    <CollapsibleTrigger className="flex justify-between items-center w-full text-left py-1 hover:text-primary group">
-                      <div className="flex items-center">
-                        <h4 className="text-sm font-medium leading-none">{group}</h4>
-                        <span className={`text-xs inline-flex items-center ml-1.5 ${genres.length === 0 ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
-                          ({genreGroups[group]?.reduce((total, genre) => {
-                            const genreObj = genres?.find(g => g.name === genre.name);
-                            return total + (genreObj?.totalBooks || 0);
-                          }, 0)})
-                        </span>
-                      </div>
-                      <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-primary ${expandedCategories.includes(group) ? 'rotate-90' : ''}`} />
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent className="mt-1 pl-2 space-y-1">
-                      {genres.map((genre: Category) => {
-                        const isSelected = selectedGenres.includes(genre.name);
-                        const genreObj = genres?.find(g => g.name === genre.name);
-                        
-                        return (
-                          <div key={genre.name} className="flex items-center space-x-2 py-1">
-                            <Checkbox 
-                              id={`genre-${genre}`} 
-                              checked={isSelected}
-                              onCheckedChange={() => handleGenreToggle(genre.name)}
-                              disabled={genreObj?.totalBooks === 0}
-                              className={isSelected ? "text-red-500 border-red-500" : ""}
-                            />
-                            <Label 
-                              htmlFor={`genre-${genre}`}
-                              className={`text-sm cursor-pointer flex-1 flex justify-between items-center 
-                                ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/50' : isSelected ? 'text-red-600 font-medium' : ''}`}
-                            >
-                              <span className="leading-none">{genre.name}</span>
-                              <span className={`text-xs inline-flex items-center px-1 
-                                ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/30' : 
-                                isSelected ? 'text-red-600' : 'text-muted-foreground'}`}
+            {/* Genre Filter */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-medium">Browse Genres</h3>
+              </div>
+              
+              <div className="space-y-3" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
+                {Object.entries(genreGroups).map(([group, genres]) => {
+                  return (
+                    <Collapsible 
+                    key={group}
+                    open={expandedCategories.includes(group)}
+                    onOpenChange={() => toggleCategory(group)}
+                    className="border-b border-border pb-2 last:border-0 last:pb-0"
+                    >
+                      <CollapsibleTrigger className="flex justify-between items-center w-full text-left py-1 hover:text-primary group">
+                        <div className="flex items-center">
+                          <h4 className="text-sm font-medium leading-none">{group}</h4>
+                          <span className={`text-xs inline-flex items-center ml-1.5 ${genres.length === 0 ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
+                            ({genreGroups[group]?.reduce((total, genre) => {
+                              const genreObj = genres?.find(g => g.name === genre.name);
+                              return total + (genreObj?.totalBooks || 0);
+                            }, 0)})
+                          </span>
+                        </div>
+                        <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-primary ${expandedCategories.includes(group) ? 'rotate-90' : ''}`} />
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent className="mt-1 pl-2 space-y-1">
+                        {genres.map((genre: Category) => {
+                          const isSelected = selectedGenres.includes(genre.name);
+                          const genreObj = genres?.find(g => g.name === genre.name);
+                          
+                          return (
+                            <div key={genre.name} className="flex items-center space-x-2 py-1">
+                              <Checkbox 
+                                id={`genre-${genre}`} 
+                                checked={isSelected}
+                                onCheckedChange={() => handleGenreToggle(genre.name)}
+                                disabled={genreObj?.totalBooks === 0}
+                                className={isSelected ? "text-red-500 border-red-500" : ""}
+                              />
+                              <Label 
+                                htmlFor={`genre-${genre}`}
+                                className={`text-sm cursor-pointer flex-1 flex justify-between items-center 
+                                  ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/50' : isSelected ? 'text-red-600 font-medium' : ''}`}
                               >
-                                {genreObj?.totalBooks || 0}
-                              </span>
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </CollapsibleContent>
-                  </Collapsible>
-                );
-              })}
+                                <span className="leading-none">{genre.name}</span>
+                                <span className={`text-xs inline-flex items-center px-1 
+                                  ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/30' : 
+                                  isSelected ? 'text-red-600' : 'text-muted-foreground'}`}
+                                >
+                                  {genreObj?.totalBooks || 0}
+                                </span>
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -618,7 +692,7 @@ export default function BooksPage() {
                 <div className="text-center py-12">
                   <p className="text-lg font-medium">No books found</p>
                   <p className="text-muted-foreground">Try adjusting your filters or search query</p>
-                  {(selectedGenres.length > 0 || searchQuery) && (
+                  {(selectedGenres.length > 0 || searchQuery || selectedProgressStatus) && (
                     <Button onClick={clearFilters} className="mt-4">
                       Clear Filters
                     </Button>

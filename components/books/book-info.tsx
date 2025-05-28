@@ -17,7 +17,7 @@ import {
 // Add Radio Group components
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-import { BOOK_TYPES, AGE_RATINGS, AgeRatingEnum } from "@/models";
+import { BOOK_TYPES, AGE_RATINGS, AgeRatingEnum, PROGRESS_STATUSES, ProgressStatusEnum } from "@/models";
 
 // Helper function to display error messages
 const ErrorMessage = ({ message }: { message: string }) => (
@@ -47,6 +47,8 @@ interface BookInfoProps {
   setSelectedGenres: (genres: string[]) => void;
   ageRating: number;
   setAgeRating: (rating: number) => void;
+  progressStatus: number;
+  setProgressStatus: (status: number) => void;
   genres?: Genre[];
   isEnhancingTitle: boolean;
   enhanceTitle: () => void;
@@ -54,6 +56,7 @@ interface BookInfoProps {
   enhanceDescription: () => void;
   isEditing?: boolean;
   canEdit?: boolean;
+  canEditProgressStatus?: boolean;
   reasonIfDenied?: string;
   titleValue: string;
   descriptionValue: string;
@@ -74,6 +77,8 @@ export default function BookInfo({
   setSelectedGenres,
   ageRating,
   setAgeRating,
+  progressStatus,
+  setProgressStatus,
   genres = [],
   isEnhancingTitle,
   enhanceTitle,
@@ -81,6 +86,7 @@ export default function BookInfo({
   enhanceDescription,
   isEditing = false,
   canEdit = false,
+  canEditProgressStatus = true,
   titleValue = "",
   descriptionValue = "",
   onTitleChange,
@@ -308,6 +314,41 @@ export default function BookInfo({
             )}
           </div>
 
+          {/* Progress Status */}
+          <div className="space-y-2">
+            <Label htmlFor="progress-status" className="flex items-center">
+              Progress Status
+              <span className="text-destructive ml-1">*</span>
+            </Label>
+            <Select
+              value={progressStatus.toString()}
+              onValueChange={(value) => {
+                setProgressStatus(parseInt(value));
+              }}
+              disabled={!canEditProgressStatus}
+            >
+              <SelectTrigger id="progress-status" className={errors.progressStatus ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select progress status" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROGRESS_STATUSES.map((status) => (
+                  <SelectItem key={status.id} value={status.id.toString()} disabled={status.id === ProgressStatusEnum.DROPPED}>
+                    {status.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.progressStatus ? (
+              <ErrorMessage message={errors.progressStatus} />
+            ) : (
+              <p className="text-xs text-muted-foreground mt-1">
+                {!canEditProgressStatus 
+                  ? "Progress status cannot be changed" 
+                  : "Select the current progress status of your book"}
+              </p>
+            )}
+          </div>
+
           {/* Description */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -343,20 +384,20 @@ export default function BookInfo({
       {isCollapsed && (
         <div 
           className={`h-full flex items-center justify-center cursor-pointer hover:bg-secondary/30 transition-colors ${
-            (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType) 
+            (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType || errors.ageRating || errors.progressStatus) 
               ? 'bg-destructive/10 border-r border-destructive' 
               : ''
           }`}
           onClick={() => setIsCollapsed(false)}
           title={
-            (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType)
+            (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType || errors.ageRating || errors.progressStatus)
               ? "Book Info has errors" 
               : "Expand Book Info"
           }
         >
           <span 
             className={`py-6 font-medium tracking-wide ${
-              (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType)
+              (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType || errors.ageRating || errors.progressStatus)
                 ? 'text-destructive'
                 : 'text-muted-foreground'
             }`}

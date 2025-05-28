@@ -18,7 +18,7 @@ import { BOOK_KEYS, CHAPTER_KEYS } from "@/lib/constants/query-keys";
 import { useUserStore } from "@/lib/store";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FollowButton } from "@/components/books/follow-button";
-import { ChapterAccessStatus, Chapter, AgeRatingEnum, AGE_RATINGS } from "@/models/book";
+import { ChapterAccessStatus, Chapter, AgeRatingEnum, AGE_RATINGS, ProgressStatusEnum, PROGRESS_STATUSES } from "@/models/book";
 import { PurchaseChapterDialog } from "@/components/books/purchase-chapter-dialog";
 
 // A component to display the age rating badge
@@ -48,6 +48,36 @@ const AgeRatingBadge = ({ ageRatingId }: { ageRatingId: number }) => {
   return (
     <div className={`px-3 py-1 rounded-full text-sm font-medium border ${bgClass}`}>
       {rating.name}
+    </div>
+  );
+};
+
+// A component to display the progress status badge
+const ProgressStatusBadge = ({ progressStatusId }: { progressStatusId: number }) => {
+  // Default to "Ongoing" if status not found
+  const status = PROGRESS_STATUSES.find(s => s.id === progressStatusId) || PROGRESS_STATUSES[0];
+  
+  // Determine styling based on progress status
+  let bgClass = 'bg-blue-100 text-blue-800 border-blue-200';
+  
+  switch (progressStatusId) {
+    case ProgressStatusEnum.ONGOING:
+      bgClass = 'bg-blue-100 text-blue-800 border-blue-200';
+      break;
+    case ProgressStatusEnum.COMPLETED:
+      bgClass = 'bg-green-100 text-green-800 border-green-200';
+      break;
+    case ProgressStatusEnum.DROPPED:
+      bgClass = 'bg-gray-100 text-gray-800 border-gray-200';
+      break;
+    default:
+      bgClass = 'bg-blue-100 text-blue-800 border-blue-200';
+      break;
+  }
+  
+  return (
+    <div className={`px-3 py-1 rounded-full text-sm font-medium border ${bgClass}`}>
+      {status.name}
     </div>
   );
 };
@@ -444,6 +474,9 @@ export default function BookPage() {
                 
                 {/* Age Rating Badge */}
                 <AgeRatingBadge ageRatingId={book.ageRating || AgeRatingEnum.EVERYONE} />
+                
+                {/* Progress Status Badge */}
+                <ProgressStatusBadge progressStatusId={book.progressStatus?.id || ProgressStatusEnum.ONGOING} />
               </div>
 
               {/* Book stats */}

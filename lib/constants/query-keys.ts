@@ -32,8 +32,8 @@ export const BOOK_KEYS = {
     ['books', 'related', bookId, page, limit] as const,
   FOLLOWED: (page?: number, limit?: number) => 
     ['books', 'followed', page, limit] as const,
-  USER_BOOKS: (userId: string | number, page?: number, limit?: number, filter?: string, accessStatusId?: number) => 
-    ['books', 'user', userId, page, limit, filter, accessStatusId] as const,
+  USER_BOOKS: (userId: string | number, page?: number, limit?: number, filter?: string, accessStatusId?: number, progressStatusId?: number) => 
+    ['books', 'user', userId, page, limit, filter, accessStatusId, progressStatusId] as const,
 } as const;
 
 // Chapter related query keys
