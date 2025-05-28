@@ -673,9 +673,6 @@ export default function BooksPage() {
         let badgeClass = "bg-gray-100 text-gray-800";
         let displayText = "Unknown";
 
-        console.log('ageRating', ageRating);
-        console.log('row.original', row.original);
-        
         if (ageRating === 4) {
           badgeClass = "bg-red-200 text-red-800 font-medium";
           displayText = "18+";

@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ChevronDown, AlertCircle, Pencil, CheckCircle2, Upload, FileText, GripVertical } from "lucide-react";
+import { Plus, Trash2, ChevronDown, AlertCircle, Pencil, CheckCircle2, Upload, FileText, GripVertical, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,9 @@ import { PictureImage } from "@/components/books/picture-image";
 import { BOOK_TYPES } from "@/models";
 import TiptapEditor from "@/components/editor/TiptapEditor";
 import { DocumentUploader } from "@/components/books/document-uploader";
+import { EnhancementPopover } from "@/components/ui/enhancement-popover";
+import { useRecommendation } from "@/lib/hooks/useRecommendation";
+import { toast } from "sonner";
 
 // Add Dialog components for confirmation
 import {
@@ -81,7 +84,6 @@ const SortableImageItem = ({
   isChapterEditable: boolean;
 }) => {
 
-  console.log("isChapterEditable", isChapterEditable);
   const {
     attributes,
     listeners,
@@ -156,6 +158,10 @@ interface ChapterCreatorProps {
   canEditExistingChapters?: boolean;
   canAddNewChapters?: boolean;
   canEditChapter: (chapter: LocalChapter) => boolean;
+  // Enhancement context
+  bookTitle?: string;
+  bookDescription?: string;
+  bookGenres?: string[];
 }
 
 export default function ChapterCreator({
@@ -169,15 +175,22 @@ export default function ChapterCreator({
   canEditExistingChapters = true,
   canAddNewChapters = true,
   canEditChapter,
+  bookTitle,
+  bookDescription,
+  bookGenres,
 }: ChapterCreatorProps) {
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
+  const [editingChapterTitle, setEditingChapterTitle] = useState<string>("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<string | null>(null);
   
   const newChapterInputRef = useRef<HTMLInputElement>(null);
   const editableInputRef = useRef<HTMLInputElement>(null);
+  
+  // Initialize recommendation hook for chapter title enhancement
+  const recommendation = useRecommendation();
   
   // Initialize sensors for drag-and-drop
   const sensors = useSensors(
@@ -187,6 +200,58 @@ export default function ChapterCreator({
     })
   );
 
+  // Enhanced AI-powered chapter title enhancement for new chapters
+  const enhanceNewChapterTitle = async (): Promise<string> => {
+    if (!newChapterTitle.trim()) {
+      throw new Error('Please enter a chapter title first');
+    }
+
+    try {
+      const enhancedTitle = await recommendation.enhanceChapterTitle.mutateAsync({
+        chapterTitle: newChapterTitle,
+        context: {
+          bookTitle: bookTitle || undefined,
+          bookDescription: bookDescription || undefined,
+          bookGenres: bookGenres && bookGenres.length > 0 ? bookGenres : undefined,
+          chapterNumber: chapters.length + 1,
+          bookType: bookType,
+        }
+      });
+
+      return enhancedTitle;
+    } catch (error) {
+      console.error('Error enhancing new chapter title:', error);
+      throw error;
+    }
+  };
+
+  // Enhanced AI-powered chapter title enhancement
+  const enhanceChapterTitleForChapter = async (chapter: LocalChapter): Promise<string> => {
+    // Use the editing title if we're in edit mode, otherwise use the chapter's current title
+    const titleToEnhance = editingChapterId === chapter.id ? editingChapterTitle : chapter.title;
+    
+    if (!titleToEnhance.trim()) {
+      throw new Error('Please enter a chapter title first');
+    }
+
+    try {
+      const enhancedTitle = await recommendation.enhanceChapterTitle.mutateAsync({
+        chapterTitle: titleToEnhance,
+        context: {
+          bookTitle: bookTitle || undefined,
+          bookDescription: bookDescription || undefined,
+          bookGenres: bookGenres && bookGenres.length > 0 ? bookGenres : undefined,
+          chapterNumber: chapter.chapter,
+          bookType: bookType,
+        }
+      });
+
+      return enhancedTitle;
+    } catch (error) {
+      console.error('Error enhancing chapter title:', error);
+      throw error;
+    }
+  };
 
   const handleAddChapter = () => {    
     // Create a new chapter with an auto-generated title
@@ -337,8 +402,45 @@ export default function ChapterCreator({
       ch.id === chapterId ? {...ch, title: newTitle || `Chapter ${chapters.findIndex(c => c.id === chapterId) + 1}`} : ch
     );
     setChapters(updatedChapters);
-    setEditingChapterId(null);
   };
+
+  // Function to start editing a chapter title
+  const startEditingChapterTitle = (chapterId: string, currentTitle: string) => {
+    setEditingChapterId(chapterId);
+    setEditingChapterTitle(currentTitle);
+    setTimeout(() => {
+      editableInputRef.current?.focus();
+    }, 0);
+  };
+
+  // Function to save chapter title changes
+  const saveChapterTitleEdit = () => {
+    if (editingChapterId) {
+      handleChapterTitleUpdate(editingChapterId, editingChapterTitle);
+      setEditingChapterId(null);
+      setEditingChapterTitle("");
+    }
+  };
+
+  // Function to cancel chapter title editing
+  const cancelChapterTitleEdit = () => {
+    setEditingChapterId(null);
+    setEditingChapterTitle("");
+  };
+
+  // Handle escape key globally when editing
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && editingChapterId) {
+        cancelChapterTitleEdit();
+      }
+    };
+
+    if (editingChapterId) {
+      document.addEventListener('keydown', handleEscapeKey);
+      return () => document.removeEventListener('keydown', handleEscapeKey);
+    }
+  }, [editingChapterId]);
 
   const handleRemoveImage = (chapterId: string, imageIndex: number) => {
     const chapter = chapters.find(ch => ch.id === chapterId);
@@ -472,24 +574,74 @@ export default function ChapterCreator({
                         
                         {/* Editable title field */}
                         {chapter.id === editingChapterId && (
-                          <Input
-                            ref={editableInputRef}
-                            defaultValue={chapter.title}
-                            className="flex-1 mr-2"
-                            onBlur={(e) => {
-                              handleChapterTitleUpdate(chapter.id, e.target.value);
-                              setEditingChapterId(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleChapterTitleUpdate(chapter.id, (e.target as HTMLInputElement).value);
-                                setEditingChapterId(null);
-                              } else if (e.key === 'Escape') {
-                                setEditingChapterId(null);
-                              }
-                            }}
-                            disabled={!isChapterEditable(chapter)}
-                          />
+                          <div className="flex-1 mr-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="relative bg-muted/30 rounded-md border border-input">
+                              <Input
+                                ref={editableInputRef}
+                                value={editingChapterTitle}
+                                onChange={(e) => setEditingChapterTitle(e.target.value)}
+                                className="pr-[100px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    saveChapterTitleEdit();
+                                  } else if (e.key === 'Escape') {
+                                    cancelChapterTitleEdit();
+                                  }
+                                }}
+                                disabled={!isChapterEditable(chapter)}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder="Enter chapter title"
+                              />
+                              
+                              {/* Action buttons - positioned inside input on the right */}
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                {/* Enhancement button - no background */}
+                                <EnhancementPopover
+                                  onEnhance={() => enhanceChapterTitleForChapter(chapter)}
+                                  onApply={(enhancedTitle) => {
+                                    setEditingChapterTitle(enhancedTitle);
+                                    toast.success('Chapter title enhanced successfully!');
+                                    // Update the input value and focus it so user can see the change
+                                    setTimeout(() => {
+                                      if (editableInputRef.current) {
+                                        editableInputRef.current.value = enhancedTitle;
+                                        editableInputRef.current.focus();
+                                      }
+                                    }, 100);
+                                  }}
+                                  disabled={!isChapterEditable(chapter)}
+                                  placeholder="Enhanced chapter title will appear here..."
+                                  triggerClassName="relative right-0 top-0 translate-y-0 h-6 w-6 hover:bg-transparent"
+                                >
+                                  <div></div>
+                                </EnhancementPopover>
+                                
+                                {/* Save button */}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={saveChapterTitleEdit}
+                                  disabled={!isChapterEditable(chapter)}
+                                  className="h-6 w-6 p-0"
+                                  title="Save changes (Enter)"
+                                >
+                                  <CheckCircle2 size={14} />
+                                </Button>
+                                
+                                {/* Cancel button */}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={cancelChapterTitleEdit}
+                                  className="h-6 w-6 p-0"
+                                  title="Cancel changes (Escape)"
+                                >
+                                  <X size={14} />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
                         )}
                         
                         <div className="flex items-center gap-1">
@@ -501,12 +653,8 @@ export default function ChapterCreator({
                             className="h-8 w-8"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingChapterId(chapter.id);
-                              setTimeout(() => {
-                                editableInputRef.current?.focus();
-                              }, 0);
+                              startEditingChapterTitle(chapter.id, chapter.title);
                             }}
-                            
                             disabled={!isChapterEditable(chapter)}
                           >
                         <Pencil size={16} />
@@ -778,15 +926,25 @@ export default function ChapterCreator({
             <div className="pt-4 pb-2 border-t border-secondary/50">
               <div className="flex items-center gap-2">
                 <div className="flex-1">
-                  <Input 
-                    type="text"
-                    ref={newChapterInputRef}
-                    placeholder="Enter chapter title (optional)"
-                    value={newChapterTitle}
-                    onChange={(e) => setNewChapterTitle(e.target.value)}
-                    className="w-full"
+                  <EnhancementPopover
+                    onEnhance={enhanceNewChapterTitle}
+                    onApply={(enhancedTitle) => {
+                      setNewChapterTitle(enhancedTitle);
+                      toast.success('Chapter title enhanced successfully!');
+                    }}
                     disabled={!canAddNewChapters}
-                  />
+                    placeholder="Enhanced chapter title will appear here..."
+                  >
+                    <Input 
+                      type="text"
+                      ref={newChapterInputRef}
+                      placeholder="Enter chapter title (optional)"
+                      value={newChapterTitle}
+                      onChange={(e) => setNewChapterTitle(e.target.value)}
+                      className="w-full pr-10"
+                      disabled={!canAddNewChapters}
+                    />
+                  </EnhancementPopover>
                 </div>
                 <Button
                   type="button"

@@ -2,7 +2,7 @@ import { ModerationResponse, OpenAIError, EnhancedModerationRequest, EnhancedMod
 import { OpenAIRequest, OpenAIResponse } from '@/models';
 import axios from 'axios';
 import OpenAI from 'openai'; 
-import { OPENAI_MODERATION_SYSTEM_PROMPT, OPENAI_IMAGE_MODERATION_SYSTEM_PROMPT } from '../constants/openai-sys';
+import { OPENAI_MODERATION_SYSTEM_PROMPT, OPENAI_IMAGE_MODERATION_SYSTEM_PROMPT, ENHANCEMENT_PROMPTS } from '../constants/openai-sys';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 
 // Age rating thresholds for content moderation
@@ -514,4 +514,199 @@ async function checkImageContent(model: string, imageUrl: string): Promise<any> 
     console.error('Error checking image content:', error);
     throw error;
   }
+}
+
+// Enhancement types and interfaces
+export type EnhancementType = 'title' | 'description' | 'chapter_title';
+
+export interface EnhanceContentRequest {
+  type: EnhancementType;
+  content: string;
+  context?: {
+    bookTitle?: string;
+    bookDescription?: string;
+    bookGenres?: string[];
+    chapterNumber?: number;
+    bookType?: string;
+  };
+  model?: string;
+}
+
+export interface EnhanceContentResponse {
+  originalContent: string;
+  enhancedContent: string;
+  type: EnhancementType;
+  model: string;
+  timestamp: string;
+}
+
+
+/**
+ * Enhance content using OpenAI API directly from the frontend
+ * @param params Enhancement request parameters
+ * @returns Enhanced content response
+ */
+export async function enhanceContent(params: EnhanceContentRequest): Promise<EnhanceContentResponse> {
+  try {
+    const { type, content, context = {}, model = 'gpt-4o-mini' } = params;
+    
+    // Validate required fields
+    if (!type || !content) {
+      throw new Error('Type and content are required');
+    }
+
+    // Validate enhancement type
+    if (!['title', 'description', 'chapter_title'].includes(type)) {
+      throw new Error('Invalid enhancement type. Must be title, description, or chapter_title');
+    }
+
+    // Validate model
+    const allowedModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'];
+    if (!allowedModels.includes(model)) {
+      throw new Error('Invalid model. Allowed models: ' + allowedModels.join(', '));
+    }
+
+    // Build context information for the prompt
+    let contextInfo = '';
+    if (context.bookTitle) {
+      contextInfo += `Book Title: ${context.bookTitle}\n`;
+    }
+    if (context.bookDescription) {
+      contextInfo += `Book Description: ${context.bookDescription}\n`;
+    }
+    if (context.bookGenres && context.bookGenres.length > 0) {
+      contextInfo += `Genres: ${context.bookGenres.join(', ')}\n`;
+    }
+    if (context.bookType) {
+      contextInfo += `Book Type: ${context.bookType}\n`;
+    }
+    if (type === 'chapter_title' && context.chapterNumber) {
+      contextInfo += `Chapter Number: ${context.chapterNumber}\n`;
+    }
+
+    // Build the user prompt
+    let userPrompt = '';
+    if (contextInfo) {
+      userPrompt += `Context:\n${contextInfo}\n`;
+    }
+    
+    if (type === 'title') {
+      userPrompt += `Please enhance this book title: "${content}"`;
+    } else if (type === 'description') {
+      userPrompt += `Please enhance this book description:\n\n${content}`;
+    } else if (type === 'chapter_title') {
+      userPrompt += `Please enhance this chapter title: "${content}"`;
+    }
+
+    // Call OpenAI Chat Completion API directly
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: ENHANCEMENT_PROMPTS[type]
+        },
+        {
+          role: "user",
+          content: userPrompt
+        }
+      ],
+      max_tokens: type === 'description' ? 500 : 100,
+      temperature: 0.7,
+    });
+
+    let enhancedContent = completion.choices[0].message.content?.trim() || content;
+
+    // Post-process the response based on type
+    if (type === 'title' || type === 'chapter_title') {
+      // Remove quotes from title if present
+      enhancedContent = enhancedContent.replace(/^["']|["']$/g, '');
+    }
+    
+    // Ensure we return clean text without extra formatting
+    enhancedContent = enhancedContent.trim();
+
+    // Return the enhanced content
+    return {
+      originalContent: content,
+      enhancedContent,
+      type,
+      model,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    console.error('OpenAI Enhancement error:', error);
+    throw new Error(error.message || 'An error occurred while enhancing your content');
+  }
+}
+
+/**
+ * Enhance book title
+ * @param title Current title
+ * @param context Book context for better enhancement
+ * @returns Enhanced title
+ */
+export async function enhanceTitle(
+  title: string, 
+  context?: {
+    bookDescription?: string;
+    bookGenres?: string[];
+    bookType?: string;
+  }
+): Promise<string> {
+  const response = await enhanceContent({
+    type: 'title',
+    content: title,
+    context,
+    model: 'gpt-4o-mini'
+  });
+  return response.enhancedContent;
+}
+
+/**
+ * Enhance book description
+ * @param description Current description
+ * @param context Book context for better enhancement
+ * @returns Enhanced description
+ */
+export async function enhanceDescription(
+  description: string,
+  context?: {
+    bookTitle?: string;
+    bookGenres?: string[];
+    bookType?: string;
+  }
+): Promise<string> {
+  const response = await enhanceContent({
+    type: 'description',
+    content: description,
+    context,
+    model: 'gpt-4o-mini'
+  });
+  return response.enhancedContent;
+}
+
+/**
+ * Enhance chapter title
+ * @param chapterTitle Current chapter title
+ * @param context Book and chapter context for better enhancement
+ * @returns Enhanced chapter title
+ */
+export async function enhanceChapterTitle(
+  chapterTitle: string,
+  context?: {
+    bookTitle?: string;
+    bookDescription?: string;
+    bookGenres?: string[];
+    chapterNumber?: number;
+    bookType?: string;
+  }
+): Promise<string> {
+  const response = await enhanceContent({
+    type: 'chapter_title',
+    content: chapterTitle,
+    context,
+    model: 'gpt-4o-mini'
+  });
+  return response.enhancedContent;
 } 

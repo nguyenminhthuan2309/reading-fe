@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { EnhancementPopover } from "@/components/ui/enhancement-popover";
+import { toast } from "sonner";
 
 // Add Select components for dropdown
 import {
@@ -51,9 +53,9 @@ interface BookInfoProps {
   setProgressStatus: (status: number) => void;
   genres?: Genre[];
   isEnhancingTitle: boolean;
-  enhanceTitle: () => void;
+  enhanceTitle: () => Promise<string>;
   isEnhancingDescription: boolean;
-  enhanceDescription: () => void;
+  enhanceDescription: () => Promise<string>;
   isEditing?: boolean;
   canEdit?: boolean;
   canEditProgressStatus?: boolean;
@@ -63,6 +65,8 @@ interface BookInfoProps {
   onTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDescriptionChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   disabled?: boolean;
+  onTitleApply?: (enhancedTitle: string) => void;
+  onDescriptionApply?: (enhancedDescription: string) => void;
 }
 
 export default function BookInfo({
@@ -91,11 +95,9 @@ export default function BookInfo({
   descriptionValue = "",
   onTitleChange,
   onDescriptionChange,
+  onTitleApply,
+  onDescriptionApply,
 }: BookInfoProps) {
-
-
-  console.log("canEdit", canEdit);
-
   return (
     <div className={`w-full md:w-[30%] relative transition-all duration-300 ${isCollapsed ? 'md:w-[48px]' : ''}`}>
       <div className={`px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between ${isCollapsed ? 'md:px-0' : ''}`}>
@@ -223,32 +225,37 @@ export default function BookInfo({
 
           {/* Title */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="title" className="flex items-center">
-                Book Title
-                <span className="text-destructive ml-1">*</span>
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-5 w-5 rounded-md"
-                onClick={enhanceTitle}
-                disabled={isEnhancingTitle || !canEdit}
-                title="Enhance title with AI"
-              >
-                <Sparkles size={12} />
-              </Button>
-            </div>
+            <Label htmlFor="title" className="flex items-center">
+              Book Title
+              <span className="text-destructive ml-1">*</span>
+            </Label>
             <div className="relative">
-              <Input
-                id="title"
-                className={errors.title ? 'border-destructive' : ''}
-                placeholder="Enter book title"
+              <EnhancementPopover
+                onEnhance={enhanceTitle}
+                onApply={(enhancedTitle) => {
+                  if (onTitleApply) {
+                    onTitleApply(enhancedTitle);
+                  } else {
+                    // Create a synthetic event to update the title
+                    const syntheticEvent = {
+                      target: { value: enhancedTitle }
+                    } as React.ChangeEvent<HTMLInputElement>;
+                    onTitleChange(syntheticEvent);
+                  }
+                  toast.success('Title enhanced successfully!');
+                }}
                 disabled={!canEdit}
-                value={titleValue}
-                onChange={onTitleChange}
-              />
+                placeholder="Enhanced title will appear here..."
+              >
+                <Input
+                  id="title"
+                  className={errors.title ? 'border-destructive pr-10' : 'pr-10'}
+                  placeholder="Enter book title"
+                  disabled={!canEdit}
+                  value={titleValue}
+                  onChange={onTitleChange}
+                />
+              </EnhancementPopover>
             </div>
             {errors.title && <ErrorMessage message={errors.title} />}
           </div>
@@ -351,32 +358,40 @@ export default function BookInfo({
 
           {/* Description */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="description" className="flex items-center">
-                Description
-                <span className="text-destructive ml-1">*</span>
-              </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-5 w-5 rounded-md"
-                onClick={enhanceDescription}
-                disabled={isEnhancingDescription || !canEdit}
-                title="Enhance description with AI"
+            <Label htmlFor="description" className="flex items-center">
+              Description
+              <span className="text-destructive ml-1">*</span>
+            </Label>
+            <div className="relative">
+              <EnhancementPopover
+                onEnhance={enhanceDescription}
+                onApply={(enhancedDescription) => {
+                  if (onDescriptionApply) {
+                    onDescriptionApply(enhancedDescription);
+                  } else {
+                    // Create a synthetic event to update the description
+                    const syntheticEvent = {
+                      target: { value: enhancedDescription }
+                    } as React.ChangeEvent<HTMLTextAreaElement>;
+                    onDescriptionChange(syntheticEvent);
+                  }
+                  toast.success('Description enhanced successfully!');
+                }}
+                disabled={!canEdit}
+                placeholder="Enhanced description will appear here..."
+                triggerClassName="top-4"
               >
-                <Sparkles size={12} />
-              </Button>
+                <Textarea
+                  id="description"
+                  className={errors.description ? 'border-destructive resize-none min-h-[120px] pr-10' : 'resize-none min-h-[120px] pr-10'}
+                  placeholder="Enter book description"
+                  rows={5}
+                  disabled={!canEdit}
+                  value={descriptionValue}
+                  onChange={onDescriptionChange}
+                />
+              </EnhancementPopover>
             </div>
-            <Textarea
-              id="description"
-              className={errors.description ? 'border-destructive resize-none min-h-[120px]' : 'resize-none min-h-[120px]'}
-              placeholder="Enter book description"
-              rows={5}
-              disabled={!canEdit}
-              value={descriptionValue}
-              onChange={onDescriptionChange}
-            />
             {errors.description && <ErrorMessage message={errors.description} />}
           </div>
         </div>

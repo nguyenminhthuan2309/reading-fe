@@ -12,6 +12,7 @@ import { BOOK_TYPES, AgeRatingEnum, ProgressStatusEnum, AccessStatusEnum, Chapte
 import { toast } from "sonner";
 import { useNavigationGuard } from "@/lib/hooks/useUnsavedChangesWarning";
 import { useBookEditPermissions } from "@/lib/hooks/useBookEditPermissions";
+import { useRecommendation } from "@/lib/hooks/useRecommendation";
 import BookInfo from "@/components/books/book-info";
 import ChapterCreator, { LocalChapter } from "@/components/books/chapter-creator";
 import { CATEGORY_KEYS } from "@/lib/constants/query-keys";
@@ -81,8 +82,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   const [emptyChapters, setEmptyChapters] = useState<string[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isBookInfoCollapsed, setIsBookInfoCollapsed] = useState(false);
-  const [isEnhancingTitle, setIsEnhancingTitle] = useState(false);
-  const [isEnhancingDescription, setIsEnhancingDescription] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
@@ -92,6 +91,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   
   // Get edit permissions
   const { canEditBasicInfo, canEditExistingChapters, canAddNewChapters, canEditProgressStatus, canDelete, reasonIfDenied } = useBookEditPermissions(initialData);
+  
+  // Initialize recommendation hook for content enhancement
+  const recommendation = useRecommendation();
   
   // Helper function to check if any operation is in progress
   const isAnyOperationInProgress = () => {
@@ -1180,29 +1182,78 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
     handleFieldChange('selectedGenres', newGenres, 'genres');
   };
 
-  // Update placeholder for AI enhancement functions to use state updates
-  const enhanceTitle = () => {
-    setIsEnhancingTitle(true);
-    // This would be an actual API call to enhance the title
-    // Example of what the implementation would do with state:
-    // const enhancedTitle = await someAIService.enhanceTitle(bookData.title);
-    // setBookData(prev => ({ ...prev, title: enhancedTitle }));
-    
-    setTimeout(() => {
-      setIsEnhancingTitle(false);
-    }, 1000);
+  // Handle applying enhanced title
+  const handleTitleApply = (enhancedTitle: string) => {
+    setBookData(prev => ({ ...prev, title: enhancedTitle }));
+    setHasUnsavedChanges(true);
+    if (isEditing) {
+      setHasChanges(true);
+    }
   };
 
-  const enhanceDescription = () => {
-    setIsEnhancingDescription(true);
-    // This would be an actual API call to enhance the description
-    // Example of what the implementation would do with state:
-    // const enhancedDescription = await someAIService.enhanceDescription(bookData.description);
-    // setBookData(prev => ({ ...prev, description: enhancedDescription }));
-    
-    setTimeout(() => {
-      setIsEnhancingDescription(false);
-    }, 1000);
+  // Handle applying enhanced description
+  const handleDescriptionApply = (enhancedDescription: string) => {
+    setBookData(prev => ({ ...prev, description: enhancedDescription }));
+    setHasUnsavedChanges(true);
+    if (isEditing) {
+      setHasChanges(true);
+    }
+  };
+
+  // Enhanced AI-powered title enhancement
+  const enhanceTitle = async (): Promise<string> => {
+    if (!bookData.title.trim()) {
+      throw new Error('Please enter a title first');
+    }
+
+    try {
+      // Get genre names for context
+      const genreNames = genresQuery.data
+        ?.filter((genre: any) => bookData.selectedGenres.includes(genre.id.toString()))
+        ?.map((genre: any) => genre.name) || [];
+
+      const enhancedTitle = await recommendation.enhanceTitle.mutateAsync({
+        title: bookData.title,
+        context: {
+          bookDescription: bookData.description || undefined,
+          bookGenres: genreNames.length > 0 ? genreNames : undefined,
+          bookType: bookData.bookType,
+        }
+      });
+
+      return enhancedTitle;
+    } catch (error) {
+      console.error('Error enhancing title:', error);
+      throw error;
+    }
+  };
+
+  // Enhanced AI-powered description enhancement
+  const enhanceDescription = async (): Promise<string> => {
+    if (!bookData.description.trim()) {
+      throw new Error('Please enter a description first');
+    }
+
+    try {
+      // Get genre names for context
+      const genreNames = genresQuery.data
+        ?.filter((genre: any) => bookData.selectedGenres.includes(genre.id.toString()))
+        ?.map((genre: any) => genre.name) || [];
+
+      const enhancedDescription = await recommendation.enhanceDescription.mutateAsync({
+        description: bookData.description,
+        context: {
+          bookTitle: bookData.title || undefined,
+          bookGenres: genreNames.length > 0 ? genreNames : undefined,
+          bookType: bookData.bookType,
+        }
+      });
+
+      return enhancedDescription;
+    } catch (error) {
+      console.error('Error enhancing description:', error);
+      throw error;
+    }
   };
   
   
@@ -1686,9 +1737,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               progressStatus={bookData.progressStatus}
               setProgressStatus={handleProgressStatusChange}
               genres={genresQuery.data || []}
-              isEnhancingTitle={isEnhancingTitle}
+              isEnhancingTitle={recommendation.enhanceTitle.isLoading}
               enhanceTitle={enhanceTitle}
-              isEnhancingDescription={isEnhancingDescription}
+              isEnhancingDescription={recommendation.enhanceDescription.isLoading}
               enhanceDescription={enhanceDescription}
               isEditing={isEditing}
               canEdit={canEditBasicInfo}
@@ -1698,6 +1749,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
               descriptionValue={bookData.description}
               onTitleChange={handleTitleChange}
               onDescriptionChange={handleDescriptionChange}
+              onTitleApply={handleTitleApply}
+              onDescriptionApply={handleDescriptionApply}
             />
             
             {/* Right column - Chapters using ChapterCreator Component */}
@@ -1713,6 +1766,11 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                 canEditExistingChapters={canEditExistingChapters}
                 canAddNewChapters={canAddNewChapters}
                 canEditChapter={canEditChapter}
+                bookTitle={bookData.title}
+                bookDescription={bookData.description}
+                bookGenres={genresQuery.data
+                  ?.filter((genre: any) => bookData.selectedGenres.includes(genre.id.toString()))
+                  ?.map((genre: any) => genre.name) || []}
               />
             </div>
           </div>

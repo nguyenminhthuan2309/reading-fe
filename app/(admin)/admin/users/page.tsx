@@ -209,7 +209,6 @@ export default function UsersPage() {
       cell: ({ row }) => {
         
         const user = row.original;
-        console.log(user.status);
         const statusLabel = statusOptions.find(opt => opt.value === user.status?.name)?.label || "Unknown";
         return (
           <Badge

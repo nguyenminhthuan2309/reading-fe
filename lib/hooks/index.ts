@@ -9,3 +9,4 @@ export * from './useOpenAI';
 export * from './useAnalytics';
 export * from './useAutoAnalytics';
 export * from './useConditionalAnalytics';
+export * from './useRecommendation';
