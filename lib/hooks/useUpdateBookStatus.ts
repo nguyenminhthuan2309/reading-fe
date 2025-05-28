@@ -86,7 +86,7 @@ export function useRejectBook() {
     rejectBook: (bookId: number, onSuccess?: () => void) => {
       updateBookStatus.mutate({
         bookId,
-        newStatus: AccessStatusEnum.BLOCKED,
+        newStatus: AccessStatusEnum.PRIVATE,
         onSuccess,
       });
     }

@@ -224,13 +224,6 @@ export default function DepositPage() {
     return null;
   }
   
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    if (!isNaN(value) && value >= MIN_HARU_DEPOSIT) {
-      setAmount(value);
-    }
-  };
-  
   const handleQuickAmount = (value: number) => {
     setAmount(value);
   };
@@ -333,36 +326,11 @@ export default function DepositPage() {
             <div className="space-y-6">
               <div>
                 <label className="text-sm font-medium block mb-2">
-                  Custom Amount (Optional)
+                  Select a Package
                 </label>
-                <div className="flex items-center">
-                  <div className="bg-secondary/30 flex items-center justify-center w-10 h-10 rounded-l-md border border-secondary/40">
-                    <Star size={18} className="text-primary" />
-                  </div>
-                  <Input
-                    type="number"
-                    min={MIN_HARU_DEPOSIT}
-                    value={amount}
-                    onChange={handleAmountChange}
-                    className="rounded-l-none"
-                    placeholder="Enter custom amount"
-                  />
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-muted-foreground">Minimum: {MIN_HARU_DEPOSIT} Haru</p>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    = {formatVND(amount)}
-                  </p>
-                </div>
-                <p className="text-xs text-amber-600 mt-1">
-                  💡 Use recommended packages below for bonus coins and special benefits
+                <p className="text-xs text-muted-foreground mb-3">
+                  Choose from our available packages with bonus coins and special benefits
                 </p>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Available Packages
-                </label>
                 <div className="grid grid-cols-2 gap-2">
                   {DEPOSIT_PACKAGES.map((pkg) => {
                     const isSelected = amount === pkg.coins;
@@ -626,7 +594,6 @@ export default function DepositPage() {
                   <Button 
                     className="w-1/2" 
                     onClick={handleContinue}
-                    disabled={amount < MIN_HARU_DEPOSIT}
                   >
                     Continue
                   </Button>
