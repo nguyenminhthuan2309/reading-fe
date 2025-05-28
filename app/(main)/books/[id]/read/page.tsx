@@ -162,7 +162,8 @@ export default function ReadPage() {
 
   const isOwner = bookData?.author.id === user?.id;
   
- 
+  // Check is chapter pending review or draft
+  const unreadableChapter = chapterData?.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW || chapterData?.chapterAccessStatus === ChapterAccessStatus.DRAFT;
   
   // Add state for purchase dialog
   const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false);
@@ -334,7 +335,7 @@ export default function ReadPage() {
   }
 
   // If chapter data is loaded but there's a mismatch or chapter not found, show an error
-  if (!isLoadingChapter && (!chapterData || isChapterMismatch())) {
+  if (!isLoadingChapter && (!chapterData || isChapterMismatch() || unreadableChapter)) {
     return (
       <div className="min-h-screen flex flex-col">
         {/* Navigation bar */}
