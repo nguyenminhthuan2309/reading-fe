@@ -213,6 +213,15 @@ export default function AnalyticsPage() {
   const failedTransactions = transactionStats?.failedTransactions || 0;
   const averageDepositVolume = transactionStats?.averageDepositVolume || 0;
 
+  // Helper function to format VND amount
+  const formatVND = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   // Chart component
   const Chart = ({ data, color, height = "h-32" }: { data: any[], color: string, height?: string }) => {
     const maxValue = Math.max(...data.map(d => d.value), 1);
@@ -754,7 +763,7 @@ export default function AnalyticsPage() {
                 {isLoadingTransactionStatistics ? (
                   <Skeleton className="h-6 w-16 mt-1" />
                 ) : (
-                  <h3 className="text-lg font-bold mt-1">${totalRevenue.toLocaleString()}</h3>
+                  <h3 className="text-lg font-bold mt-1">{formatVND(totalRevenue)}</h3>
                 )}
               </div>
               <DollarSign className="h-4 w-4 text-green-500" />
@@ -768,7 +777,7 @@ export default function AnalyticsPage() {
                 {isLoadingTransactionStatistics ? (
                   <Skeleton className="h-6 w-16 mt-1" />
                 ) : (
-                  <h3 className="text-lg font-bold mt-1">${totalSpent.toLocaleString()}</h3>
+                  <h3 className="text-lg font-bold mt-1">{formatVND(totalSpent)}</h3>
                 )}
               </div>
               <ShoppingCart className="h-4 w-4 text-red-500" />
@@ -824,7 +833,7 @@ export default function AnalyticsPage() {
                 {isLoadingTransactionStatistics ? (
                   <Skeleton className="h-6 w-16 mt-1" />
                 ) : (
-                  <h3 className="text-lg font-bold mt-1">${averageDepositVolume.toLocaleString()}</h3>
+                  <h3 className="text-lg font-bold mt-1">{formatVND(averageDepositVolume)}</h3>
                 )}
               </div>
               <TrendingUp className="h-4 w-4 text-purple-500" />
