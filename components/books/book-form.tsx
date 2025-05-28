@@ -15,7 +15,7 @@ import { useBookEditPermissions } from "@/lib/hooks/useBookEditPermissions";
 import { useRecommendation } from "@/lib/hooks/useRecommendation";
 import BookInfo from "@/components/books/book-info";
 import ChapterCreator, { LocalChapter } from "@/components/books/chapter-creator";
-import { CATEGORY_KEYS } from "@/lib/constants/query-keys";
+import { BOOK_KEYS, CATEGORY_KEYS } from "@/lib/constants/query-keys";
 import {
   AlertDialog,
   AlertDialogAction,

@@ -133,8 +133,8 @@ export function RecentlyReadBooks({ limitPage = 10 }: RecentlyReadBooksProps) {
                       />
                     </div>
                     <div>
-                      <Link href={`/books/${item.id}`}>
-                        <div className="font-medium hover:underline hover:text-destructive hover:cursor-pointer">{item.title}</div>
+                      <Link href={`/books/${item.id}`} className="font-medium hover:underline hover:text-destructive">
+                        {item.title}
                       </Link>
                       <div className="text-xs text-muted-foreground">by {item.author.name}</div>
                     </div>

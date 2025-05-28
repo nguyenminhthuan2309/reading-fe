@@ -16,8 +16,8 @@ export default function EditBookPage() {
   const queryClient = useQueryClient();
 
   // Fetch book data
-  const { data, isLoading, error } = useQuery({
-    queryKey: BOOK_KEYS.DETAIL(bookId),
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: BOOK_KEYS.DETAIL(bookId.toString()),
     queryFn: async () => {
       const response = await getBookById(bookId);
 
@@ -36,7 +36,7 @@ export default function EditBookPage() {
   }
 
   const handleSuccess = (bookId: number) => {
-    queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId), type: 'active' });
+    queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId.toString()), type: 'active' });
     queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.BOOK_CHAPTERS(bookId), type: 'active' });
     queryClient.invalidateQueries({ queryKey: CHAPTER_KEYS.LIST(bookId), type: 'active' });
     toast.success("Book updated successfully");

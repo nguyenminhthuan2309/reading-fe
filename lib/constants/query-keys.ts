@@ -21,7 +21,7 @@ export const USER_KEYS = {
 export const BOOK_KEYS = {
   ALL: ['books'] as const,
   LIST: (filters: any) => ['books', 'list', filters] as const,
-  DETAIL: (bookId: string | number) => ['books', 'detail', bookId] as const,
+  DETAIL: (bookId: string ) => ['books', 'detail', bookId] as const,
   EDIT: (bookId: string | number) => ['books', 'edit', bookId] as const,
   NEW_RELEASES: ['books', 'newReleases'] as const,
   RECENTLY_UPDATED: ['books', 'recentlyUpdated'] as const,

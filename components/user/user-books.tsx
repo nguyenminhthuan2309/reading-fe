@@ -244,7 +244,7 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
                       />
                     </div>
                     <div>
-                      <div className="font-medium">{book.title}</div>
+                      <Link href={`/books/${book.id}`} className="font-medium hover:underline hover:text-destructive">{book.title}</Link>
                       <div className="text-xs text-muted-foreground">by {book.author.name}</div>
                     </div>
                   </div>
