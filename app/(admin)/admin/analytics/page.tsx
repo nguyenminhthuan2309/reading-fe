@@ -201,7 +201,11 @@ export default function AnalyticsPage() {
   const totalTransactionsData = transactionChartData.map(item => ({ label: item.period, value: item.totalTransactions }));
   const successfulTransactionsData = transactionChartData.map(item => ({ label: item.period, value: item.successfulTransactions }));
   const failedTransactionsData = transactionChartData.map(item => ({ label: item.period, value: item.failedTransactions }));
-  const revenueData = transactionChartData.map(item => ({ label: item.period, value: item.totalDeposit }));
+  const revenueData = transactionChartData.map(item => ({ 
+    label: item.period, 
+    value: Math.round(item.totalDeposit / 1000),
+    displayValue: `${Math.round(item.totalDeposit / 1000)}k`
+  }));
   const purchasedData = transactionChartData.map(item => ({ label: item.period, value: item.totalPurchased }));
 
   // Extract transaction stats from the new API
@@ -215,11 +219,11 @@ export default function AnalyticsPage() {
 
   // Helper function to format VND amount
   const formatVND = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0
-    }).format(amount);
+    if (amount >= 1000) {
+      const amountInK = amount / 1000;
+      return `${amountInK.toFixed(amountInK >= 100 ? 0 : 1)}k đ`;
+    }
+    return `${amount} đ`;
   };
 
   // Chart component
@@ -232,60 +236,224 @@ export default function AnalyticsPage() {
     const totalHeight = chartHeight + 40; // Total height including labels
     
     return (
-      <div className="flex gap-2" style={{ height: `${totalHeight}px` }}>
-        {/* Y-axis */}
-        <div className="flex flex-col justify-start text-xs text-muted-foreground w-8 text-right pr-1" style={{ height: `${totalHeight}px`, paddingTop: '20px' }}>
-          {Array.from({ length: yAxisSteps + 1 }, (_, i) => (
-            <div key={i} style={{ height: `${chartHeight / yAxisSteps}px`, display: 'flex', alignItems: 'flex-start' }}>
-              <span>{stepValue * (yAxisSteps - i)}</span>
-            </div>
-          ))}
-        </div>
-        
-        {/* Chart area container */}
-        <div className="flex-1" style={{ height: `${totalHeight}px` }}>
-          {/* Chart bars container with values positioned on top of each column */}
-          <div className="relative flex justify-between gap-1" style={{ height: `${chartHeight + 20}px` }}>
-            {data.map((item, index) => {
-              const barHeight = (item.value / yAxisMaxValue) * chartHeight;
-              return (
-                <div key={index} className="flex-1 relative flex flex-col items-center">
-                  {/* Value positioned above the column */}
-                  <div 
-                    className="absolute text-center"
-                    style={{ 
-                      bottom: `${barHeight + 2}px`,
-                      left: '50%',
-                      transform: 'translateX(-50%)'
-                    }}
-                  >
-                    <span className="text-xs font-medium text-foreground">
-                      {item.value > 0 ? item.value : ''}
-                    </span>
-                  </div>
-                  
-                  {/* Column bar */}
-                  <div 
-                    className={`${color} w-full rounded-t transition-all duration-300 hover:opacity-80 absolute bottom-0`}
-                    style={{ 
-                      height: `${barHeight}px`,
-                      minHeight: item.value > 0 ? '2px' : '0px'
-                    }}
-                  ></div>
-                </div>
-              );
-            })}
-          </div>
-          
-          {/* X-axis labels */}
-          <div className="flex justify-between gap-1" style={{ height: '20px', alignItems: 'flex-start', paddingTop: '4px' }}>
-            {data.map((item, index) => (
-              <div key={index} className="flex-1 text-center">
-                <span className="text-xs text-muted-foreground truncate">
-                  {item.label}
-                </span>
+      <div className="flex justify-center w-full">
+        <div className="flex gap-2 w-full" style={{ height: `${totalHeight}px` }}>
+          {/* Y-axis */}
+          <div className="flex flex-col justify-start text-xs text-muted-foreground w-8 text-right pr-1" style={{ height: `${totalHeight}px`, paddingTop: '10px' }}>
+            {Array.from({ length: yAxisSteps + 1 }, (_, i) => (
+              <div key={i} style={{ height: `${chartHeight / yAxisSteps}px`, display: 'flex', alignItems: 'flex-start' }}>
+                <span>{stepValue * (yAxisSteps - i)}</span>
               </div>
             ))}
+          </div>
+          
+          {/* Chart area container */}
+          <div className="flex-1 relative" style={{ height: `${totalHeight}px` }}>
+            {/* Y-axis line */}
+            <div 
+              className="absolute left-0 border-l border-gray-300" 
+              style={{ 
+                height: `${chartHeight}px`, 
+                top: '20px' 
+              }}
+            ></div>
+            
+            {/* X-axis line */}
+            <div 
+              className="absolute left-0 right-0 border-b border-gray-300" 
+              style={{ 
+                top: `${chartHeight + 20}px` 
+              }}
+            ></div>
+            
+            {/* Grid lines (optional) */}
+            {Array.from({ length: yAxisSteps }, (_, i) => (
+              <div 
+                key={i}
+                className="absolute left-0 right-0 border-b border-gray-100" 
+                style={{ 
+                  top: `${20 + (chartHeight / yAxisSteps) * (i + 1)}px` 
+                }}
+              ></div>
+            ))}
+            
+            {/* Chart bars container with values positioned on top of each column */}
+            <div className="relative flex justify-between gap-1 pl-1" style={{ height: `${chartHeight + 20}px`, paddingTop: '20px' }}>
+              {data.map((item, index) => {
+                const barHeight = (item.value / yAxisMaxValue) * chartHeight;
+                return (
+                  <div key={index} className="flex-1 relative flex flex-col items-center">
+                    {/* Value positioned above the column */}
+                    <div 
+                      className="absolute text-center"
+                      style={{ 
+                        bottom: `${barHeight + 2}px`,
+                        left: '50%',
+                        transform: 'translateX(-50%)'
+                      }}
+                    >
+                      <span className="text-xs font-medium text-foreground">
+                        {item.value > 0 ? (item.displayValue || item.value) : ''}
+                      </span>
+                    </div>
+                    
+                    {/* Column bar with max width and centered */}
+                    <div className="absolute bottom-0 flex justify-center w-full">
+                      <div 
+                        className={`${color} rounded-t transition-all duration-300 hover:opacity-80`}
+                        style={{ 
+                          height: `${barHeight}px`,
+                          minHeight: item.value > 0 ? '2px' : '0px',
+                          width: '100%',
+                          maxWidth: '40px'
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* X-axis labels */}
+            <div className="flex justify-between gap-1 pl-1" style={{ height: '20px', alignItems: 'flex-start', paddingTop: '4px' }}>
+              {data.map((item, index) => (
+                <div key={index} className="flex-1 text-center">
+                  <span className="text-xs text-muted-foreground truncate">
+                    {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Stacked Chart component for combining successful and failed transactions
+  const StackedChart = ({ successData, failedData }: { successData: any[], failedData: any[] }) => {
+    // Combine data and calculate max values
+    const combinedData = successData.map((item, index) => ({
+      label: item.label,
+      successful: item.value,
+      failed: failedData[index]?.value || 0,
+      total: item.value + (failedData[index]?.value || 0)
+    }));
+    
+    const maxValue = Math.max(...combinedData.map(d => d.total), 1);
+    const yAxisSteps = 5;
+    const stepValue = Math.ceil(maxValue / yAxisSteps);
+    const yAxisMaxValue = stepValue * yAxisSteps;
+    const chartHeight = 120;
+    const totalHeight = chartHeight + 40;
+    
+    return (
+      <div className="flex justify-center w-full">
+        <div className="flex gap-2 w-full" style={{ height: `${totalHeight}px` }}>
+          {/* Y-axis */}
+          <div className="flex flex-col justify-start text-xs text-muted-foreground w-8 text-right pr-1" style={{ height: `${totalHeight}px`, paddingTop: '10px' }}>
+            {Array.from({ length: yAxisSteps + 1 }, (_, i) => (
+              <div key={i} style={{ height: `${chartHeight / yAxisSteps}px`, display: 'flex', alignItems: 'flex-start' }}>
+                <span>{stepValue * (yAxisSteps - i)}</span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Chart area container */}
+          <div className="flex-1 relative" style={{ height: `${totalHeight}px` }}>
+            {/* Y-axis line */}
+            <div 
+              className="absolute left-0 border-l border-gray-300" 
+              style={{ 
+                height: `${chartHeight}px`, 
+                top: '20px' 
+              }}
+            ></div>
+            
+            {/* X-axis line */}
+            <div 
+              className="absolute left-0 right-0 border-b border-gray-300" 
+              style={{ 
+                top: `${chartHeight + 20}px` 
+              }}
+            ></div>
+            
+            {/* Grid lines */}
+            {Array.from({ length: yAxisSteps }, (_, i) => (
+              <div 
+                key={i}
+                className="absolute left-0 right-0 border-b border-gray-100" 
+                style={{ 
+                  top: `${20 + (chartHeight / yAxisSteps) * (i + 1)}px` 
+                }}
+              ></div>
+            ))}
+            
+            {/* Stacked bars container */}
+            <div className="relative flex justify-between gap-1 pl-1" style={{ height: `${chartHeight + 20}px`, paddingTop: '20px' }}>
+              {combinedData.map((item, index) => {
+                const successfulHeight = (item.successful / yAxisMaxValue) * chartHeight;
+                const failedHeight = (item.failed / yAxisMaxValue) * chartHeight;
+                const totalHeight = successfulHeight + failedHeight;
+                
+                return (
+                  <div key={index} className="flex-1 relative flex flex-col items-center">
+                    {/* Total value positioned above the stacked column */}
+                    <div 
+                      className="absolute text-center"
+                      style={{ 
+                        bottom: `${totalHeight + 2}px`,
+                        left: '50%',
+                        transform: 'translateX(-50%)'
+                      }}
+                    >
+                      <span className="text-xs font-medium text-foreground">
+                        {item.total > 0 ? item.total : ''}
+                      </span>
+                    </div>
+                    
+                    {/* Stacked bars with max width and centered */}
+                    <div className="absolute bottom-0 flex justify-center w-full">
+                      <div className="relative" style={{ width: '100%', maxWidth: '40px', height: `${totalHeight}px` }}>
+                        {/* Successful transactions (bottom layer) */}
+                        <div 
+                          className={`bg-green-500/70 transition-all duration-300 hover:opacity-80 absolute bottom-0 w-full ${
+                            item.failed > 0 ? 'rounded-b' : 'rounded'
+                          }`}
+                          style={{ 
+                            height: `${successfulHeight}px`,
+                            minHeight: item.successful > 0 ? '2px' : '0px',
+                          }}
+                        ></div>
+                        
+                        {/* Failed transactions (top layer) */}
+                        {item.failed > 0 && (
+                          <div 
+                            className="bg-red-500/70 rounded-t transition-all duration-300 hover:opacity-80 absolute w-full"
+                            style={{ 
+                              height: `${failedHeight}px`,
+                              minHeight: '2px',
+                              bottom: `${successfulHeight}px`,
+                            }}
+                          ></div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* X-axis labels */}
+            <div className="flex justify-between gap-1 pl-1" style={{ height: '20px', alignItems: 'flex-start', paddingTop: '4px' }}>
+              {combinedData.map((item, index) => (
+                <div key={index} className="flex-1 text-center">
+                  <span className="text-xs text-muted-foreground truncate">
+                    {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -497,7 +665,7 @@ export default function AnalyticsPage() {
               </div>
               <Eye className="h-4 w-4 text-red-500" />
             </div>
-      </div>
+          </div>
 
           <div className="bg-background border rounded-lg p-3">
             <div className="flex justify-between items-start">
@@ -508,14 +676,14 @@ export default function AnalyticsPage() {
                 ) : (
                   <h3 className="text-lg font-bold mt-1">{bookStatistics?.overview.totalViews.toLocaleString() || "0"}</h3>
                 )}
-      </div>
+              </div>
               <Eye className="h-4 w-4 text-blue-500" />
             </div>
           </div>
         </div>
 
         {/* Book Trend Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <div className="bg-background border rounded-lg p-3">
             <h3 className="text-sm font-medium mb-3">Books</h3>
             {isLoadingBookStatistics ? (
@@ -523,7 +691,7 @@ export default function AnalyticsPage() {
             ) : (
               <Chart data={totalBooksData} color="bg-green-500/70" />
             )}
-                </div>
+          </div>
           
           <div className="bg-background border rounded-lg p-3">
             <h3 className="text-sm font-medium mb-3">Chapters</h3>
@@ -532,7 +700,7 @@ export default function AnalyticsPage() {
             ) : (
               <Chart data={totalChaptersData} color="bg-blue-500/70" />
             )}
-            </div>
+          </div>
           
           <div className="bg-background border rounded-lg p-3">
             <h3 className="text-sm font-medium mb-3">Views</h3>
@@ -540,8 +708,8 @@ export default function AnalyticsPage() {
               <Skeleton className="h-32 w-full" />
             ) : (
               <Chart data={totalViewsData} color="bg-purple-500/70" />
-          )}
-        </div>
+            )}
+          </div>
 
           <div className="bg-background border rounded-lg p-3">
             <h3 className="text-sm font-medium mb-3">Blocked Books</h3>
@@ -551,7 +719,7 @@ export default function AnalyticsPage() {
               <Chart data={blockedBooksData} color="bg-red-500/70" />
             )}
           </div>
-                </div>
+        </div>
 
         {/* Book Breakdown Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -569,7 +737,7 @@ export default function AnalyticsPage() {
                 ]}
               />
             )}
-            </div>
+          </div>
           
           <div className="bg-background border rounded-lg p-4">
             {isLoadingBookStatistics ? (
@@ -587,7 +755,7 @@ export default function AnalyticsPage() {
                 }) || []}
               />
             )}
-                </div>
+          </div>
           
           <div className="bg-background border rounded-lg p-4">
             {isLoadingBookStatistics ? (
@@ -605,7 +773,7 @@ export default function AnalyticsPage() {
                 }) || []}
               />
             )}
-            </div>
+          </div>
           
           <div className="bg-background border rounded-lg p-4">
             {isLoadingBookStatistics ? (
@@ -645,7 +813,7 @@ export default function AnalyticsPage() {
                 ) : (
                   <h3 className="text-lg font-bold mt-1">{visitStats?.totalVisits.toLocaleString() || "0"}</h3>
                 )}
-                </div>
+              </div>
               <Users className="h-4 w-4 text-blue-500" />
             </div>
           </div>
@@ -659,7 +827,7 @@ export default function AnalyticsPage() {
                 ) : (
                   <h3 className="text-lg font-bold mt-1">{visitStats?.uniqueVisitors.toLocaleString() || "0"}</h3>
                 )}
-                </div>
+              </div>
               <Users className="h-4 w-4 text-green-500" />
             </div>
           </div>
@@ -676,7 +844,7 @@ export default function AnalyticsPage() {
               </div>
               <UserPlus className="h-4 w-4 text-purple-500" />
             </div>
-        </div>
+          </div>
 
           <div className="bg-background border rounded-lg p-3">
             <div className="flex justify-between items-start">
@@ -687,7 +855,7 @@ export default function AnalyticsPage() {
                 ) : (
                   <h3 className="text-lg font-bold mt-1">{Math.round((visitStats?.avgDuration || 0) / 60)}m</h3>
                 )}
-                </div>
+              </div>
               <Clock className="h-4 w-4 text-orange-500" />
             </div>
           </div>
@@ -701,14 +869,14 @@ export default function AnalyticsPage() {
                 ) : (
                   <h3 className="text-lg font-bold mt-1">{visitStats?.bounceRate || 0}%</h3>
                 )}
-                </div>
+              </div>
               <RefreshCw className="h-4 w-4 text-red-500" />
             </div>
           </div>
         </div>
 
         {/* User Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-background border rounded-lg p-3">
             <h3 className="text-sm font-medium mb-3">User Visits</h3>
             {isLoadingVisitStatistics ? (
@@ -716,7 +884,7 @@ export default function AnalyticsPage() {
             ) : (
               <Chart data={userVisitsData} color="bg-blue-500/70" />
             )}
-      </div>
+          </div>
 
           <div className="bg-background border rounded-lg p-3">
             <h3 className="text-sm font-medium mb-3">New Users</h3>
@@ -725,7 +893,7 @@ export default function AnalyticsPage() {
             ) : (
               <Chart data={newUsersData} color="bg-green-500/70" />
             )}
-      </div>
+          </div>
 
           <div className="bg-background border rounded-lg p-3">
             <h3 className="text-sm font-medium mb-3">Avg Duration (min)</h3>
@@ -743,9 +911,9 @@ export default function AnalyticsPage() {
             ) : (
               <Chart data={bounceRateData} color="bg-red-500/70" />
             )}
-                  </div>
-                  </div>
-                </div>
+          </div>
+        </div>
+      </div>
 
       {/* Section 3: Transaction Analytics */}
       <div className="bg-card border rounded-lg p-4">
@@ -866,14 +1034,18 @@ export default function AnalyticsPage() {
             {isLoadingTransactionStatistics ? (
               <Skeleton className="h-32 w-full" />
             ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <h4 className="text-xs font-medium mb-2 text-green-600">Successful</h4>
-                  <Chart data={successfulTransactionsData} color="bg-green-500/70" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-medium mb-2 text-red-600">Failed</h4>
-                  <Chart data={failedTransactionsData} color="bg-red-500/70" />
+              <div>
+                <StackedChart successData={successfulTransactionsData} failedData={failedTransactionsData} />
+                {/* Legend */}
+                <div className="flex justify-center gap-4 mt-2">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-green-500/70 rounded"></div>
+                    <span className="text-xs text-muted-foreground">Successful</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-red-500/70 rounded"></div>
+                    <span className="text-xs text-muted-foreground">Failed</span>
+                  </div>
                 </div>
               </div>
             )}
