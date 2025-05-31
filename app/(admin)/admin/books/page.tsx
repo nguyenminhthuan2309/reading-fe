@@ -853,12 +853,12 @@ export default function BooksPage() {
     {
       accessorKey: "chapter",
       header: "Chapter #",
-      cell: ({ row }: { row: any }) => <div>{row.original.chapter}</div>,
+      cell: ({ row }: { row: any }) => <div className="dark:text-gray-100">{row.original.chapter}</div>,
     },
     {
       accessorKey: "title",
       header: "Title",
-      cell: ({ row }: { row: any }) => <div className="font-medium">{row.original.title}</div>,
+      cell: ({ row }: { row: any }) => <div className="font-medium dark:text-white">{row.original.title}</div>,
     },
     {
       accessorKey: "chapterAccessStatus",
@@ -903,16 +903,16 @@ export default function BooksPage() {
     {
       accessorKey: "createdAt",
       header: "Created",
-      cell: ({ row }: { row: any }) => <div>{formatDate(row.original.createdAt)}</div>,
+      cell: ({ row }: { row: any }) => <div className="dark:text-gray-100">{formatDate(row.original.createdAt)}</div>,
     },
     {
       id: "actions",
       header: "Actions",
       cell: ({ row }: { row: any }) => (
         <div className="flex justify-end space-x-2">
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" asChild className="dark:hover:bg-gray-600">
             <Link href={`/books/${row.original.bookId}/read?chapter=${row.original.chapter}&id=${row.original.id}`}>
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 dark:text-gray-100" />
               <span className="sr-only">View Chapter</span>
             </Link>
           </Button>
@@ -1316,40 +1316,40 @@ export default function BooksPage() {
     if (!expandedRows[book.id]) return null;
     
     return (
-      <div className="p-4 bg-slate-50 rounded-md border">
+      <div className="p-4 bg-slate-50 dark:bg-gray-800 rounded-md border dark:border-gray-700">
         {loadingChapters[book.id] ? (
-          <div className="rounded-md border overflow-hidden">
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="rounded-md border dark:border-gray-700 overflow-hidden">
+            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   {chapterColumns.map((column) => (
                     <th
                       key={column.accessorKey || column.id}
-                      className={`px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider ${column.accessorKey === "chapter" && "w-[100px]"} ${column.id === "actions" && "w-[50px]"}`}
+                      className={`px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wider ${column.accessorKey === "chapter" && "w-[100px]"} ${column.id === "actions" && "w-[50px]"}`}
                     >
                       {column.header}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {/* Skeleton loader rows based on book's totalChapters */}
                 {Array.from({ length: book.totalChapters || 3 }).map((_, index) => (
                   <tr key={`skeleton-${index}`} className="animate-pulse">
                     <td className="px-4 py-2">
-                      <div className="h-4 bg-gray-200 rounded w-8"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-8"></div>
                     </td>
                     <td className="px-4 py-2">
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-full"></div>
                     </td>
                     <td className="px-4 py-2">
-                      <div className="h-6 bg-gray-200 rounded w-16 mx-auto"></div>
+                      <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-16 mx-auto"></div>
                     </td>
                     <td className="px-4 py-2">
-                      <div className="h-4 bg-gray-200 rounded w-24"></div>
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
                     </td>
                     <td className="px-4 py-2">
-                      <div className="h-8 bg-gray-200 rounded-full w-8 ml-auto"></div>
+                      <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded-full w-8 ml-auto"></div>
                     </td>
                   </tr>
                 ))}
@@ -1357,25 +1357,25 @@ export default function BooksPage() {
             </table>
           </div>
         ) : chaptersData[book.id]?.length ? (
-          <div className="rounded-md border overflow-hidden">
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="rounded-md border dark:border-gray-700 overflow-hidden">
+            <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   {chapterColumns.map((column) => (
                     <th
                       key={column.accessorKey || column.id}
-                      className={`px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.accessorKey === "chapter" && "w-[100px]"} ${column.id === "actions" && "w-[50px]"}`}
+                      className={`px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${column.accessorKey === "chapter" && "w-[100px]"} ${column.id === "actions" && "w-[50px]"}`}
                     >
                       {column.header}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {chaptersData[book.id].map((chapter) => (
-                  <tr key={chapter.id}>
+                  <tr key={chapter.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     {chapterColumns.map((column) => (
-                      <td key={column.accessorKey || column.id} className="px-4 py-2">
+                      <td key={column.accessorKey || column.id} className="px-4 py-2 text-gray-900 dark:text-gray-100">
                         {column.cell({ row: { original: {...chapter, bookId: book.id} } })}
                       </td>
                     ))}
@@ -1385,7 +1385,7 @@ export default function BooksPage() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-6 text-muted-foreground">
+          <div className="text-center py-6 text-muted-foreground dark:text-gray-400">
             No chapters found for this book.
           </div>
         )}

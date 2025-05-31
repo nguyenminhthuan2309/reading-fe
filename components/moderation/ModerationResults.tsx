@@ -242,7 +242,7 @@ export function ModerationResults({
     // If no category scores exist, return early
     if (!result || !result.category_scores) {
       return (
-        <div className="rounded-lg border p-3 bg-gray-50 text-slate-600">
+        <div className="rounded-lg border p-3 bg-gray-50 dark:bg-gray-800 text-slate-600 dark:text-gray-300 dark:border-gray-700">
           <div className="flex items-center gap-2">
             {icon}
             <span>{title}</span>
@@ -267,26 +267,26 @@ export function ModerationResults({
     return (
       <div className={`
         rounded-lg border overflow-hidden transition-all
-        ${passes ? 'bg-white' : 'bg-red-50/30 border-red-200'}
+        ${passes ? 'bg-white dark:bg-gray-800 dark:border-gray-700' : 'bg-red-50/30 dark:bg-red-900/20 border-red-200 dark:border-red-800'}
       `}>
         <div 
-          className="p-3 border-b cursor-pointer hover:bg-slate-50/50"
+          className="p-3 border-b cursor-pointer hover:bg-slate-50/50 dark:hover:bg-gray-700/50 dark:border-gray-700"
           onClick={() => toggleSection(id)}
         >
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className={`p-1.5 rounded-md ${passes ? 'bg-slate-100' : 'bg-red-100'}`}>
-                {passes ? icon : <ShieldAlert className="h-4 w-4 text-red-600" />}
+              <div className={`p-1.5 rounded-md ${passes ? 'bg-slate-100 dark:bg-gray-700' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                {passes ? icon : <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />}
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h4 className="font-medium text-sm">{title}</h4>
+                  <h4 className="font-medium text-sm dark:text-white">{title}</h4>
                   {!passes && (
-                    <span className="text-xs text-red-600 font-medium">{violationReason}</span>
+                    <span className="text-xs text-red-600 dark:text-red-400 font-medium">{violationReason}</span>
                   )}
                 </div>
                 {!passes && (
-                  <div className="text-xs mt-0.5 text-red-600 flex items-center gap-1">
+                  <div className="text-xs mt-0.5 text-red-600 dark:text-red-400 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     <span>Needs review</span>
                   </div>
@@ -298,7 +298,7 @@ export function ModerationResults({
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-7 w-7 p-0" 
+                className="h-7 w-7 p-0 dark:hover:bg-gray-600" 
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleSection(id);
@@ -311,17 +311,17 @@ export function ModerationResults({
         </div>
         
         {isExpanded && (
-          <div className="p-3 bg-slate-50/70 border-t border-slate-100">
+          <div className="p-3 bg-slate-50/70 dark:bg-gray-700/50 border-t border-slate-100 dark:border-gray-600">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {sortedScores.map(([category, score]) => (
                 <div key={category} className="flex flex-col">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-medium truncate mr-1">{String(category).replace(/[-/]/g, ' ')}</span>
+                    <span className="text-xs font-medium truncate mr-1 dark:text-gray-300">{String(category).replace(/[-/]/g, ' ')}</span>
                     <span className={`text-xs ${getTextColorClass(Number(score), bookAgeRating as NumericAgeRating)}`}>
                       {(Number(score) * 100).toFixed(2)}%
                     </span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                  <div className="w-full bg-gray-100 dark:bg-gray-600 rounded-full h-1.5">
                     <div 
                       className={`h-1.5 rounded-full ${getScoreColor(Number(score), bookAgeRating as NumericAgeRating)}`} 
                       style={{ width: `${Math.max(Number(score) * 100, 1)}%` }}
@@ -341,33 +341,33 @@ export function ModerationResults({
       <DialogTrigger asChild>
         <span className="hidden">Open Moderation Dialog</span>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[95vw] w-[1200px] max-h-[90vh] flex flex-col overflow-hidden p-0">
-        <DialogHeader className="pb-0 border-b sticky top-0 z-10 bg-white flex-shrink-0">
+      <DialogContent className="sm:max-w-[95vw] w-[1200px] max-h-[90vh] flex flex-col overflow-hidden p-0 dark:bg-gray-900 dark:border-gray-700">
+        <DialogHeader className="pb-0 border-b dark:border-gray-700 sticky top-0 z-10 bg-white dark:bg-gray-900 flex-shrink-0">
           <DialogTitle className="sr-only">Content Moderation Results</DialogTitle>
           <div className="flex flex-col">
             {/* Top Banner with status - show placeholder when no results */}
             <div className={`w-full px-6 py-4 ${
               currentResults 
-                ? (contentPasses ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gradient-to-r from-red-50 to-red-100')
-                : 'bg-gradient-to-r from-slate-50 to-slate-100'
+                ? (contentPasses ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20' : 'bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20')
+                : 'bg-gradient-to-r from-slate-50 to-slate-100 dark:from-gray-800 dark:to-gray-700'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`rounded-full p-2 ${
                     currentResults 
-                      ? (contentPasses ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600')
-                      : 'bg-slate-200 text-slate-500'
+                      ? (contentPasses ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400')
+                      : 'bg-slate-200 dark:bg-gray-700 text-slate-500 dark:text-gray-400'
                   }`}>
                     {currentResults 
                       ? (contentPasses ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />)
                       : <Shield className="h-5 w-5" />}
                   </div>
                   <div>
-                    <h2 className="font-semibold text-lg flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-primary" />
+                    <h2 className="font-semibold text-lg flex items-center gap-2 dark:text-white">
+                      <Shield className="h-4 w-4 text-primary dark:text-red-400" />
                        Content Moderation
                     </h2>
-                    <p className="text-sm opacity-80">
+                    <p className="text-sm opacity-80 dark:text-gray-300">
                       {currentResults 
                         ? (contentPasses 
                             ? `Suitable for ${formatAgeRating(bookAgeRating as NumericAgeRating)} audience` 
@@ -380,77 +380,74 @@ export function ModerationResults({
             </div>
             
             {/* Controls Bar */}
-            <div className="px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 dark:bg-gray-900">
               <div className="flex items-center gap-2">
-                <div className="text-xs font-medium text-slate-600">Model:</div>
-                <div className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                <div className="text-xs font-medium text-slate-600 dark:text-gray-400">Model:</div>
+                <div className="text-xs bg-primary/10 dark:bg-red-900/20 text-primary dark:text-red-400 px-2 py-1 rounded">
                   {selectedModel}
                 </div>
                 
                 {/* Add age rating badge in control bar */}
                 <div className="ml-3 flex items-center gap-2">
-                  <div className="text-xs font-medium text-slate-600">Rating:</div>
+                  <div className="text-xs font-medium text-slate-600 dark:text-gray-400">Rating:</div>
                   <RatingBadge rating={bookAgeRating as NumericAgeRating} />
                 </div>
                 
               </div>
               
               <div className="flex items-center gap-3">
-
-              {currentResults && (
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs px-3 gap-1"
-                    onClick={() => {
-                      // Toggle all sections
-                      if (Object.keys(expandedSections).length === 0) {
-                        // Expand all sections
-                        const allSections: Record<string, boolean> = {};
-                        if (currentResults?.contentResults) {
-                          if (currentResults.contentResults.title) allSections['title-section'] = true;
-                          if (currentResults.contentResults.description) allSections['description-section'] = true;
-                          if (currentResults.contentResults.coverImage) allSections['coverImage-section'] = true;
-                          if (currentResults.contentResults.chapters) {
+                {/* Expand/Collapse All button - only show when there are results */}
+                {currentResults && (
+                  <div className="text-xs">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 text-xs px-2 gap-1 dark:hover:bg-gray-700 dark:text-gray-300"
+                      onClick={() => {
+                        if (Object.keys(expandedSections).length > 0) {
+                          // Collapse all sections
+                          setExpandedSections({});
+                        } else {
+                          // Expand all sections - get all available section keys
+                          const allSections: Record<string, boolean> = {};
+                          if (currentResults.contentResults?.title) allSections['title-section'] = true;
+                          if (currentResults.contentResults?.description) allSections['description-section'] = true;
+                          if (currentResults.contentResults?.coverImage) allSections['coverImage-section'] = true;
+                          if (currentResults.contentResults?.chapters) {
                             currentResults.contentResults.chapters.forEach((_, idx) => {
                               allSections[`chapter-${idx}`] = true;
                             });
                           }
+                          setExpandedSections(allSections);
                         }
-                        setExpandedSections(allSections);
-                      } else {
-                        // Collapse all sections
-                        setExpandedSections({});
-                      }
-                    }}
-                  >
-                    {Object.keys(expandedSections).length > 0 ? (
-                      <>
-                        <ChevronUp className="h-3.5 w-3.5" />
-                        Collapse Details Scores
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-3.5 w-3.5" />
-                        Expand Details Scores
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
+                      }}
+                    >
+                      {Object.keys(expandedSections).length > 0 ? (
+                        <>
+                          <ChevronUp className="h-3.5 w-3.5" />
+                          Collapse Details Scores
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5" />
+                          Expand Details Scores
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
 
                 <Select
                   value={selectedModel}
                   onValueChange={(value: ModerationModelType) => onModelChange(value)}
                 >
-                  <SelectTrigger className="h-8 text-xs w-[180px]" id="model-select">
+                  <SelectTrigger className="h-8 text-xs w-[180px] dark:border-gray-600 dark:bg-gray-800 dark:text-white" id="model-select">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={MODERATION_MODELS.OMNI}>Basic Moderation</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.GPT4O}>GPT-4o</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.O4_MINI}>o4-mini</SelectItem>
+                  <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                    <SelectItem value={MODERATION_MODELS.OMNI} className="dark:text-white dark:hover:bg-gray-700">Basic Moderation</SelectItem>
+                    <SelectItem value={MODERATION_MODELS.GPT4O} className="dark:text-white dark:hover:bg-gray-700">GPT-4o</SelectItem>
+                    <SelectItem value={MODERATION_MODELS.O4_MINI} className="dark:text-white dark:hover:bg-gray-700">o4-mini</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -459,7 +456,7 @@ export function ModerationResults({
                     size="sm"
                     disabled={isLoading}
                     onClick={() => onRecheck(availableModelResults[selectedModel] ? true : false)}
-                    className="h-8 text-xs px-3"
+                    className="h-8 text-xs px-3 dark:bg-red-600 dark:hover:bg-red-700 dark:text-white"
                   >
                     {isLoading ? (
                       <>
@@ -477,28 +474,28 @@ export function ModerationResults({
         <div className="flex flex-col flex-1 overflow-auto">
           {!currentResults ? (
             // No results state - maintain same layout structure
-            <div className="p-6">
+            <div className="p-6 dark:bg-gray-900">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Book Metadata Section */}
                 <div className="space-y-4">
-                  <h3 className="text-base font-medium">Book Metadata</h3>
+                  <h3 className="text-base font-medium dark:text-white">Book Metadata</h3>
                   
-                  <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-slate-50 h-56">
+                  <div className="flex flex-col items-center justify-center p-8 border dark:border-gray-700 rounded-lg bg-slate-50 dark:bg-gray-800 h-56">
                     {isLoading ? (
                       <div className="flex flex-col items-center">
-                        <Loader2 size={28} className="animate-spin mb-3 text-primary" />
-                        <p className="text-base font-medium">Analyzing content...</p>
-                        <p className="text-xs text-muted-foreground mt-1">This may take a moment</p>
+                        <Loader2 size={28} className="animate-spin mb-3 text-primary dark:text-red-400" />
+                        <p className="text-base font-medium dark:text-white">Analyzing content...</p>
+                        <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">This may take a moment</p>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center">
-                        <Shield size={36} className="mb-3 text-muted-foreground opacity-20" />
-                        <p className="text-base font-medium text-center">No moderation results available for {selectedModel}</p>
+                        <Shield size={36} className="mb-3 text-muted-foreground dark:text-gray-500 opacity-20" />
+                        <p className="text-base font-medium text-center dark:text-white">No moderation results available for {selectedModel}</p>
                         {onRecheck && (
                           <Button 
                             variant="outline"
                             size="sm"
-                            className="gap-1.5 mt-4"
+                            className="gap-1.5 mt-4 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
                             onClick={() => onRecheck(false)}
                             disabled={isLoading}
                           >
@@ -522,23 +519,23 @@ export function ModerationResults({
                 
                 {/* Chapters Section - placeholder */}
                 <div className="space-y-4">
-                  <h3 className="text-base font-medium">Chapters</h3>
+                  <h3 className="text-base font-medium dark:text-white">Chapters</h3>
                   
-                  <div className="text-center p-8 border rounded-lg bg-slate-50 h-56 flex items-center justify-center">
-                    <p className="text-slate-500">No chapter data available</p>
+                  <div className="text-center p-8 border dark:border-gray-700 rounded-lg bg-slate-50 dark:bg-gray-800 h-56 flex items-center justify-center">
+                    <p className="text-slate-500 dark:text-gray-400">No chapter data available</p>
                   </div>
                 </div>
               </div>
             </div>
           ) : selectedContent ? (
             // Detailed view of selected content
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 dark:bg-gray-900">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-medium flex items-center gap-2">
-                  {selectedContent.type === 'title' && <FileText className="h-5 w-5 text-primary" />}
-                  {selectedContent.type === 'description' && <FileText className="h-5 w-5 text-primary" />}
-                  {selectedContent.type === 'coverImage' && <Image className="h-5 w-5 text-primary" />}
-                  {selectedContent.type === 'chapter' && <BookOpen className="h-5 w-5 text-primary" />}
+                <h2 className="text-xl font-medium flex items-center gap-2 dark:text-white">
+                  {selectedContent.type === 'title' && <FileText className="h-5 w-5 text-primary dark:text-red-400" />}
+                  {selectedContent.type === 'description' && <FileText className="h-5 w-5 text-primary dark:text-red-400" />}
+                  {selectedContent.type === 'coverImage' && <Image className="h-5 w-5 text-primary dark:text-red-400" />}
+                  {selectedContent.type === 'chapter' && <BookOpen className="h-5 w-5 text-primary dark:text-red-400" />}
                   
                   {selectedContent.type === 'chapter' 
                     ? `Chapter ${(selectedContent.data as any).chapter || (selectedContent.data as any).index}` 
@@ -548,7 +545,7 @@ export function ModerationResults({
                   variant="outline" 
                   size="sm" 
                   onClick={() => setSelectedContent(null)}
-                  className="text-xs"
+                  className="text-xs dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
                 >
                   Back to Overview
                 </Button>
@@ -564,11 +561,11 @@ export function ModerationResults({
             </div>
           ) : (
             // Main content view with 50/50 layout
-            <div className="p-6">
+            <div className="p-6 dark:bg-gray-900">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Book Metadata Section */}
                 <div className="space-y-4">
-                  <h3 className="text-base font-medium">Book Metadata</h3>
+                  <h3 className="text-base font-medium dark:text-white">Book Metadata</h3>
                   
                   <div className="space-y-4">
                     {currentResults.contentResults?.title && (
@@ -602,7 +599,7 @@ export function ModerationResults({
                 
                 {/* Chapters Section */}
                 <div className="space-y-4">
-                  <h3 className="text-base font-medium">Chapters</h3>
+                  <h3 className="text-base font-medium dark:text-white">Chapters</h3>
                   
                   <div className="space-y-4">
                     {currentResults.contentResults?.chapters && currentResults.contentResults.chapters.map((chapter, idx) => {
@@ -628,8 +625,8 @@ export function ModerationResults({
                     })}
                     
                     {(!currentResults.contentResults?.chapters || currentResults.contentResults.chapters.length === 0) && (
-                      <div className="text-center p-4 border rounded-lg bg-slate-50 text-slate-500">
-                        No chapters available
+                      <div className="text-center p-8 border dark:border-gray-700 rounded-lg bg-slate-50 dark:bg-gray-800 flex items-center justify-center">
+                        <p className="text-slate-500 dark:text-gray-400">No chapters analyzed</p>
                       </div>
                     )}
                   </div>
@@ -639,8 +636,8 @@ export function ModerationResults({
           )}
         </div>
 
-        <DialogFooter className="px-6 border-t sticky bottom-0 z-10 bg-white flex items-center py-3 flex-shrink-0">
-          <div className="flex-1 flex items-center text-xs text-muted-foreground">
+        <DialogFooter className="px-6 border-t dark:border-gray-700 sticky bottom-0 z-10 bg-white dark:bg-gray-900 flex items-center py-3 flex-shrink-0">
+          <div className="flex-1 flex items-center text-xs text-muted-foreground dark:text-gray-400">
             {currentResults ? (
               <div className="flex items-center">
                 <span className="mr-1">Analyzed:</span>
@@ -658,7 +655,7 @@ export function ModerationResults({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
-              className="gap-1 h-8 text-xs px-3"
+              className="gap-1 h-8 text-xs px-3 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
             >
               Close
             </Button>
