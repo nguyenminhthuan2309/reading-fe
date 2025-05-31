@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Save, Trash2, Loader2, Eye, Home, Shield, ChevronLeft, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as yup from "yup";
-import { createBook, updateBook, getGenres, getChaptersByBookId, createChapters, updateChapter, addChapter, deleteChapter, updateBookStatus } from "@/lib/api/books";
+import { createBook, updateBook, getGenres, getChaptersByBookId, createChapters, updateChapter, addChapter, deleteChapter, updateBookStatus, getModerationResults } from "@/lib/api/books";
 import { uploadFile } from "@/lib/api/base";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { BOOK_TYPES, AgeRatingEnum, ProgressStatusEnum, AccessStatusEnum, Chapter, ChaptersBatchPayload, ChapterCreateItem, ChapterAccessStatus } from "@/models";
@@ -33,6 +33,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { extractChapterContent } from "@/lib/utils";
+import { useOpenAI } from "@/lib/hooks/useOpenAI";
+import { 
+  isContentFlagged, 
+  AGE_RATING_THRESHOLDS,
+  AgeRating
+} from "@/lib/api/openai";
+import { EnhancedModerationResult, ModerationResultsPayload } from "@/models/openai";
+import { saveModerateResultsStatic } from "@/lib/hooks/useModerationResults";
+import { parseStoredModerationResult } from "@/lib/utils/moderation";
+import { MODERATION_MODELS, ModerationModelType } from "@/lib/hooks/useOpenAI";
 
 
 export interface BookFormProps {
@@ -95,9 +105,15 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   // Initialize recommendation hook for content enhancement
   const recommendation = useRecommendation();
   
+  // Add OpenAI moderation hook
+  const { moderateContent } = useOpenAI();
+  
+  // Add state for moderation
+  const [isRunningModeration, setIsRunningModeration] = useState(false);
+  
   // Helper function to check if any operation is in progress
   const isAnyOperationInProgress = () => {
-    return isSubmitting || isSavingDraft || isSavingChanges || isPublishingDraft || isPublishingChapters;
+    return isSubmitting || isSavingDraft || isSavingChanges || isPublishingDraft || isPublishingChapters || isRunningModeration;
   };
   
   // Helper function to check if there are publishable chapters
@@ -538,6 +554,278 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   };
 
   /**
+   * Helper function to check if content is flagged, explicitly handling the threshold
+   */
+  const checkContentFlagged = (scores: Record<string, number>, rating: number) => {
+    const safeRating = Math.min(Math.max(0, rating), 3) as AgeRating;
+    return isContentFlagged(scores, safeRating);
+  };
+
+  /**
+   * Helper function to run content moderation (similar to admin page)
+   */
+  const runContentModeration = async (bookId: number, bookData: any): Promise<boolean> => {
+    try {
+      setIsRunningModeration(true);
+      
+      // Check if this is an edit mode and if moderation results already exist
+      let existingModerationResults = null;
+      let shouldModerateBookInfo = true;
+      let moderatedChapterIds = new Set<number>();
+      
+      if (isEditing) {
+        try {
+          const moderationResponse = await getModerationResults(bookId);
+          if (moderationResponse.code === 200 && moderationResponse.data && moderationResponse.data.length > 0) {
+            // Find o4-mini results
+            existingModerationResults = moderationResponse.data.find(result => result.model === MODERATION_MODELS.O4_MINI);
+            if (existingModerationResults) {
+              shouldModerateBookInfo = false; // Skip book info moderation if already exists
+              
+              // Parse existing chapters to get list of already moderated chapter IDs
+              if (existingModerationResults.chapters) {
+                try {
+                  let existingChapters = [];
+                  if (typeof existingModerationResults.chapters === 'string') {
+                    existingChapters = JSON.parse(existingModerationResults.chapters);
+                  } else if (Array.isArray(existingModerationResults.chapters)) {
+                    existingChapters = existingModerationResults.chapters;
+                  }
+                  
+                  // Extract chapter IDs that have been moderated
+                  existingChapters.forEach((chapter: any) => {
+                    if (chapter.chapterId || chapter.id) {
+                      moderatedChapterIds.add(chapter.chapterId || chapter.id);
+                    }
+                  });
+                  
+                  console.log(`Found existing moderation for chapters: ${Array.from(moderatedChapterIds).join(', ')}`);
+                } catch (error) {
+                  console.error('Error parsing existing moderated chapters:', error);
+                }
+              }
+              
+              console.log('Found existing moderation results, will only moderate new/unmoderated chapters');
+            }
+          }
+        } catch (error) {
+          console.log('No existing moderation results found, will moderate all content');
+        }
+      }
+      
+      // Filter chapters - only moderate chapters that haven't been moderated yet
+      let chaptersToModerate = chapters;
+      if (isEditing && existingModerationResults) {
+        // Only moderate chapters that haven't been moderated yet
+        chaptersToModerate = chapters.filter(chapter => {
+          // If chapter has a numeric ID, check if it's been moderated
+          if (!chapter.id.startsWith('chapter-')) {
+            const chapterId = parseInt(chapter.id);
+            return !moderatedChapterIds.has(chapterId);
+          }
+          // New chapters (with temp IDs) always need moderation
+          return true;
+        });
+        console.log(`Moderating ${chaptersToModerate.length} new/unmoderated chapters out of ${chapters.length} total chapters`);
+      }
+      
+      // Prepare chapters for moderation
+      const chaptersForModeration = chaptersToModerate.map((chapter, index) => ({
+        id: chapter.id.startsWith('chapter-') ? index + 1 : parseInt(chapter.id),
+        chapter: index + 1,
+        title: chapter.title,
+        content: bookData.bookType === BOOK_TYPES.NOVEL && typeof chapter.content === 'string'
+          ? extractChapterContent(chapter.content)
+          : (chapter.images ? chapter.images.map((img: any) => typeof img === 'string' ? img : img.url) : [])
+      }));
+
+      // Get cover image data (only if we need to moderate book info)
+      let coverImageData = '';
+      if (shouldModerateBookInfo) {
+        if (bookData.coverImage) {
+          // Convert file to base64
+          const reader = new FileReader();
+          await new Promise<void>((resolve, reject) => {
+            reader.onload = () => {
+              coverImageData = reader.result as string;
+              resolve();
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(bookData.coverImage);
+          });
+        } else if (bookData.coverImagePreview) {
+          coverImageData = bookData.coverImagePreview;
+        } else if (initialData?.cover) {
+          coverImageData = initialData.cover;
+        }
+      }
+
+      // Run moderation using o4-mini model (default for auto-moderation)
+      const moderationResult = await moderateContent({
+        title: shouldModerateBookInfo ? bookData.title : undefined,
+        description: shouldModerateBookInfo ? bookData.description : undefined,
+        chapters: chaptersForModeration,
+        coverImage: shouldModerateBookInfo ? coverImageData : undefined,
+        model: MODERATION_MODELS.O4_MINI
+      });
+
+      // Process the moderation results to add flagged property
+      const ageRating = bookData.ageRating || 0;
+      
+      if (moderationResult && moderationResult.contentResults) {
+        // Process title
+        const title = moderationResult.contentResults.title as any;
+        if (title && title.category_scores) {
+          title.flagged = checkContentFlagged(
+            title.category_scores as Record<string, number>, 
+            ageRating as number
+          );
+        }
+        
+        // Process description
+        const description = moderationResult.contentResults.description as any;
+        if (description && description.category_scores) {
+          description.flagged = checkContentFlagged(
+            description.category_scores as Record<string, number>, 
+            ageRating as number
+          );
+        }
+        
+        // Process cover image
+        const coverImage = moderationResult.contentResults.coverImage as any;
+        if (coverImage && coverImage.category_scores) {
+          coverImage.flagged = checkContentFlagged(
+            coverImage.category_scores as Record<string, number>, 
+            ageRating as number
+          );
+        }
+        
+        // Process chapters
+        const newChapters = moderationResult.contentResults.chapters as any[];
+        if (newChapters && newChapters.length > 0) {
+          newChapters.forEach(chapter => {
+            if (chapter.result && chapter.result.category_scores) {
+              chapter.result.flagged = checkContentFlagged(
+                chapter.result.category_scores as Record<string, number>,
+                ageRating as number
+              );
+            }
+          });
+        }
+        
+        // Determine overall flagged status
+        const titleFlagged = title?.flagged || false;
+        const descriptionFlagged = description?.flagged || false;
+        const coverImageFlagged = coverImage?.flagged || false;
+        const anyChapterFlagged = newChapters?.some(chapter => chapter.result?.flagged) || false;
+        
+        // Set overall flagged status
+        (moderationResult as any).flagged = titleFlagged || descriptionFlagged || coverImageFlagged || anyChapterFlagged;
+        (moderationResult as any).passed = !(moderationResult as any).flagged;
+      }
+
+      // Save moderation results
+      if (moderationResult) {
+        // If we have existing results, merge the new chapter data with existing data
+        let finalModerationData: ModerationResultsPayload;
+        
+        if (existingModerationResults && !shouldModerateBookInfo) {
+          // Parse existing chapters data
+          let existingChapters = [];
+          if (existingModerationResults.chapters) {
+            try {
+              if (typeof existingModerationResults.chapters === 'string') {
+                existingChapters = JSON.parse(existingModerationResults.chapters);
+              } else if (Array.isArray(existingModerationResults.chapters)) {
+                existingChapters = existingModerationResults.chapters;
+              }
+            } catch (error) {
+              console.error('Error parsing existing chapters:', error);
+              existingChapters = [];
+            }
+          }
+          
+          // Get new chapters data
+          let newChapters = [];
+          if (moderationResult.contentResults?.chapters) {
+            // Map new chapters to include proper chapter IDs for future reference
+            newChapters = moderationResult.contentResults.chapters.map((chapter: any, index: number) => {
+              // Find the corresponding chapter from chaptersToModerate to get the real ID
+              const originalChapter = chaptersToModerate[index];
+              const chapterId = originalChapter && !originalChapter.id.startsWith('chapter-') 
+                ? parseInt(originalChapter.id) 
+                : chapter.id || chapter.chapterId;
+              
+              return {
+                ...chapter,
+                chapterId: chapterId,
+                id: chapterId // Ensure both id and chapterId are set for consistency
+              };
+            });
+          }
+          
+          // Merge existing and new chapters, avoiding duplicates
+          const mergedChapters = [...existingChapters, ...newChapters];
+          
+          // Use existing data for book info, new data for chapters
+          finalModerationData = {
+            title: existingModerationResults.title,
+            description: existingModerationResults.description,
+            coverImage: existingModerationResults.coverImage,
+            chapters: JSON.stringify(mergedChapters),
+            model: MODERATION_MODELS.O4_MINI,
+            bookId: bookId,
+          };
+        } else {
+          // New moderation or full re-moderation
+          finalModerationData = {
+            title: moderationResult.contentResults?.title 
+              ? JSON.stringify(moderationResult.contentResults.title) 
+              : null,
+            description: moderationResult.contentResults?.description 
+              ? JSON.stringify(moderationResult.contentResults.description) 
+              : null,
+            coverImage: moderationResult.contentResults?.coverImage 
+              ? JSON.stringify(moderationResult.contentResults.coverImage) 
+              : null,
+            chapters: moderationResult.contentResults?.chapters 
+              ? JSON.stringify(moderationResult.contentResults.chapters)
+              : null,
+            model: MODERATION_MODELS.O4_MINI,
+            bookId: bookId,
+          };
+        }
+
+        try {
+          // Use update if we have existing results, create if new
+          const isUpdate = existingModerationResults !== null;
+          await saveModerateResultsStatic(bookId, finalModerationData, isUpdate);
+          
+          // Note: The book's moderation status is automatically handled by the backend
+          // when moderation results are saved, so we don't need to update it manually
+          
+          console.log(`Moderation completed for book ${bookId}${isUpdate ? ' (updated existing results)' : ' (new results)'}`);
+          return true;
+        } catch (saveError) {
+          console.error("Error saving moderation results:", saveError);
+          // Don't fail the submission if moderation save fails, just log it
+          toast.error("Book submitted but failed to save moderation results");
+          return true;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error running moderation:", error);
+      // Don't fail the submission if moderation fails, just log it
+      toast.error("Book submitted but moderation check failed");
+      return true;
+    } finally {
+      setIsRunningModeration(false);
+    }
+  };
+
+  /**
    * Standardized function to handle the book submission process
    * This consolidates all the submission logic in one place
    */
@@ -674,6 +962,24 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
         }
       }
       
+      // NEW: Run moderation when publishing (submitting for review)
+      if (isPublishing && !isDraft) {
+        try {
+          console.log('Running automatic moderation for book submission...');
+          await runContentModeration(updatedBookId, {
+            title,
+            description,
+            coverImage,
+            ageRating,
+            bookType: bookData.bookType
+          });
+        } catch (moderationError) {
+          console.error("Moderation failed:", moderationError);
+          // Don't fail the submission if moderation fails, just log it
+          toast.error("Book submitted successfully but moderation check failed. Admins will review manually.");
+        }
+      }
+      
       // Reset form state and set success
       setHasUnsavedChanges(false);
       setSuccessBookId(updatedBookId);
@@ -687,11 +993,11 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       if (isDraft) {
         toast.success("Draft saved successfully");
       } else if (isPublishing) {
-        toast.success("Book submitted for review");
+        toast.success("Book submitted for review and moderation completed");
       } else if (isEditing) {
         toast.success("Book updated successfully");
       } else {
-        toast.success("Book submitted for review");
+        toast.success("Book submitted for review and moderation completed");
       }
       
       return true;
@@ -1573,10 +1879,10 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   disabled={isAnyOperationInProgress()}
                   className="gap-2"
                 >
-                  {isSubmitting ? (
+                  {isSubmitting || isRunningModeration ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
-                      Publishing...
+                      {isRunningModeration ? "Running Moderation..." : "Publishing..."}
                     </>
                   ) : (
                     <>
@@ -1604,10 +1910,10 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                           handlePublishChanges();
                         }}
                       >
-                        {isPublishingDraft ? (
+                        {isPublishingDraft || isRunningModeration ? (
                           <>
                             <Loader2 size={16} className="animate-spin" />
-                            Publishing...
+                            {isRunningModeration ? "Running Moderation..." : "Publishing..."}
                           </>
                         ) : (
                           <>
@@ -1638,10 +1944,10 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                         className="gap-2 bg-green-600 hover:bg-green-700"
                         onClick={handlePublishChanges}
                       >
-                        {isPublishingChapters ? (
+                        {isPublishingChapters || isRunningModeration ? (
                           <>
                             <Loader2 size={16} className="animate-spin" />
-                            Publishing...
+                            {isRunningModeration ? "Running Moderation..." : "Publishing..."}
                           </>
                         ) : (
                           <>
