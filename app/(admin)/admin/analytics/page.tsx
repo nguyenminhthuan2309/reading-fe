@@ -260,7 +260,7 @@ export default function AnalyticsPage() {
             
             {/* X-axis line */}
             <div 
-              className="absolute left-0 right-0 border-b border-gray-300" 
+              className="absolute left-0 right-0 border-b" 
               style={{ 
                 top: `${chartHeight + 20}px` 
               }}
@@ -270,7 +270,7 @@ export default function AnalyticsPage() {
             {Array.from({ length: yAxisSteps }, (_, i) => (
               <div 
                 key={i}
-                className="absolute left-0 right-0 border-b border-gray-100" 
+                className="absolute left-0 right-0 border-b" 
                 style={{ 
                   top: `${20 + (chartHeight / yAxisSteps) * (i + 1)}px` 
                 }}
