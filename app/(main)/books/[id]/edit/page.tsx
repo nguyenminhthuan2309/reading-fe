@@ -45,9 +45,9 @@ export default function EditBookPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 min-h-screen">
         <div className="flex justify-center items-center min-h-[300px]">
-          <div className="animate-pulse text-lg">Loading book details...</div>
+          <div className="animate-pulse text-lg dark:text-white">Loading book details...</div>
         </div>
       </div>
     );
@@ -55,10 +55,10 @@ export default function EditBookPage() {
 
   if (error || !data) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-destructive/15 p-4 rounded-md text-center my-8">
-          <h2 className="text-lg font-medium text-destructive mb-2">Error Loading Book</h2>
-          <p className="text-destructive/90">
+      <div className="container mx-auto px-4 py-8 min-h-screen">
+        <div className="bg-destructive/15 dark:bg-red-900/20 p-4 rounded-md text-center my-8 border dark:border-red-800">
+          <h2 className="text-lg font-medium text-destructive dark:text-red-400 mb-2">Error Loading Book</h2>
+          <p className="text-destructive/90 dark:text-red-300">
             {(error as Error)?.message || "This book couldn't be loaded or doesn't exist"}
           </p>
           <Button
@@ -74,12 +74,14 @@ export default function EditBookPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 pt-4">
-      <BookForm
-        initialData={data}
-        isEditing={true}
-        onSuccess={handleSuccess}
-      />
+    <div className="container mx-auto px-4 py-8 pt-4 min-h-screen">
+      <div className="border border-secondary/90 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm p-6">
+        <BookForm
+          initialData={data}
+          isEditing={true}
+          onSuccess={handleSuccess}
+        />
+      </div>
     </div>
   );
 } 

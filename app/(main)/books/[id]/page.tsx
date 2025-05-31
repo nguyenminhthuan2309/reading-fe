@@ -27,21 +27,21 @@ const AgeRatingBadge = ({ ageRatingId }: { ageRatingId: number }) => {
   const rating = AGE_RATINGS.find(r => r.id === ageRatingId) || AGE_RATINGS[0];
   
   // Determine styling based on rating
-  let bgClass = 'bg-green-100 text-green-800 border-green-200';
+  let bgClass = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50';
   
   switch (ageRatingId) {
     case AgeRatingEnum.ADULT: // 18+
-      bgClass = 'bg-red-100 text-red-800 border-red-200';
+      bgClass = 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700/50';
       break;
     case AgeRatingEnum.MATURE: // 16+
-      bgClass = 'bg-orange-100 text-orange-800 border-orange-200';
+      bgClass = 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700/50';
       break;
     case AgeRatingEnum.TEEN: // 13+
-      bgClass = 'bg-amber-100 text-amber-800 border-amber-200';
+      bgClass = 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-700/50';
       break;
     case AgeRatingEnum.EVERYONE: // All ages
     default:
-      bgClass = 'bg-green-100 text-green-800 border-green-200';
+      bgClass = 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50';
       break;
   }
   
@@ -58,20 +58,20 @@ const ProgressStatusBadge = ({ progressStatusId }: { progressStatusId: number })
   const status = PROGRESS_STATUSES.find(s => s.id === progressStatusId) || PROGRESS_STATUSES[0];
   
   // Determine styling based on progress status
-  let bgClass = 'bg-blue-100 text-blue-800 border-blue-200';
+  let bgClass = 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50';
   
   switch (progressStatusId) {
     case ProgressStatusEnum.ONGOING:
-      bgClass = 'bg-blue-100 text-blue-800 border-blue-200';
+      bgClass = 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50';
       break;
     case ProgressStatusEnum.COMPLETED:
-      bgClass = 'bg-green-100 text-green-800 border-green-200';
+      bgClass = 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/50';
       break;
     case ProgressStatusEnum.DROPPED:
-      bgClass = 'bg-gray-100 text-gray-800 border-gray-200';
+      bgClass = 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700/30 dark:text-gray-300 dark:border-gray-600/50';
       break;
     default:
-      bgClass = 'bg-blue-100 text-blue-800 border-blue-200';
+      bgClass = 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50';
       break;
   }
   
@@ -176,7 +176,7 @@ export default function BookPage() {
   // Loading state
   if (isLoadingBook) {
     return (
-      <div className="container mx-auto px-4 py-8 pt-4">
+      <div className="container mx-auto px-4 py-8 pt-4 dark:bg-gray-900 min-h-screen">
         {/* Back button skeleton */}
         <div className="mb-6">
           <Skeleton className="h-10 w-20" />
@@ -284,7 +284,7 @@ export default function BookPage() {
     // If it's a 404 error, show the "Book not found" message
     if (is404 || isPendingBook || isDraftBook || isBlockedBook) {
       return (
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-4 dark:bg-gray-900 min-h-screen">
           {/* Back button at top left */}
           <div className="mb-8">
             <Button
@@ -310,7 +310,7 @@ export default function BookPage() {
 
     // For other types of errors, show the general error message
     return (
-      <div className="container mx-auto px-4 py-12 pt-4">
+      <div className="container mx-auto px-4 py-12 pt-4 dark:bg-gray-900 min-h-screen">
         {/* Back button at top left */}
         <div className="mb-8">
           <Button
@@ -337,14 +337,14 @@ export default function BookPage() {
   // If book not found, show an error message
   if (!book) {
     return (
-      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center text-center pt-4">
+      <div className="container mx-auto px-4 py-12 flex flex-col items-center justify-center text-center pt-4 dark:bg-gray-900 min-h-screen">
         <div className="max-w-md">
           <h1 className="text-3xl font-bold mb-4">Book not found</h1>
           <p className="text-gray-600 mb-8">The book you are looking for does not exist or may have been removed.</p>
           <div className="mt-6">
             <Button
               variant="ghost"
-              className="flex items-center gap-2 pl-0 hover:bg-transparent"
+              className="flex items-center gap-2 pl-0 hover:bg-transparent dark:text-white"
               onClick={() => router.back()}
             >
               <ChevronLeft size={20} />
@@ -357,12 +357,12 @@ export default function BookPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 pt-4 md:pt-6">
+    <div className="container mx-auto px-4 py-8 pt-4 md:pt-6 dark:bg-gray-900 min-h-screen">
       {/* Back button */}
       <div className="mb-6">
         <Button
           variant="ghost"
-          className="flex items-center gap-2 pl-0 hover:bg-transparent"
+          className="flex items-center gap-2 pl-0 hover:bg-transparent dark:text-white"
           onClick={() => router.back()}
         >
           <ChevronLeft size={20} />
@@ -389,14 +389,14 @@ export default function BookPage() {
               {/* Chapter info and reading progress */}
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex items-center">
-                  <BookOpen className="h-4 w-4 text-gray-500 mr-1.5" />
-                  <span className="text-sm text-gray-700">{book.totalChapters} Chapters</span>
+                  <BookOpen className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-1.5" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{book.totalChapters} Chapters</span>
                 </div>
 
                 {readProgress > 0 && isPurchased ? (
                   <div className="flex items-center">
-                    <span className="text-xs text-gray-600 mr-2">{Math.round(readProgress * 100)}%</span>
-                    <div className="relative h-1.5 w-12 bg-gray-200 rounded-full overflow-hidden">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 mr-2">{Math.round(readProgress * 100)}%</span>
+                    <div className="relative h-1.5 w-12 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className="absolute top-0 left-0 h-full bg-red-600 rounded-full"
                         style={{ width: `${readProgress * 100}%` }}
@@ -405,7 +405,7 @@ export default function BookPage() {
                   </div>
                 ) : (
                   <div className="flex items-center">
-                    <span className="text-xs text-gray-600">~{calculateReadingTime(book.totalChapters)} min</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">~{calculateReadingTime(book.totalChapters)} min</span>
                   </div>
                 )}
               </div>
@@ -444,7 +444,7 @@ export default function BookPage() {
                         <Link href={`/books/${book.id}/edit`} className="flex-1">
                           <Button
                             variant="outline"
-                            className="h-10 w-full flex items-center justify-center gap-2 rounded-lg border bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+                            className="h-10 w-full flex items-center justify-center gap-2 rounded-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                           >
                             <PencilLine className="h-5 w-5" />
                             Edit Book
@@ -463,12 +463,12 @@ export default function BookPage() {
             {/* Book meta info */}
             <div className="flex-1 md:pt-2">
               {/* Book title */}
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">{book.title}</h1>
+              <h1 className="text-3xl md:text-4xl font-bold mb-4 dark:text-white">{book.title}</h1>
               <div className="flex items-center gap-2 mb-4">
-                <p className="text-gray-600 text-lg">
-                  by <Link href={`/user/${book.author?.id}`} className="hover:text-blue-600 hover:underline transition-colors inline-flex items-center gap-1">
+                <p className="text-gray-600 dark:text-gray-300 text-lg">
+                  by <Link href={`/user/${book.author?.id}`} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors inline-flex items-center gap-1">
                     {book.author?.name}
-                    {isOwner && <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 px-2 py-0.5 text-xs ml-1">You</Badge>}
+                    {isOwner && <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-700/50 px-2 py-0.5 text-xs ml-1">You</Badge>}
                   </Link>
                 </p>
               </div>
@@ -476,7 +476,7 @@ export default function BookPage() {
               {/* Categories */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {book.categories?.map((category) => (
-                  <span key={category.id} className="px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">
+                  <span key={category.id} className="px-3 py-1 bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 text-sm rounded-full">
                     {category.name}
                   </span>
                 ))}
@@ -496,46 +496,46 @@ export default function BookPage() {
                       <Star
                         key={i}
                         size={14}
-                        className={`${i < Math.floor(book.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                        className={`${i < Math.floor(book.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300 dark:text-gray-600"
                           }`}
                       />
                     ))}
                   </div>
-                  <span className="text-xs ml-1 text-gray-700">{book.rating.toFixed(1)}</span>
+                  <span className="text-xs ml-1 text-gray-700 dark:text-gray-300">{book.rating.toFixed(1)}</span>
                 </div>
                 <div className="flex items-center">
-                  <Star className="h-4 w-4 text-gray-500 mr-1.5" />
-                  <span className="text-sm text-gray-700">Reviews</span>
+                  <Star className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-1.5" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Reviews</span>
                 </div>
                 <div className="flex items-center">
-                  <Eye className="h-4 w-4 text-gray-500 mr-1.5" />
-                  <span className="text-sm text-gray-700">{book.views} reads</span>
+                  <Eye className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-1.5" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{book.views} reads</span>
                 </div>
                 <div className="flex items-center">
-                  <ShoppingBag className="h-4 w-4 text-gray-500 mr-1.5" />
-                  <span className="text-sm text-gray-700">{book.totalPurchases} purchases</span>
+                  <ShoppingBag className="h-4 w-4 text-gray-500 dark:text-gray-400 mr-1.5" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{book.totalPurchases} purchases</span>
                 </div>
               </div>
 
               {/* Summary */}
               <div className="mb-5">
-                <h2 className="text-xl font-bold mb-2">Summary</h2>
-                <p className="text-gray-700 line-clamp-4 mb-2">{book.description}</p>
+                <h2 className="text-xl font-bold mb-2 dark:text-white">Summary</h2>
+                <p className="text-gray-700 dark:text-gray-300 line-clamp-4 mb-2">{book.description}</p>
               </div>
 
               {/* Price and purchase info */}
               {!isOwner && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-lg">
+                      <h3 className="font-bold text-lg dark:text-white">
                         {book.totalPrice.toFixed(2)} HARU
                       </h3>
-                      <p className="text-xs text-gray-500">One-time purchase - get full content and future chapters</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">One-time purchase - get full content and future chapters</p>
                     </div>
 
                     {isPurchased ? (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 px-3 py-1">
+                      <Badge variant="outline" className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50 px-3 py-1">
                         Purchased
                       </Badge>
                     ) : (
@@ -551,7 +551,7 @@ export default function BookPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                           onClick={() => setActiveTab("chapters")}
                         >
                           <BookOpen size={16} />
@@ -567,11 +567,11 @@ export default function BookPage() {
 
           {/* Tabs for reviews and chapters */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6 md:mt-8">
-            <TabsList className="mb-8">
-              <TabsTrigger value="reviews" className="text-base">
+            <TabsList className="mb-8 dark:bg-gray-800">
+              <TabsTrigger value="reviews" className="text-base dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white">
                 Reviews
               </TabsTrigger>
-              <TabsTrigger value="chapters" className="text-base">
+              <TabsTrigger value="chapters" className="text-base dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white">
                 Chapters
               </TabsTrigger>
             </TabsList>
@@ -585,7 +585,7 @@ export default function BookPage() {
                 {isLoadingChapters ? (
                   // Skeleton loading state for chapters
                   Array.from({ length: 5 }, (_, index) => (
-                    <div key={index} className="p-4 border rounded-lg flex justify-between items-center">
+                    <div key={index} className="p-4 border rounded-lg flex justify-between items-center dark:border-gray-700 dark:bg-gray-800/50">
                       <div className="flex-1">
                         <Skeleton className="h-5 w-24 mb-2" />
                         <Skeleton className="h-4 w-40" />
@@ -595,7 +595,7 @@ export default function BookPage() {
                   ))
                 ) : chaptersError ? (
                   // Error state
-                  <div className="p-4 border border-red-200 bg-red-50 rounded-lg text-red-700">
+                  <div className="p-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">
                     <p>Failed to load chapters. Please try again later.</p>
                   </div>
                 ) : chaptersData && chaptersData.length > 0 ? (
@@ -603,13 +603,13 @@ export default function BookPage() {
                   chaptersData.slice(0, showAllChapters ? undefined : visibleChapters).map((chapter, index) => (
                     <div
                       key={chapter.id}
-                      className="p-4 border rounded-lg flex justify-between items-center hover:bg-accent/50 transition-colors"
+                      className="p-4 border rounded-lg flex justify-between items-center hover:bg-accent/50 dark:hover:bg-gray-800/50 transition-colors dark:border-gray-700 dark:bg-gray-800/30"
                     >
                       <div className="flex-1">
                         <div className="flex justify-between items-center">
-                          <span className="font-medium">{chapter.title || `Chapter ${index + 1}`}</span>
+                          <span className="font-medium dark:text-white">{chapter.title || `Chapter ${index + 1}`}</span>
                         </div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           {index === 0 ? "The Beginning" : (chapter.chapter ? `Chapter ${chapter.chapter}` : `Chapter ${index + 1}`)}
                         </p>
                       </div>
@@ -640,7 +640,7 @@ export default function BookPage() {
                   ))
                 ) : (
                   // No chapters found
-                  <div className="p-4 border rounded-lg text-center text-gray-500">
+                  <div className="p-4 border rounded-lg text-center text-gray-500 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800/30">
                     <p>No chapters available for this book yet.</p>
                   </div>
                 )}
@@ -652,7 +652,7 @@ export default function BookPage() {
                       variant="link"
                       size="sm"
                       onClick={handleViewMoreChapters}
-                      className="flex items-center gap-1.5 text-black font-medium hover:text-gray-700"
+                      className="flex items-center gap-1.5 text-black dark:text-gray-300 font-medium hover:text-gray-700 dark:hover:text-gray-100"
                     >
                       {showAllChapters ? (
                         <>Show less <ChevronUp size={16} /></>
@@ -664,8 +664,8 @@ export default function BookPage() {
                 )}
 
                 {!isPurchased && !isOwner && (
-                  <div className="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <p className="text-center mb-3 text-gray-700">
+                  <div className="mt-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="text-center mb-3 text-gray-700 dark:text-gray-300">
                       Purchase this book to unlock all {book.totalChapters} chapters.
                     </p>
                     <Button
@@ -689,12 +689,12 @@ export default function BookPage() {
 
         {/* Right side: Related Books */}
         <div className="lg:w-1/4 lg:top-4 mt-8 lg:mt-0">
-          <div className="rounded-sm p-4 shadow-sm bg-white/10">
-            <h2 className="text-xl font-bold mb-4">Related Books</h2>
+          <div className="rounded-sm p-4 shadow-sm bg-white/10 dark:bg-gray-800/50 border dark:border-gray-700">
+            <h2 className="text-xl font-bold mb-4 dark:text-white">Related Books</h2>
             <RelatedBooks bookId={id} compactView={true} />
             <div className="mt-4 text-center">
               <Link href={`/books?related=${id}`}>
-                <Button variant="outline" size="sm" className="w-full text-black border-gray-300 hover:bg-gray-100 hover:text-gray-900">
+                <Button variant="outline" size="sm" className="w-full text-black dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100">
                   View More Related Books
                 </Button>
               </Link>

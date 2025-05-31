@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BookOpen, Github, Twitter, Instagram } from "lucide-react";
+import { Github, Twitter, Instagram } from "lucide-react";
+import Image from "next/image";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,7 +11,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3">
             <div className="flex items-center">
-              <BookOpen className="h-6 w-6 text-primary mr-2" />
+              <Image 
+                src="/logo.png" 
+                alt="Haru's Library Logo" 
+                width={24} 
+                height={24} 
+                className="mr-2"
+              />
               <span className="font-bold text-xl">Haru's Library</span>
             </div>
             <p className="text-muted-foreground text-sm">

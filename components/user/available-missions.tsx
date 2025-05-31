@@ -102,8 +102,8 @@ export function AvailableMissions() {
 
   if (!availableActivities || availableActivities.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-secondary/90 shadow-sm p-5 text-center">
-        <p className="text-sm text-muted-foreground">No available missions at the moment.</p>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-secondary/90 dark:border-gray-700 shadow-sm p-5 text-center">
+        <p className="text-sm text-muted-foreground dark:text-gray-400">No available missions at the moment.</p>
         <Button variant="default" size="sm" className="mt-3">
           <Link href="/books">Browse Books</Link>
         </Button>
@@ -162,22 +162,22 @@ export function AvailableMissions() {
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {availableActivities.map((activity) => (
-          <div key={activity.id} className="bg-white rounded-lg border border-secondary/90 shadow-sm overflow-hidden">
+          <div key={activity.id} className="bg-white dark:bg-gray-800 rounded-lg border border-secondary/90 dark:border-gray-700 shadow-sm overflow-hidden">
             <div className="p-3 flex items-start justify-between">
               <div className="flex-1">
-                <h4 className="text-sm font-medium flex items-center gap-1.5 mb-1.5">
+                <h4 className="text-sm font-medium flex items-center gap-1.5 mb-1.5 dark:text-white">
                   {getActivityIcon(activity.activityType)}
                   {activity.title}
-                  {!!(activity.earnedPoint && activity.earnedPoint > 0) && <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">+{activity.earnedPoint} Haru</span>}
+                  {!!(activity.earnedPoint && activity.earnedPoint > 0) && <span className="ml-auto text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">+{activity.earnedPoint} Haru</span>}
                 </h4>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-amber-400 to-amber-500  h-full rounded-full"
                       style={{ width: `${(activity.completedCount / activity.maxPerDay) * 100}%` }}
                     ></div>
                   </div>
-                  <span className="text-xs text-muted-foreground">{activity.completedCount}/{activity.maxPerDay}</span>
+                  <span className="text-xs text-muted-foreground dark:text-gray-400">{activity.completedCount}/{activity.maxPerDay}</span>
                   {activity.status !== 'done' ? (
                     <Button
                       variant="default"
@@ -188,7 +188,7 @@ export function AvailableMissions() {
                       Start
                     </Button>
                   ) : (
-                    <span className="ml-auto h-6 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Completed</span>
+                    <span className="ml-auto h-6 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">Completed</span>
                   )}
                 </div>
               </div>

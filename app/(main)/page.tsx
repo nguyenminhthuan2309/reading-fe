@@ -130,12 +130,12 @@ export default function Home() {
 
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen dark:bg-gray-900">
       {/* Hero Section */}
       <BookCarousel books={trendingData} isLoading={isLoadingTrending} />
       
       {/* Spacer between hero and first section */}
-      <div className="h-8"></div>
+      <div className="h-8 dark:bg-gray-900"></div>
       
       {/* Recent Read Section */}
       {isLoggedIn && (
@@ -144,7 +144,7 @@ export default function Home() {
             title="Recent Read" 
             books={readingHistoryData || []} 
             linkHref="/user/reading-history" 
-            className="bg-section-light"
+            className="bg-section-light dark:bg-gray-900"
             isLoading={isLoading}
           />
         </div>
@@ -156,7 +156,7 @@ export default function Home() {
           title="New Releases" 
           books={newReleasesData || []} 
           linkHref="/books?category=new" 
-          className="bg-section-dark"
+          className="bg-section-dark dark:bg-gray-800"
           isLoading={isLoadingNewReleases}
         />
       </div>
@@ -167,7 +167,7 @@ export default function Home() {
           title="Recently Updated" 
           books={recentlyUpdatedData || []} 
           linkHref="/books?sortBy=updatedAt" 
-          className="bg-section-light"
+          className="bg-section-light dark:bg-gray-900"
           isLoading={isLoadingRecentlyUpdated}
         />
       </div>
@@ -178,7 +178,7 @@ export default function Home() {
           title="Top Trending" 
           books={trendingData || []} 
           linkHref="/books?sort=trending" 
-          className="bg-section-dark"
+          className="bg-section-dark dark:bg-gray-800"
           isLoading={isLoadingTrending}
         />
       </div>
@@ -190,63 +190,63 @@ export default function Home() {
             title="Recommended For You" 
             books={recommendedData || []} 
             linkHref="/books" 
-            className="bg-section-light"
+            className="bg-section-light dark:bg-gray-900"
             isLoading={isLoadingRecommended}
           />
         </div>
       )}
       
       {/* Call to Action Section */}
-      <div className="py-16">
+      <div className="py-16 dark:bg-gray-900">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-white/50 rounded-xl overflow-hidden">
+            <div className="bg-white/50 dark:bg-gray-800/50 rounded-xl overflow-hidden border dark:border-gray-700">
               <div className="p-6 md:p-8">
                 
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 text-center">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4 text-center">
                   Create Your Own Books & Earn Rewards
                 </h2>
-                <p className="text-gray-600 mb-8 max-w-2xl text-center mx-auto">
+                <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-2xl text-center mx-auto">
                   Join our community of writers and start earning rewards for your creativity. 
                   Publish your stories, build your audience, and get rewarded for your imagination.
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   {/* Feature 1 */}
-                  <div className="p-5 rounded-lg border border-gray-100">
+                  <div className="p-5 rounded-lg border border-gray-100 dark:border-gray-700 dark:bg-gray-800/50">
                     <div className="flex items-center mb-3">
-                      <div className="bg-red-100 p-2 rounded-full mr-3">
-                        <PenLine className="h-5 w-5 text-red-700" />
+                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mr-3">
+                        <PenLine className="h-5 w-5 text-red-700 dark:text-red-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900">Write Your Story</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Write Your Story</h3>
                     </div>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
                       Our easy-to-use editor helps you create beautiful books with chapters, images, and formatting.
                     </p>
                   </div>
                   
                   {/* Feature 2 */}
-                  <div className="p-5 rounded-lg border border-gray-100">
+                  <div className="p-5 rounded-lg border border-gray-100 dark:border-gray-700 dark:bg-gray-800/50">
                     <div className="flex items-center mb-3">
-                      <div className="bg-red-100 p-2 rounded-full mr-3">
-                        <TrendingUp className="h-5 w-5 text-red-700" />
+                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mr-3">
+                        <TrendingUp className="h-5 w-5 text-red-700 dark:text-red-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900">Grow Your Audience</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Grow Your Audience</h3>
                     </div>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
                       Connect with readers who love your genre and build a loyal following for your work.
                     </p>
                   </div>
                   
                   {/* Feature 3 */}
-                  <div className="p-5 rounded-lg border border-gray-100">
+                  <div className="p-5 rounded-lg border border-gray-100 dark:border-gray-700 dark:bg-gray-800/50">
                     <div className="flex items-center mb-3">
-                      <div className="bg-red-100 p-2 rounded-full mr-3">
-                        <Trophy className="h-5 w-5 text-red-700" />
+                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mr-3">
+                        <Trophy className="h-5 w-5 text-red-700 dark:text-red-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900">Earn Rewards</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Earn Rewards</h3>
                     </div>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
                       Get paid for your creativity through our rewards program based on readers and engagement.
                     </p>
                   </div>

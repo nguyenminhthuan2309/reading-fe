@@ -21,12 +21,14 @@ export const metadata: Metadata = {
   keywords: "books, reading, literature, ebooks, book reviews, Haru's Library",
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
-      { url: '/favicon.svg', type: 'image/svg+xml' }
+      { url: '/logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logo.png', sizes: '16x16', type: 'image/png' },
+      { url: '/logo.png', sizes: '48x48', type: 'image/png' }
     ],
     apple: [
-      { url: '/favicon.svg', type: 'image/svg+xml' }
-    ]
+      { url: '/logo.png', sizes: '180x180', type: 'image/png' }
+    ],
+    shortcut: '/logo.png'
   },
   manifest: '/manifest.json',
   themeColor: '#6366F1',
@@ -44,23 +46,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/logo.png" sizes="any" />
+        <link rel="icon" href="/logo.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${oswald.variable} antialiased min-h-full flex flex-col bg-white dark:bg-gray-950 dark:text-white`}
-        style={{
-          backgroundImage: 'url("/images/manga-background.png")',
-          backgroundSize: '800px',
-          backgroundRepeat: 'repeat',
-          backgroundAttachment: 'fixed',
-          backgroundPosition: 'center',
-          backgroundBlendMode: 'overlay',
-          backgroundColor: 'rgba(248, 248, 248, 0.78)',
-        }}
+        className={`${oswald.variable} antialiased min-h-full flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white manga-background`}
       >
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <LanguageProvider>
             <QueryProvider>
               <AuthProvider>

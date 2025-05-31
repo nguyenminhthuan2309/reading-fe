@@ -163,4 +163,37 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari and Opera */
   }
+
+  /* Manga background - only in light mode */
+  .manga-background {
+    background-image: url("/images/manga-background.png");
+    background-size: 800px;
+    background-repeat: repeat;
+    background-attachment: fixed;
+    background-position: center;
+    background-blend-mode: overlay;
+    background-color: rgba(248, 248, 248, 0.78);
+  }
+
+  /* Remove background in dark mode */
+  .dark .manga-background {
+    background-image: none !important;
+    background-blend-mode: normal !important;
+  }
+
+  /* Ensure body and all text is white in dark mode - outside of @layer for higher priority */
+  html.dark body,
+  .dark body,
+  html.dark,
+  .dark {
+    color: white !important;
+  }
+
+  html.dark body *,
+  .dark body * {
+    color: inherit;
+  }
 }
+
+
+

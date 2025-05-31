@@ -14,8 +14,10 @@ export default function CreateBookPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 pt-4">
-      <BookForm onSuccess={handleBookCreated} />
+    <div className="container mx-auto px-4 py-8 pt-4 min-h-screen">
+      <div className="border border-secondary/90 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm p-6">
+        <BookForm onSuccess={handleBookCreated} />
+      </div>
     </div>
   );
 } 

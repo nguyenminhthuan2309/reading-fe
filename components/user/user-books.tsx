@@ -91,16 +91,16 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
     let badgeClass = "";
     switch (progressStatus.id) {
       case ProgressStatusEnum.ONGOING:
-        badgeClass = "bg-blue-100 text-blue-800 hover:bg-blue-100";
+        badgeClass = "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40";
         break;
       case ProgressStatusEnum.COMPLETED:
-        badgeClass = "bg-green-100 text-green-800 hover:bg-green-100";
+        badgeClass = "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40";
         break;
       case ProgressStatusEnum.DROPPED:
-        badgeClass = "bg-gray-100 text-gray-800 hover:bg-gray-100";
+        badgeClass = "bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60";
         break;
       default:
-        badgeClass = "bg-slate-100 text-slate-800 hover:bg-slate-100";
+        badgeClass = "bg-slate-100 dark:bg-slate-700/50 text-slate-800 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60";
     }
     
     return <Badge className={badgeClass}>{progressStatus.name}</Badge>;
@@ -258,16 +258,16 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
                 </TableCell>
                 <TableCell>
                   {book.accessStatus?.id === 1 && (
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Published</Badge>
+                    <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40">Published</Badge>
                   )}
                   {book.accessStatus?.id === 2 && (
-                    <Badge className="bg-slate-100 text-slate-800 hover:bg-slate-100">Draft</Badge>
+                    <Badge className="bg-slate-100 dark:bg-slate-700/50 text-slate-800 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60">Draft</Badge>
                   )}
                   {book.accessStatus?.id === 3 && (
-                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Blocked</Badge>
+                    <Badge className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40">Blocked</Badge>
                   )}
                   {book.accessStatus?.id === 4 && (
-                    <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pending</Badge>
+                    <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40">Pending</Badge>
                   )}
                 </TableCell>
                 <TableCell>

@@ -71,28 +71,28 @@ function formatDate(dateString: string): string {
 function getStatusBadge(accessStatusId: number) {
   if (accessStatusId === AccessStatusEnum.PUBLISHED) {
     return (
-      <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-100">
+      <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border-green-200 dark:border-green-700/50">
         <CheckCircle className="h-3 w-3 mr-1" />
         Published
       </Badge>
     );
   } else if (accessStatusId === AccessStatusEnum.PENDING) {
     return (
-      <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+      <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-700/50">
         <Eye className="h-3 w-3 mr-1" />
         Pending
       </Badge>
     );
   } else if (accessStatusId === AccessStatusEnum.BLOCKED) {
     return (
-      <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
+      <Badge variant="outline" className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 border-red-200 dark:border-red-700/50">
         <XCircle className="h-3 w-3 mr-1" />
         Blocked
       </Badge>
     );
   } else {
     return (
-      <Badge variant="outline" className="bg-gray-100 hover:bg-gray-100">
+      <Badge variant="outline" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 border-gray-200 dark:border-gray-600/50">
         <AlertTriangle className="h-3 w-3 mr-1" />
         Private
       </Badge>
@@ -659,7 +659,7 @@ export default function BooksPage() {
       accessorKey: "bookType.name",
       header: "Type",
       cell: ({ row }) => (
-        <Badge variant="outline" className="capitalize">
+        <Badge variant="outline" className={`${row.original.bookType?.name === BOOK_TYPES.MANGA ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'} capitalize`}>
           {row.original.bookType?.name?.toLowerCase() || "Unknown"}
         </Badge>
       ),
@@ -670,20 +670,20 @@ export default function BooksPage() {
       header: "Age Rating",
       cell: ({ row }) => {
         const ageRating = row.original.ageRating;
-        let badgeClass = "bg-gray-100 text-gray-800";
+        let badgeClass = "bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300";
         let displayText = "Unknown";
 
         if (ageRating === 4) {
-          badgeClass = "bg-red-200 text-red-800 font-medium";
+          badgeClass = "bg-red-200 dark:bg-red-900/30 text-red-800 dark:text-red-300 font-medium";
           displayText = "18+";
         } else if (ageRating === 3) {
-          badgeClass = "bg-orange-200 text-orange-800 font-medium";
+          badgeClass = "bg-orange-200 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 font-medium";
           displayText = "16+";
         } else if (ageRating === 2) {
-          badgeClass = "bg-amber-200 text-amber-800 font-medium";
+          badgeClass = "bg-amber-200 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium";
           displayText = "13+";
         } else if (ageRating === 1) {
-          badgeClass = "bg-green-200 text-green-800 font-medium";
+          badgeClass = "bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300 font-medium";
           displayText = "All";
         }
         
@@ -760,14 +760,14 @@ export default function BooksPage() {
           {row.original.moderated ? (
             <Badge 
               variant="outline" 
-              className={`${row.original.moderated ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'} cursor-pointer`}
+              className={`${row.original.moderated ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-700/50'} cursor-pointer`}
               onClick={() => handleViewModerationResults(MODERATION_MODELS.GPT4O, row.original, isViewingModeration)}
             >
               <Shield className="h-3 w-3 mr-1" />
               {row.original.moderated ? 'Passed' : 'Review Required'}
             </Badge>
           ) : (
-            <Badge variant="outline" className="bg-gray-100 text-gray-800">
+            <Badge variant="outline" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600/50">
               Not Moderated
             </Badge>
           )}
@@ -869,31 +869,31 @@ export default function BooksPage() {
         
         if (accessStatus === ChapterAccessStatus.PUBLISHED) { // Published/Unlocked
           return (
-            <Badge variant="outline" className="bg-green-100 text-green-800">
+            <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50">
               Published
             </Badge>
           );
         } else if (accessStatus === ChapterAccessStatus.PENDING_REVIEW) { // Private/Locked
           return (
-            <Badge variant="outline" className="bg-amber-100 text-amber-800">
+            <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-700/50">
               Pending Review
             </Badge>
           );
         } else if (accessStatus === ChapterAccessStatus.REJECTED) { // Blocked
           return (
-            <Badge variant="outline" className="bg-red-100 text-red-800">
+            <Badge variant="outline" className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-200 dark:border-red-700/50">
               Rejected
             </Badge>
           );
         } else if (accessStatus === ChapterAccessStatus.DRAFT) { // Pending
           return (
-            <Badge variant="outline" className="bg-blue-100 text-blue-800">
+            <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-700/50">
               Draft
             </Badge>
           );
         } else {
           return (
-            <Badge variant="outline" className="bg-gray-100 text-gray-800">
+            <Badge variant="outline" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600/50">
               Unknown
             </Badge>
           );
@@ -932,11 +932,11 @@ export default function BooksPage() {
   const CustomDataTable = () => {
     if (!data || !data.books || data.books.length === 0) {
       return (
-        <div className="text-center py-10 border rounded-lg">
+        <div className="text-center py-10 border rounded-lg dark:border-gray-700 dark:bg-gray-800">
           <div className="flex justify-center mb-4">
-            <BookOpen size={48} className="text-muted-foreground/50" />
+            <BookOpen size={48} className="text-muted-foreground/50 dark:text-gray-600" />
           </div>
-          <p className="text-muted-foreground">No books to review at this time.</p>
+          <p className="text-muted-foreground dark:text-gray-400">No books to review at this time.</p>
         </div>
       );
     }
@@ -1045,7 +1045,7 @@ export default function BooksPage() {
       
       if (column.id === "bookType") {
         return (
-          <Badge variant="outline" className={`${book.bookType?.name === BOOK_TYPES.MANGA ? 'bg-pink-100 text-pink-800' : 'bg-purple-100 text-purple-800'} capitalize`}>
+          <Badge variant="outline" className={`${book.bookType?.name === BOOK_TYPES.MANGA ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300' : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'} capitalize`}>
             {book.bookType?.name?.toLowerCase() || "Unknown"}
           </Badge>
         );
@@ -1053,20 +1053,20 @@ export default function BooksPage() {
       
       if (column.id === "ageRating") {
         const ageRating = book.ageRating;
-        let badgeClass = "bg-gray-100 text-gray-800";
+        let badgeClass = "bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300";
         let displayText = "Unknown";
         
         if (ageRating === AgeRatingEnum.ADULT) {
-          badgeClass = "bg-red-200 text-red-800 font-medium";
+          badgeClass = "bg-red-200 dark:bg-red-900/30 text-red-800 dark:text-red-300 font-medium";
           displayText = "18+";
         } else if (ageRating === AgeRatingEnum.MATURE) {
-          badgeClass = "bg-orange-200 text-orange-800 font-medium";
+          badgeClass = "bg-orange-200 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 font-medium";
           displayText = "16+";
         } else if (ageRating === AgeRatingEnum.TEEN) {
-          badgeClass = "bg-amber-200 text-amber-800 font-medium";
+          badgeClass = "bg-amber-200 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium";
           displayText = "13+";
         } else if (ageRating === AgeRatingEnum.EVERYONE) {
-          badgeClass = "bg-green-200 text-green-800 font-medium";
+          badgeClass = "bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300 font-medium";
           displayText = "All";
         }
         
@@ -1112,13 +1112,13 @@ export default function BooksPage() {
             {book.moderated ? (
               <Badge 
                 variant="outline" 
-                className={`${book.moderated ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}
+                className={`${book.moderated ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-700/50'}`}
               >
                 <Shield className="h-3 w-3 mr-1" />
                 {book.moderated ? book.moderated : 'Review Required'}
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-gray-100 text-gray-800">
+              <Badge variant="outline" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600/50">
                 Not Moderated
               </Badge>
             )}
@@ -1198,28 +1198,28 @@ export default function BooksPage() {
     };
 
     return (
-      <div className="rounded-md border">
-        <table className="w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="rounded-md border dark:border-gray-700">
+        <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.id}
-                  className={`px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider ${column.id === "select" && "w-[32px] pr-2"} ${column.id === "expand" && "w-[32px] pl-0 pr-0"}`}
+                  className={`px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wider ${column.id === "select" && "w-[32px] pr-2"} ${column.id === "expand" && "w-[32px] pl-0 pr-0"}`}
                 >
                   {renderColumnHeader(column)}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             {data.books.map((book) => (
               <React.Fragment key={book.id}>
                 <tr>
                   {columns.map((column) => (
                     <td 
                       key={column.id} 
-                      className={`px-4 py-2 ${column.id === "select" && "pr-2"} ${column.id === "expand" && "pl-0 pr-0"}`}
+                      className={`px-4 py-2 dark:text-gray-300 ${column.id === "select" && "pr-2"} ${column.id === "expand" && "pl-0 pr-0"}`}
                     >
                       {renderColumnCell(column, book)}
                     </td>
@@ -1227,7 +1227,7 @@ export default function BooksPage() {
                 </tr>
                 {expandedRows[book.id] && (
                   <tr>
-                    <td colSpan={columns.length} className="px-12 py-2 border-b">
+                    <td colSpan={columns.length} className="px-12 py-2 border-b dark:border-gray-700">
                       {renderChapters(book)}
                     </td>
                   </tr>
@@ -1236,8 +1236,8 @@ export default function BooksPage() {
             ))}
           </tbody>
         </table>
-        <div className="flex items-center justify-between space-x-2 p-4 border-t">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex items-center justify-between space-x-2 p-4 border-t dark:border-gray-700">
+          <div className="text-sm text-muted-foreground dark:text-gray-400">
             Showing {data.books.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(
               currentPage * pageSize,
               data.pageCount * pageSize
@@ -1498,11 +1498,11 @@ export default function BooksPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 dark:bg-gray-900 min-h-screen">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Content Moderation</h1>
-          <p className="text-muted-foreground mt-1">Review and approve books submitted by users</p>
+          <h1 className="text-2xl font-bold dark:text-white">Content Moderation</h1>
+          <p className="text-muted-foreground dark:text-gray-400 mt-1">Review and approve books submitted by users</p>
         </div>
       </div>
 
@@ -1510,31 +1510,31 @@ export default function BooksPage() {
         defaultValue="pending" 
         value={selectedTab} 
         onValueChange={(value) => handleTabChange(value as "pending" | "published" | "blocked")} 
-        className="w-full"
+        className="w-full dark:bg-gray-900"
       >
-        <TabsList>
-          <TabsTrigger value="pending">Pending Review</TabsTrigger>
-          <TabsTrigger value="published">Published</TabsTrigger>
-          <TabsTrigger value="blocked">Rejected</TabsTrigger>
+        <TabsList className="dark:bg-gray-800">
+          <TabsTrigger value="pending" className="dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white">Pending Review</TabsTrigger>
+          <TabsTrigger value="published" className="dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white">Published</TabsTrigger>
+          <TabsTrigger value="blocked" className="dark:text-gray-300 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white">Rejected</TabsTrigger>
         </TabsList>
 
         <TabsContent value={selectedTab} className="mt-4">
           <div className="relative mb-4">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground dark:text-gray-400" />
             <Input
               type="search"
               placeholder="Search books..."
-              className="pl-8 w-[250px]"
+              className="pl-8 w-[250px] dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           {isError && (
-            <div className="rounded-md bg-destructive/15 p-4 text-destructive flex items-center">
+            <div className="rounded-md bg-destructive/15 dark:bg-red-900/20 p-4 text-destructive dark:text-red-400 flex items-center border dark:border-red-800">
               <AlertTriangle className="h-5 w-5 mr-2" />
               <p>Error loading books: {error?.message || "Unknown error occurred"}</p>
-              <Button variant="outline" size="sm" className="ml-auto" onClick={() => refetch()}>
+              <Button variant="outline" size="sm" className="ml-auto dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700" onClick={() => refetch()}>
                 Retry
               </Button>
             </div>
@@ -1543,7 +1543,7 @@ export default function BooksPage() {
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Loading books...</span>
+              <span className="ml-2 dark:text-white">Loading books...</span>
             </div>
           ) : (
             <>

@@ -95,11 +95,11 @@ export default function SignIn() {
   
   return (
     <div className="w-full max-w-md">
-      <div className="p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
+      <div className="p-8 space-y-6 rounded-lg shadow-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800">
         <div className="space-y-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold">Sign In</h1>
-            <p className="text-muted-foreground mt-2">Access your digital bookshelf and continue reading</p>
+            <h1 className="text-3xl font-bold dark:text-white">Sign In</h1>
+            <p className="text-muted-foreground dark:text-gray-300 mt-2">Access your digital bookshelf and continue reading</p>
           </div>
           
           <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -114,10 +114,10 @@ export default function SignIn() {
             />            
             <div className="space-y-2">
               <div className="flex justify-between">
-                <label htmlFor="password" className="block text-sm font-medium">
-                  Password <span className="text-destructive">*</span>
+                <label htmlFor="password" className="block text-sm font-medium dark:text-white">
+                  Password <span className="text-destructive dark:text-red-400">*</span>
                 </label>
-                <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                <Link href="/forgot-password" className="text-sm text-primary dark:text-red-400 hover:underline">
                   Forgot password?
                 </Link>
               </div>
@@ -133,7 +133,7 @@ export default function SignIn() {
                 />
                 <button
                   type="button"
-                  className="absolute right-2 top-[6px] text-muted-foreground hover:text-foreground p-1"
+                  className="absolute right-2 top-[6px] text-muted-foreground dark:text-gray-400 hover:text-foreground dark:hover:text-white p-1"
                   onClick={togglePasswordVisibility}
                   tabIndex={-1}
                 >
@@ -146,15 +146,15 @@ export default function SignIn() {
               </div>
             </div>
             
-            <Button type="submit" className="w-full" disabled={isLoggingIn}>
+            <Button type="submit" className="w-full dark:bg-red-600 dark:hover:bg-red-700 dark:text-white" disabled={isLoggingIn}>
               {isLoggingIn ? "Signing In..." : "Sign In"}
             </Button>
           </form>
           
           <div className="text-center">
-            <p className="text-sm">
+            <p className="text-sm dark:text-gray-300">
               Don't have an account?{" "}
-              <Link href="/signup" className="text-primary hover:underline">
+              <Link href="/signup" className="text-primary dark:text-red-400 hover:underline">
                 Sign Up
               </Link>
             </p>
@@ -164,17 +164,17 @@ export default function SignIn() {
         {/* Divider */}
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border"></div>
+            <div className="w-full border-t border-border dark:border-gray-600"></div>
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-card text-muted-foreground">or</span>
+            <span className="px-2 bg-card dark:bg-gray-800 text-muted-foreground dark:text-gray-400">or</span>
           </div>
         </div>
         
         {/* Continue without login button */}
         <div className="text-center">
           <Link href="/">
-            <Button variant="link" className="text-muted-foreground hover:text-primary">
+            <Button variant="link" className="text-muted-foreground dark:text-gray-400 hover:text-primary dark:hover:text-red-400">
               Continue as a Guest
             </Button>
           </Link>

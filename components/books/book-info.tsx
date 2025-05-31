@@ -23,7 +23,7 @@ import { BOOK_TYPES, AGE_RATINGS, AgeRatingEnum, PROGRESS_STATUSES, ProgressStat
 
 // Helper function to display error messages
 const ErrorMessage = ({ message }: { message: string }) => (
-  <div className="flex items-center text-destructive text-xs mt-1">
+  <div className="flex items-center text-destructive dark:text-red-400 text-xs mt-1">
     <AlertCircle size={12} className="mr-1" />
     <span>{message}</span>
   </div>
@@ -100,14 +100,14 @@ export default function BookInfo({
 }: BookInfoProps) {
   return (
     <div className={`w-full md:w-[30%] relative transition-all duration-300 ${isCollapsed ? 'md:w-[48px]' : ''}`}>
-      <div className={`px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between ${isCollapsed ? 'md:px-0' : ''}`}>
-        <h3 className={`text-lg font-medium ${isCollapsed ? 'md:hidden' : ''}`}>Book Info</h3>
+      <div className={`px-6 py-4 bg-secondary/30 dark:bg-gray-700/50 border-b border-secondary/90 dark:border-gray-600 flex items-center justify-between ${isCollapsed ? 'md:px-0' : ''}`}>
+        <h3 className={`text-lg font-medium dark:text-white ${isCollapsed ? 'md:hidden' : ''}`}>Book Info</h3>
         <div className={`flex items-center space-x-1 ${isCollapsed ? 'mx-auto' : ''}`}>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-gray-200"
             onClick={() => setIsCollapsed(!isCollapsed)}
             title={isCollapsed ? "Expand" : "Collapse"}
           >
@@ -123,11 +123,11 @@ export default function BookInfo({
         <div className="p-6 space-y-4">
           {/* Cover Image */}
           <div className="space-y-2">
-            <Label htmlFor="cover-upload" className="flex items-center">
+            <Label htmlFor="cover-upload" className="flex items-center dark:text-white">
               Cover Image
-              <span className="text-destructive ml-1">*</span>
+              <span className="text-destructive dark:text-red-400 ml-1">*</span>
             </Label>
-            <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${errors.coverImage ? 'border-destructive bg-destructive/5' : 'border-border'}`}>
+            <div className={`border-2 border-dashed rounded-lg p-4 text-center relative ${errors.coverImage ? 'border-destructive dark:border-red-500 bg-destructive/5 dark:bg-red-900/10' : 'border-border dark:border-gray-600'}`}>
               {coverImagePreview ? (
                 <div className="relative aspect-[2/3] w-full rounded-lg overflow-hidden mb-2 hover:cursor-pointer group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -147,11 +147,11 @@ export default function BookInfo({
                 </div>
               ) : (
                 <div className="py-10 flex flex-col items-center">
-                  <Upload size={48} className={`mb-2 ${errors.coverImage ? 'text-destructive' : 'text-muted-foreground'}`} />
-                  <p className={`text-sm ${errors.coverImage ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  <Upload size={48} className={`mb-2 ${errors.coverImage ? 'text-destructive dark:text-red-400' : 'text-muted-foreground dark:text-gray-400'}`} />
+                  <p className={`text-sm ${errors.coverImage ? 'text-destructive dark:text-red-400' : 'text-muted-foreground dark:text-gray-400'}`}>
                     Click or drag to upload cover image
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
                     JPG, JPEG, PNG or WebP, max 1MB
                   </p>
                 </div>
@@ -168,7 +168,7 @@ export default function BookInfo({
             {errors.coverImage ? (
               <ErrorMessage message={errors.coverImage} />
             ) : (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
                 {isEditing && coverImagePreview ? (canEdit ? 'Click image to update cover' : 'Cover image cannot be updated') : 'Upload a cover image for your book'}
               </p>
             )}
@@ -176,9 +176,9 @@ export default function BookInfo({
 
           {/* Book Type Dropdown - Replaced with Radio Buttons */}
           <div className="space-y-2">
-            <Label className="flex items-center">
+            <Label className="flex items-center dark:text-white">
               Book Type
-              <span className="text-destructive ml-1">*</span>
+              <span className="text-destructive dark:text-red-400 ml-1">*</span>
             </Label>
             <RadioGroup
               value={bookType}
@@ -188,28 +188,28 @@ export default function BookInfo({
             >
               <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
                 bookType === BOOK_TYPES.NOVEL 
-                  ? 'border-primary bg-primary/5 shadow-sm' 
-                  : 'border-border hover:border-muted-foreground/20'
+                  ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm' 
+                  : 'border-border dark:border-gray-600 hover:border-muted-foreground/20 dark:hover:border-gray-500'
               }`}>
                 <RadioGroupItem value={BOOK_TYPES.NOVEL} id="word-book" />
-                <Label htmlFor="word-book" className="font-normal cursor-pointer">
+                <Label htmlFor="word-book" className="font-normal cursor-pointer dark:text-white">
                   <div className="flex flex-col">
                     <span className="font-medium">{BOOK_TYPES.NOVEL}</span>
-                    <span className="text-xs text-muted-foreground">Text-based book with written content</span>
+                    <span className="text-xs text-muted-foreground dark:text-gray-400">Text-based book with written content</span>
                   </div>
                 </Label>
               </div>
               
               <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
                 bookType === BOOK_TYPES.MANGA 
-                  ? 'border-primary bg-primary/5 shadow-sm' 
-                  : 'border-border hover:border-muted-foreground/20'
+                  ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm' 
+                  : 'border-border dark:border-gray-600 hover:border-muted-foreground/20 dark:hover:border-gray-500'
               }`}>
                 <RadioGroupItem value={BOOK_TYPES.MANGA} id="picture-book" />
-                <Label htmlFor="picture-book" className="font-normal cursor-pointer">
+                <Label htmlFor="picture-book" className="font-normal cursor-pointer dark:text-white">
                   <div className="flex flex-col">
                     <span className="font-medium">{BOOK_TYPES.MANGA}</span>
-                    <span className="text-xs text-muted-foreground">Image-based book with illustration uploads and captions</span>
+                    <span className="text-xs text-muted-foreground dark:text-gray-400">Image-based book with illustration uploads and captions</span>
                   </div>
                 </Label>
               </div>
@@ -217,7 +217,7 @@ export default function BookInfo({
             {errors.bookType ? (
               <ErrorMessage message={errors.bookType} />
             ) : (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
                 Select whether this is primarily a word-based or picture-based book
               </p>
             )}
@@ -225,9 +225,9 @@ export default function BookInfo({
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="flex items-center">
+            <Label htmlFor="title" className="flex items-center dark:text-white">
               Book Title
-              <span className="text-destructive ml-1">*</span>
+              <span className="text-destructive dark:text-red-400 ml-1">*</span>
             </Label>
             <div className="relative">
               <EnhancementPopover
@@ -262,9 +262,9 @@ export default function BookInfo({
 
           {/* Genres */}
           <div className="space-y-2">
-            <Label htmlFor="genres" className="flex items-center">
+            <Label htmlFor="genres" className="flex items-center dark:text-white">
               Genres
-              <span className="text-destructive ml-1">*</span>
+              <span className="text-destructive dark:text-red-400 ml-1">*</span>
             </Label>
             <MultiSelect
               options={genres?.map(genre => ({
@@ -282,7 +282,7 @@ export default function BookInfo({
             {errors.genres ? (
               <ErrorMessage message={errors.genres} />
             ) : (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
                 Select at least one genre
               </p>
             )}
@@ -290,9 +290,9 @@ export default function BookInfo({
 
           {/* Age Rating */}
           <div className="space-y-2">
-            <Label htmlFor="age-rating" className="flex items-center">
+            <Label htmlFor="age-rating" className="flex items-center dark:text-white">
               Age Rating
-              <span className="text-destructive ml-1">*</span>
+              <span className="text-destructive dark:text-red-400 ml-1">*</span>
             </Label>
             <Select
               value={ageRating.toString()}
@@ -315,7 +315,7 @@ export default function BookInfo({
             {errors.ageRating ? (
               <ErrorMessage message={errors.ageRating} />
             ) : (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
                 Select appropriate age rating for your content
               </p>
             )}
@@ -323,9 +323,9 @@ export default function BookInfo({
 
           {/* Progress Status */}
           <div className="space-y-2">
-            <Label htmlFor="progress-status" className="flex items-center">
+            <Label htmlFor="progress-status" className="flex items-center dark:text-white">
               Progress Status
-              <span className="text-destructive ml-1">*</span>
+              <span className="text-destructive dark:text-red-400 ml-1">*</span>
             </Label>
             <Select
               value={progressStatus.toString()}
@@ -348,7 +348,7 @@ export default function BookInfo({
             {errors.progressStatus ? (
               <ErrorMessage message={errors.progressStatus} />
             ) : (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
                 {!canEditProgressStatus 
                   ? "Progress status cannot be changed" 
                   : "Select the current progress status of your book"}
@@ -358,9 +358,9 @@ export default function BookInfo({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="flex items-center">
+            <Label htmlFor="description" className="flex items-center dark:text-white">
               Description
-              <span className="text-destructive ml-1">*</span>
+              <span className="text-destructive dark:text-red-400 ml-1">*</span>
             </Label>
             <div className="relative">
               <EnhancementPopover
@@ -398,9 +398,9 @@ export default function BookInfo({
       )}
       {isCollapsed && (
         <div 
-          className={`h-full flex items-center justify-center cursor-pointer hover:bg-secondary/30 transition-colors ${
+          className={`h-full flex items-center justify-center cursor-pointer hover:bg-secondary/30 dark:hover:bg-gray-700/30 transition-colors ${
             (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType || errors.ageRating || errors.progressStatus) 
-              ? 'bg-destructive/10 border-r border-destructive' 
+              ? 'bg-destructive/10 dark:bg-red-900/20 border-r border-destructive dark:border-red-500' 
               : ''
           }`}
           onClick={() => setIsCollapsed(false)}
@@ -413,8 +413,8 @@ export default function BookInfo({
           <span 
             className={`py-6 font-medium tracking-wide ${
               (errors.title || errors.description || errors.genres || errors.coverImage || errors.bookType || errors.ageRating || errors.progressStatus)
-                ? 'text-destructive'
-                : 'text-muted-foreground'
+                ? 'text-destructive dark:text-red-400'
+                : 'text-muted-foreground dark:text-gray-400'
             }`}
             style={{
               writingMode: 'vertical-rl',

@@ -106,17 +106,17 @@ const SortableImageItem = ({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 p-2 bg-background border rounded-md"
+      className="flex items-center gap-3 p-2 bg-background dark:bg-gray-700 border dark:border-gray-600 rounded-md"
     >
       <div 
         {...attributes}
         {...listeners}
         className="cursor-grab"
       >
-        <GripVertical size={16} className="text-muted-foreground" />
+        <GripVertical size={16} className="text-muted-foreground dark:text-gray-400" />
       </div>
       
-      <div className="relative h-16 aspect-[4/3] rounded-md overflow-hidden border flex-shrink-0">
+      <div className="relative h-16 aspect-[4/3] rounded-md overflow-hidden border dark:border-gray-600 flex-shrink-0">
         <PictureImage
           src={url}
           alt={`Page ${imgIndex + 1} - ${fileName}`}
@@ -125,10 +125,10 @@ const SortableImageItem = ({
       </div>
       
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate flex items-center">
+        <p className="text-sm font-medium truncate flex items-center dark:text-white">
           <span>Page {imgIndex + 1}</span>
         </p>
-        <p className="text-xs text-muted-foreground truncate">
+        <p className="text-xs text-muted-foreground dark:text-gray-400 truncate">
           {fileName}
         </p>
       </div>
@@ -137,7 +137,7 @@ const SortableImageItem = ({
         type="button"
         variant="ghost"
         size="icon"
-        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+        className="h-8 w-8 text-muted-foreground hover:text-destructive dark:text-gray-400 dark:hover:text-red-400"
         disabled={!isChapterEditable}
         onClick={() => onRemoveImage(imgIndex)}
       >
@@ -388,10 +388,10 @@ export default function ChapterCreator({
     }
   };
 
-  // Helper function to display error messages
+  // Helper function for error messages
   const ErrorMessage = ({ message }: { message: string }) => (
-    <div className="flex items-center text-destructive text-xs mt-1">
-      <AlertCircle size={12} className="mr-1" />
+    <div className="flex items-center text-destructive dark:text-red-400 text-xs mt-1">
+      <AlertCircle size={12} className="mr-1.5" />
       <span>{message}</span>
     </div>
   );
@@ -521,18 +521,18 @@ export default function ChapterCreator({
 
   return (
     <div className="ChapterCreator">
-      <div className="px-6 py-4 bg-secondary/30 border-b border-secondary/90 flex items-center justify-between">
-        <h3 className="text-lg font-medium flex items-center gap-3">
+      <div className="px-6 py-4 bg-secondary/30 dark:bg-gray-700/50 border-b border-secondary/90 dark:border-gray-600 flex items-center justify-between">
+        <h3 className="text-lg font-medium flex items-center gap-3 dark:text-white">
           Chapters
           {chapters.length > 0 && (
-            <span className="text-sm bg-secondary text-secondary-foreground rounded-full px-3 py-1 font-medium">
+            <span className="text-sm bg-secondary dark:bg-gray-600 text-secondary-foreground dark:text-gray-200 rounded-full px-3 py-1 font-medium">
               {chapters.length}
             </span>
           )}
         </h3>
         {errors.chapters && (
-          <div className="text-xs p-1.5 bg-destructive/10 border border-destructive rounded-md flex-shrink-0">
-            <p className="flex items-center text-destructive">
+          <div className="text-xs p-1.5 bg-destructive/10 dark:bg-red-900/20 border border-destructive dark:border-red-600 rounded-md flex-shrink-0">
+            <p className="flex items-center text-destructive dark:text-red-400">
               <Trash2 size={12} className="mr-1.5 flex-shrink-0" />
               <span className="line-clamp-1">{errors.chapters}</span>
             </p>
@@ -545,7 +545,7 @@ export default function ChapterCreator({
           <div className="text-center py-8">
             <div className="flex items-center justify-center gap-2">
               <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-              <span className="text-muted-foreground">Loading chapters...</span>
+              <span className="text-muted-foreground dark:text-gray-400">Loading chapters...</span>
             </div>
           </div>
         ) : (
@@ -558,11 +558,11 @@ export default function ChapterCreator({
                     <AccordionItem 
                       key={chapter.id} 
                       value={chapter.id}
-                      className={`bg-white border rounded-lg mb-3 overflow-hidden ${emptyChapters.includes(chapter.id) ? 'border-destructive' : 'border-border'}`}
+                      className={`bg-white dark:bg-gray-800 border rounded-lg mb-3 overflow-hidden ${emptyChapters.includes(chapter.id) ? 'border-destructive dark:border-red-500' : 'border-border dark:border-gray-700'}`}
                     >
-                      <div className="px-4 py-3 flex items-center border-b">
+                      <div className="px-4 py-3 flex items-center border-b dark:border-gray-700">
                         <h3 
-                          className={`text-md font-medium flex-1 ${
+                          className={`text-md font-medium flex-1 dark:text-white ${
                             chapter.id === editingChapterId 
                               ? 'hidden' 
                               : 'block'
@@ -575,12 +575,12 @@ export default function ChapterCreator({
                         {/* Editable title field */}
                         {chapter.id === editingChapterId && (
                           <div className="flex-1 mr-2" onClick={(e) => e.stopPropagation()}>
-                            <div className="relative bg-muted/30 rounded-md border border-input">
+                            <div className="relative bg-muted/30 dark:bg-gray-700/50 rounded-md border border-input dark:border-gray-600">
                               <Input
                                 ref={editableInputRef}
                                 value={editingChapterTitle}
                                 onChange={(e) => setEditingChapterTitle(e.target.value)}
-                                className="pr-[100px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                                className="pr-[100px] border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 dark:text-white"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     saveChapterTitleEdit();
@@ -650,7 +650,7 @@ export default function ChapterCreator({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 dark:text-gray-400 dark:hover:text-gray-200"
                             onClick={(e) => {
                               e.stopPropagation();
                               startEditingChapterTitle(chapter.id, chapter.title);
@@ -665,7 +665,7 @@ export default function ChapterCreator({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive dark:text-gray-400 dark:hover:text-red-400"
                             onClick={(e) => {
                               e.stopPropagation();
                               confirmDeleteChapter(chapter.id);
@@ -680,7 +680,7 @@ export default function ChapterCreator({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-8 w-8 dark:text-gray-400 dark:hover:text-gray-200"
                             onClick={() => toggleChapter(chapter.id)}
                           >
                             <ChevronDown 
@@ -693,14 +693,14 @@ export default function ChapterCreator({
                         </div>
                       </div>
                       {expandedChapter === chapter.id && (
-                        <div className="px-4 py-3 border-t">
+                        <div className="px-4 py-3 border-t dark:border-gray-700">
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <Label htmlFor={`chapter-content-${chapter.id}`}>Chapter Content</Label>
+                              <Label htmlFor={`chapter-content-${chapter.id}`} className="dark:text-white">Chapter Content</Label>
                               {bookType === BOOK_TYPES.NOVEL ? (
                                 <div className="space-y-4">
                                   <div className="flex flex-col gap-2">
-                                    <div className="inline-flex w-full border-b">
+                                    <div className="inline-flex w-full border-b dark:border-gray-700">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -712,7 +712,7 @@ export default function ChapterCreator({
                                         className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
                                           !chapter.documentUrl 
                                             ? 'border-primary text-primary' 
-                                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                                            : 'border-transparent text-muted-foreground dark:text-gray-400 hover:text-foreground dark:hover:text-gray-200'
                                         }`}
                                       >
                                         Write Content
@@ -729,7 +729,7 @@ export default function ChapterCreator({
                                         className={`px-4 py-2 font-medium text-sm flex-1 border-b-2 transition-colors ${
                                           chapter.documentUrl 
                                             ? 'border-primary text-primary' 
-                                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                                            : 'border-transparent text-muted-foreground dark:text-gray-400 hover:text-foreground dark:hover:text-gray-200'
                                         }`}
                                       >
                                         Upload Document
@@ -738,7 +738,7 @@ export default function ChapterCreator({
                                     
                                     {/* Option 1: Write content directly */}
                                     {!chapter.documentUrl && (
-                                      <div className="border rounded-md p-4">
+                                      <div className="border dark:border-gray-600 rounded-md p-4">
                                         <TiptapEditor 
                                           content={chapter.content}
                                           onChange={(newContent) => {
@@ -763,7 +763,7 @@ export default function ChapterCreator({
                                     
                                     {/* Option 2: Upload document */}
                                     {chapter.documentUrl && (
-                                      <div className="border rounded-md p-4">
+                                      <div className="border dark:border-gray-600 rounded-md p-4">
                                         {chapter.documentUrl === 'pending' ? (
                                           <DocumentUploader 
                                             onContentConverted={(jsonContent) => {
@@ -784,7 +784,7 @@ export default function ChapterCreator({
                                             disabled={!isChapterEditable(chapter)}
                                           />
                                         ) : (
-                                          <div className="flex items-center gap-2 text-sm p-2">
+                                          <div className="flex items-center gap-2 text-sm p-2 dark:text-gray-200">
                                             <FileText size={16} className="text-primary" />
                                             <span className="font-medium">Document converted to editor format</span>
                                             <Button 
@@ -811,10 +811,10 @@ export default function ChapterCreator({
                               ) : (
                                 /* Picture Book UI */
                                 <div className="space-y-4">
-                                  <div className="border rounded-md p-4">
-                                    <h4 className="text-sm font-medium mb-4 flex justify-between items-center">
+                                  <div className="border dark:border-gray-600 rounded-md p-4">
+                                    <h4 className="text-sm font-medium mb-4 flex justify-between items-center dark:text-white">
                                       <span>Chapter Images</span>
-                                      <span className="text-xs text-muted-foreground">{chapter.images?.length || 0} images</span>
+                                      <span className="text-xs text-muted-foreground dark:text-gray-400">{chapter.images?.length || 0} images</span>
                                     </h4>
                                     
                                     {/* Image gallery with drag-and-drop */}
@@ -869,23 +869,23 @@ export default function ChapterCreator({
                                         </DndContext>
                                       </div>
                                     ) : (
-                                      <div className="text-center mb-4 text-sm text-muted-foreground py-4">
+                                      <div className="text-center mb-4 text-sm text-muted-foreground dark:text-gray-400 py-4">
                                         No images added yet
                                       </div>
                                     )}
                                     
                                     {/* For manga books, upload images */}
-                                    <div className={`border-2 border-dashed rounded-lg ${emptyChapters.includes(chapter.id) ? 'border-destructive bg-destructive/5' : 'border-border'} p-6 text-center relative`}>
+                                    <div className={`border-2 border-dashed rounded-lg ${emptyChapters.includes(chapter.id) ? 'border-destructive dark:border-red-500 bg-destructive/5 dark:bg-red-900/10' : 'border-border dark:border-gray-600'} p-6 text-center relative`}>
                                       <div className="flex flex-col items-center">
-                                        <Upload size={16} className="mb-2 text-muted-foreground" />
-                                        <p className="text-sm text-muted-foreground">
+                                        <Upload size={16} className="mb-2 text-muted-foreground dark:text-gray-400" />
+                                        <p className="text-sm text-muted-foreground dark:text-gray-400">
                                           Click to upload images
                                         </p>
-                                        <p className="text-xs text-muted-foreground mt-1">
+                                        <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
                                           JPG, PNG or WebP (max 5MB each)
                                         </p>
                                         {emptyChapters.includes(chapter.id) && (
-                                          <p className="text-xs text-destructive mt-3 font-medium">
+                                          <p className="text-xs text-destructive dark:text-red-400 mt-3 font-medium">
                                             Please add at least one image to this chapter
                                           </p>
                                         )}
@@ -923,7 +923,7 @@ export default function ChapterCreator({
             )}
 
             {/* Add new chapter */}
-            <div className="pt-4 pb-2 border-t border-secondary/50">
+            <div className="pt-4 pb-2 border-t border-secondary/50 dark:border-gray-700">
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <EnhancementPopover

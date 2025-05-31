@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { useConditionalAnalytics, useSocket } from '@/lib/hooks';
 import { useGenres } from "@/lib/hooks/useGenres";
+import Image from "next/image";
 
 import { MobileMenu } from "./mobile-menu";
 import { useAvailableActivities } from "@/lib/hooks/useActivities";
@@ -193,7 +194,13 @@ export default function Header() {
         <div className="flex items-center space-x-8">
           <div className="flex items-center">
             <Link href="/" className="flex items-center cursor-pointer ml-0 md:ml-0">
-              <BookOpen className="h-6 w-6 text-black dark:text-white mr-2" />
+              <Image 
+                src="/logo.png" 
+                alt="Haru's Library Logo" 
+                width={64} 
+                height={64} 
+                className="mr-2"
+              />
               <span className="font-bold text-xl">Haru's Library</span>
             </Link>
           </div>

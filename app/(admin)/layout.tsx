@@ -45,7 +45,7 @@ export default function AdminLayout({
   return (
     <RoleGuard allowedRoles={[UserRoleEnum.ADMIN, UserRoleEnum.MANAGER]}>
       {/* Admin-specific header */}
-      <header className="bg-card border-b border-border h-14 flex items-center px-4 shrink-0">
+      <header className="bg-card dark:bg-gray-900 border-b border-border dark:border-gray-700 h-14 flex items-center px-4 shrink-0">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-4">
             <Button 
@@ -53,17 +53,17 @@ export default function AdminLayout({
               size="icon" 
               onClick={toggleSidebar}
               title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              className="cursor-pointer"
+              className="cursor-pointer dark:text-white dark:hover:bg-gray-800"
             >
               {isSidebarOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
             </Button>
 
             <Link href="/">
-              <h1 className="text-xl font-bold">Haru's Library Admin</h1>
+              <h1 className="text-xl font-bold dark:text-white">Haru's Library Admin</h1>
             </Link>
           </div>
           <Link href="/">
-            <Button variant="ghost" className="flex items-center cursor-pointer">
+            <Button variant="ghost" className="flex items-center cursor-pointer dark:text-white dark:hover:bg-gray-800">
               <LogOut className="mr-2 h-4 w-4" />
               Home
             </Button>
@@ -75,7 +75,7 @@ export default function AdminLayout({
         {/* Sidebar */}
         <aside
           className={cn(
-            "bg-card border-r border-border transition-all duration-300 ease-in-out flex flex-col",
+            "bg-card dark:bg-gray-900 border-r border-border dark:border-gray-700 transition-all duration-300 ease-in-out flex flex-col",
             isSidebarOpen ? "w-64" : "w-16"
           )}
         >
@@ -89,8 +89,8 @@ export default function AdminLayout({
                   "flex items-center rounded-md transition-colors cursor-pointer",
                   isSidebarOpen ? "px-4 py-3" : "p-2 justify-center",
                   pathname === item.path || pathname.startsWith(`${item.path}/`)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-secondary"
+                    ? "bg-primary text-primary-foreground dark:bg-red-600 dark:text-white"
+                    : "text-foreground dark:text-gray-300 hover:bg-secondary dark:hover:bg-gray-800"
                 )}
               >
                 <div className={isSidebarOpen ? "mr-2" : ""}>
@@ -101,8 +101,8 @@ export default function AdminLayout({
             ))}
           </nav>
           {isSidebarOpen && (
-            <div className="p-4 border-t border-border">
-              <div className="text-sm text-muted-foreground">
+            <div className="p-4 border-t border-border dark:border-gray-700">
+              <div className="text-sm text-muted-foreground dark:text-gray-400">
                 <div>Admin Portal</div>
                 <div>Version 1.0.0</div>
               </div>
@@ -111,7 +111,7 @@ export default function AdminLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6 transition-all duration-300 ease-in-out">
+        <main className="flex-1 overflow-auto p-6 transition-all duration-300 ease-in-out dark:bg-gray-900">
           {children}
         </main>
       </div>

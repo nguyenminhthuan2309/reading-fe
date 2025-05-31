@@ -669,14 +669,14 @@ export default function ReadPage() {
       {!isCurrentChapterLocked && (
       <div className="fixed bottom-36 right-2 flex flex-col gap-4 z-30 transition-all duration-300">
         {/* Comments/Reviews button group */}
-        <div className={`bg-background/80 backdrop-blur-sm shadow-lg rounded-full p-1 border ${commentsOpen ? 'mr-[384px] sm:mr-96' : ''} transition-all duration-300`}>
+        <div className={`bg-background/80 dark:bg-gray-800/90 backdrop-blur-sm shadow-lg rounded-full p-1 border dark:border-gray-700 ${commentsOpen ? 'mr-[384px] sm:mr-96' : ''} transition-all duration-300`}>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
                   variant={commentsOpen ? "default" : "secondary"} 
                   size="icon"
-                  className="h-12 w-12 rounded-full"
+                  className="h-12 w-12 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
                   onClick={toggleComments}
                 >
                   <MessageCircle className="h-5 w-5" />
@@ -690,14 +690,14 @@ export default function ReadPage() {
         </div>
         
         {/* Reading mode group with multiple options - now above voice reader */}
-        <div className={`bg-background/80 backdrop-blur-sm shadow-lg items-center rounded-full p-1 border flex flex-col gap-1 ${commentsOpen ? 'mr-[384px] sm:mr-96' : ''} transition-all duration-300`}>
+        <div className={`bg-background/80 dark:bg-gray-800/90 backdrop-blur-sm shadow-lg items-center rounded-full p-1 border dark:border-gray-700 flex flex-col gap-1 ${commentsOpen ? 'mr-[384px] sm:mr-96' : ''} transition-all duration-300`}>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
                   variant={readingMode === 'scroll' ? "default" : "ghost"} 
                   size="icon"
-                  className="h-12 w-12 rounded-full"
+                  className="h-12 w-12 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
                   onClick={() => setReadingMode('scroll')}
                 >
                   <ScrollText className="h-4 w-4" />
@@ -715,7 +715,7 @@ export default function ReadPage() {
                 <Button 
                   variant={readingMode === 'flip' ? "default" : "ghost"} 
                   size="icon"
-                  className="h-10 w-10 rounded-full"
+                  className="h-10 w-10 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
                   onClick={() => setReadingMode('flip')}
                 >
                   <BookOpen className="h-4 w-4" />
@@ -733,7 +733,7 @@ export default function ReadPage() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-10 w-10 rounded-full"
+                  className="h-10 w-10 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
                 >
                   <Maximize2 className="h-4 w-4" />
                 </Button>

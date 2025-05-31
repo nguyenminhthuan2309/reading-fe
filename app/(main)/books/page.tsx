@@ -363,58 +363,60 @@ export default function BooksPage() {
   // Loading state - only for initial load
   if (showFullPageLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 pt-4">
-        {/* Back button */}
-        <div className="mb-3">
-          <Button 
-            variant="link" 
-            className="flex items-center gap-2 py-1 pl-0"
-            onClick={() => router.back()}
-          >
-            <ChevronLeft size={16} />
-            Back
-          </Button>
-        </div>
-        
-        {/* Header skeleton */}
-        <div className="mb-6">
-          <Skeleton className="h-9 w-48 mb-2" />
-          <Skeleton className="h-6 w-72" />
-        </div>
-        
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar skeleton */}
-          <div className="md:w-72 flex-shrink-0">
-            <div className="border rounded-lg p-4 shadow-sm">
-              <Skeleton className="h-7 w-full mb-4" />
-              <div className="space-y-4">
-                {Array(5).fill(0).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="h-6 w-32 mb-2" />
-                    <div className="space-y-2 pl-2">
-                      {Array(4).fill(0).map((_, j) => (
-                        <div key={j} className="flex items-center gap-2">
-                          <Skeleton className="h-4 w-4 rounded" />
-                          <Skeleton className="h-4 w-24" />
-                        </div>
-                      ))}
+      <div className="container mx-auto px-4 py-8 pt-4 my-6">
+        <div className="border border-secondary/90 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm p-6">
+          {/* Back button */}
+          <div className="mb-3">
+            <Button 
+              variant="link" 
+              className="flex items-center gap-2 py-1 pl-0 dark:text-white"
+              onClick={() => router.back()}
+            >
+              <ChevronLeft size={16} />
+              Back
+            </Button>
+          </div>
+          
+          {/* Header skeleton */}
+          <div className="mb-6">
+            <Skeleton className="h-9 w-48 mb-2" />
+            <Skeleton className="h-6 w-72" />
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Sidebar skeleton */}
+            <div className="md:w-72 flex-shrink-0">
+              <div className="border dark:border-gray-700 rounded-lg p-4 shadow-sm dark:bg-gray-800">
+                <Skeleton className="h-7 w-full mb-4" />
+                <div className="space-y-4">
+                  {Array(5).fill(0).map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="h-6 w-32 mb-2" />
+                      <div className="space-y-2 pl-2">
+                        {Array(4).fill(0).map((_, j) => (
+                          <div key={j} className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-4 rounded" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        ))}
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Books grid skeleton */}
+            <div className="flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {Array(12).fill(0).map((_, index) => (
+                  <div key={index} className="flex flex-col space-y-2 border dark:border-gray-700 rounded-xl p-3 dark:bg-gray-800">
+                    <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                    <Skeleton className="h-5 w-full" />
+                    <Skeleton className="h-4 w-24" />
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-          
-          {/* Books grid skeleton */}
-          <div className="flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array(12).fill(0).map((_, index) => (
-                <div key={index} className="flex flex-col space-y-2 border rounded-xl p-3">
-                  <Skeleton className="aspect-[3/4] w-full rounded-lg" />
-                  <Skeleton className="h-5 w-full" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -425,13 +427,13 @@ export default function BooksPage() {
   // Error state
   if (booksError) {
     return (
-      <div className="container mx-auto px-4 py-12 pt-4 flex flex-col items-center justify-center text-center">
-        <div className="max-w-md">
-          <h1 className="text-3xl font-bold mb-4">Error Loading Books</h1>
-          <p className="text-gray-600 mb-8">An error occurred while fetching the books. Please try again later.</p>
+      <div className="container mx-auto px-4 py-12 pt-4 flex flex-col items-center justify-center text-center my-6">
+        <div className="border border-secondary/90 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm p-6 max-w-md">
+          <h1 className="text-3xl font-bold mb-4 dark:text-white">Error Loading Books</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">An error occurred while fetching the books. Please try again later.</p>
           <Button 
             variant="link" 
-            className="flex items-center gap-2 py-1 pl-0"
+            className="flex items-center gap-2 py-1 pl-0 dark:text-white"
             onClick={() => router.back()}
           >
             <ChevronLeft size={16} />
@@ -444,355 +446,357 @@ export default function BooksPage() {
   
   // Render the main UI
   return (
-    <div className="container mx-auto px-4 py-8 pt-4">
-      {/* Back button */}
-      <div className="mb-3">
-        <Button 
-          variant="link" 
-          className="flex items-center gap-2 py-1 pl-0"
-          onClick={() => router.back()}
-        >
-          <ChevronLeft size={16} />
-          Back
-        </Button>
-      </div>
-      
-      {/* Header with search */}
-      <div className="mb-3">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">All Books</h1>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            {/* Search Bar - updated to use debounced input with ref for focus management */}
-            <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-auto">
-              <Input
-                ref={searchInputRef}
-                placeholder="Search books..."
-                value={searchInput}
-                onChange={handleSearchInputChange}
-                className="pl-10 w-full sm:w-48 md:w-64"
-                disabled={isTransitioning}
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            </form>
-            
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <SlidersHorizontal size={16} className="text-muted-foreground hidden sm:block" />
-              <Select value={sortByParam} onValueChange={handleSortChange} disabled={isTransitioning}>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="title">Title (A-Z)</SelectItem>
-                  <SelectItem value="rating">Rating (High to Low)</SelectItem>
-                  <SelectItem value="chapters">Chapters (Most to Least)</SelectItem>
-                  <SelectItem value="createdAt">Newest</SelectItem>
-                  <SelectItem value="views">Most Popular</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Link href="/books/create" className="inline-block mt-2 sm:mt-0">
-              <Button className="flex items-center gap-2 w-full sm:w-auto" disabled={isTransitioning}>
-                <PlusCircle size={16} />
-                Create New Book
-              </Button>
-            </Link>
-          </div>
+    <div className="container mx-auto px-4 py-8 pt-4 my-6">
+      <div className="border border-secondary/90 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm p-6">
+        {/* Back button */}
+        <div className="mb-3">
+          <Button 
+            variant="link" 
+            className="flex items-center gap-2 py-1 pl-0 dark:text-white"
+            onClick={() => router.back()}
+          >
+            <ChevronLeft size={16} />
+            Back
+          </Button>
         </div>
-      </div>
-      
-      {/* Mobile Filter Toggle */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="md:hidden w-full flex justify-between items-center mb-4"
-        onClick={() => setShowMobileFilters(!showMobileFilters)}
-        disabled={isTransitioning}
-      >
-        <span className="flex items-center gap-2">
-          <Filter size={16} />
-          {(selectedGenres.length > 0 || selectedProgressStatus) ? 
-            `Filters (${selectedGenres.length + (selectedProgressStatus ? 1 : 0)})` : 
-            "Browse & Filter"}
-        </span>
-        <ChevronLeft 
-          size={16} 
-          className={`transition-transform ${showMobileFilters ? "rotate-90" : "-rotate-90"}`} 
-        />
-      </Button>
-      
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Genre Filter Sidebar */}
-        <div className={`md:w-72 flex-shrink-0 ${showMobileFilters ? 'block' : 'hidden md:block'}`}>
-          <div className="bg-white border border-secondary/40 rounded-lg p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)] space-y-6">
-            
-            {/* Progress Status Filter */}
+        
+        {/* Header with search */}
+        <div className="mb-3">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-medium">Progress Status</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={clearFilters}
-                  className={`h-8 text-xs transition-opacity duration-200 ${(selectedGenres.length > 0 || selectedProgressStatus) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                  disabled={isTransitioning}
-                >
-                  Clear all
-                </Button>
-              </div>
-              
-              <div className="space-y-2" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="progress-all" 
-                    checked={!selectedProgressStatus}
-                    onCheckedChange={() => handleProgressStatusChange('all')}
-                    className={!selectedProgressStatus ? "text-red-500 border-red-500" : ""}
-                  />
-                  <Label 
-                    htmlFor="progress-all"
-                    className={`text-sm cursor-pointer flex-1 ${!selectedProgressStatus ? 'text-red-600 font-medium' : ''}`}
-                  >
-                    All Progress Status
-                  </Label>
-                </div>
-                
-                {PROGRESS_STATUSES.map((status) => {
-                  const isSelected = selectedProgressStatus.toLowerCase() === status.name.toLowerCase();
-                  
-                  return (
-                    <div key={status.id} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`progress-${status.id}`} 
-                        checked={isSelected}
-                        onCheckedChange={() => handleProgressStatusChange(status.name)}
-                        className={isSelected ? "text-red-500 border-red-500" : ""}
-                      />
-                      <Label 
-                        htmlFor={`progress-${status.id}`}
-                        className={`text-sm cursor-pointer flex-1 ${isSelected ? 'text-red-600 font-medium' : ''}`}
-                      >
-                        {status.name}
-                      </Label>
-                    </div>
-                  );
-                })}
-              </div>
+              <h1 className="text-3xl font-bold mb-2 dark:text-white">All Books</h1>
             </div>
             
-            {/* Genre Filter */}
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-medium">Browse Genres</h3>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              {/* Search Bar - updated to use debounced input with ref for focus management */}
+              <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-auto">
+                <Input
+                  ref={searchInputRef}
+                  placeholder="Search books..."
+                  value={searchInput}
+                  onChange={handleSearchInputChange}
+                  className="pl-10 w-full sm:w-48 md:w-64"
+                  disabled={isTransitioning}
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
+              </form>
+              
+              {/* Sort Dropdown */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <SlidersHorizontal size={16} className="text-muted-foreground dark:text-gray-400 hidden sm:block" />
+                <Select value={sortByParam} onValueChange={handleSortChange} disabled={isTransitioning}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="title">Title (A-Z)</SelectItem>
+                    <SelectItem value="rating">Rating (High to Low)</SelectItem>
+                    <SelectItem value="chapters">Chapters (Most to Least)</SelectItem>
+                    <SelectItem value="createdAt">Newest</SelectItem>
+                    <SelectItem value="views">Most Popular</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
-              <div className="space-y-3" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
-                {Object.entries(genreGroups).map(([group, genres]) => {
-                  return (
-                    <Collapsible 
-                    key={group}
-                    open={expandedCategories.includes(group)}
-                    onOpenChange={() => toggleCategory(group)}
-                    className="border-b border-border pb-2 last:border-0 last:pb-0"
-                    >
-                      <CollapsibleTrigger className="flex justify-between items-center w-full text-left py-1 hover:text-primary group">
-                        <div className="flex items-center">
-                          <h4 className="text-sm font-medium leading-none">{group}</h4>
-                          <span className={`text-xs inline-flex items-center ml-1.5 ${genres.length === 0 ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
-                            ({genreGroups[group]?.reduce((total, genre) => {
-                              const genreObj = genres?.find(g => g.name === genre.name);
-                              return total + (genreObj?.totalBooks || 0);
-                            }, 0)})
-                          </span>
-                        </div>
-                        <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-primary ${expandedCategories.includes(group) ? 'rotate-90' : ''}`} />
-                      </CollapsibleTrigger>
-                      
-                      <CollapsibleContent className="mt-1 pl-2 space-y-1">
-                        {genres.map((genre: Category) => {
-                          const isSelected = selectedGenres.includes(genre.name);
-                          const genreObj = genres?.find(g => g.name === genre.name);
-                          
-                          return (
-                            <div key={genre.name} className="flex items-center space-x-2 py-1">
-                              <Checkbox 
-                                id={`genre-${genre}`} 
-                                checked={isSelected}
-                                onCheckedChange={() => handleGenreToggle(genre.name)}
-                                disabled={genreObj?.totalBooks === 0}
-                                className={isSelected ? "text-red-500 border-red-500" : ""}
-                              />
-                              <Label 
-                                htmlFor={`genre-${genre}`}
-                                className={`text-sm cursor-pointer flex-1 flex justify-between items-center 
-                                  ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/50' : isSelected ? 'text-red-600 font-medium' : ''}`}
-                              >
-                                <span className="leading-none">{genre.name}</span>
-                                <span className={`text-xs inline-flex items-center px-1 
-                                  ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/30' : 
-                                  isSelected ? 'text-red-600' : 'text-muted-foreground'}`}
-                                >
-                                  {genreObj?.totalBooks || 0}
-                                </span>
-                              </Label>
-                            </div>
-                          );
-                        })}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                })}
-              </div>
+              <Link href="/books/create" className="inline-block mt-2 sm:mt-0">
+                <Button className="flex items-center gap-2 w-full sm:w-auto" disabled={isTransitioning}>
+                  <PlusCircle size={16} />
+                  Create New Book
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
         
-        {/* Book Grid */}
-        <div className="flex-1">
-          {isTransitioning ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array(12).fill(0).map((_, index) => (
-                <div key={index} className="flex flex-col space-y-2 border rounded-xl p-3">
-                  <Skeleton className="aspect-[3/4] w-full rounded-lg" />
-                  <Skeleton className="h-5 w-full" />
-                  <Skeleton className="h-4 w-24" />
+        {/* Mobile Filter Toggle */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="md:hidden w-full flex justify-between items-center mb-4 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700/50"
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+          disabled={isTransitioning}
+        >
+          <span className="flex items-center gap-2">
+            <Filter size={16} />
+            {(selectedGenres.length > 0 || selectedProgressStatus) ? 
+              `Filters (${selectedGenres.length + (selectedProgressStatus ? 1 : 0)})` : 
+              "Browse & Filter"}
+          </span>
+          <ChevronLeft 
+            size={16} 
+            className={`transition-transform ${showMobileFilters ? "rotate-90" : "-rotate-90"}`} 
+          />
+        </Button>
+        
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Genre Filter Sidebar */}
+          <div className={`md:w-72 flex-shrink-0 ${showMobileFilters ? 'block' : 'hidden md:block'}`}>
+            <div className="bg-white dark:bg-gray-800 border border-secondary/40 dark:border-gray-700 rounded-lg p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)] dark:shadow-gray-900/20 space-y-6">
+              
+              {/* Progress Status Filter */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-medium dark:text-white">Progress Status</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={clearFilters}
+                    className={`h-8 text-xs transition-opacity duration-200 ${(selectedGenres.length > 0 || selectedProgressStatus) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    disabled={isTransitioning}
+                  >
+                    Clear all
+                  </Button>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {displayedBooks.map(book => (
-                  <div key={book.id} className="flex h-full">
-                    <BookCard
-                      id={book.id}
-                      title={book.title}
-                      author={book.author as Author}
-                      description={book.description}
-                      chapters={book.chapters}
-                      rating={book.rating}
-                      genres={book.genre}
-                      readingProgress={book.readingProgress}
-                      coverImage={book.coverImage}
-                      className="h-full w-full border-0 shadow-lg"
-                      showPreview={false}
-                      isCreator={book.author?.id ? user?.id === book.author?.id : false}
-                      isFollowed={book.isFollowed}
+                
+                <div className="space-y-2" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="progress-all" 
+                      checked={!selectedProgressStatus}
+                      onCheckedChange={() => handleProgressStatusChange('all')}
+                      className={!selectedProgressStatus ? "text-red-500 border-red-500" : ""}
                     />
+                    <Label 
+                      htmlFor="progress-all"
+                      className={`text-sm cursor-pointer flex-1 dark:text-gray-300 ${!selectedProgressStatus ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}
+                    >
+                      All Progress Status
+                    </Label>
+                  </div>
+                  
+                  {PROGRESS_STATUSES.map((status) => {
+                    const isSelected = selectedProgressStatus.toLowerCase() === status.name.toLowerCase();
+                    
+                    return (
+                      <div key={status.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`progress-${status.id}`} 
+                          checked={isSelected}
+                          onCheckedChange={() => handleProgressStatusChange(status.name)}
+                          className={isSelected ? "text-red-500 border-red-500" : ""}
+                        />
+                        <Label 
+                          htmlFor={`progress-${status.id}`}
+                          className={`text-sm cursor-pointer flex-1 dark:text-gray-300 ${isSelected ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}
+                        >
+                          {status.name}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Genre Filter */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-medium dark:text-white">Browse Genres</h3>
+                </div>
+                
+                <div className="space-y-3" style={isTransitioning ? { opacity: 0.6, pointerEvents: 'none' } : {}}>
+                  {Object.entries(genreGroups).map(([group, genres]) => {
+                    return (
+                      <Collapsible 
+                      key={group}
+                      open={expandedCategories.includes(group)}
+                      onOpenChange={() => toggleCategory(group)}
+                      className="border-b border-border dark:border-gray-600 pb-2 last:border-0 last:pb-0"
+                      >
+                        <CollapsibleTrigger className="flex justify-between items-center w-full text-left py-1 hover:text-primary dark:hover:text-red-400 group">
+                          <div className="flex items-center">
+                            <h4 className="text-sm font-medium leading-none dark:text-white">{group}</h4>
+                            <span className={`text-xs inline-flex items-center ml-1.5 ${genres.length === 0 ? 'text-muted-foreground/50 dark:text-gray-500/50' : 'text-muted-foreground dark:text-gray-400'}`}>
+                              ({genreGroups[group]?.reduce((total, genre) => {
+                                const genreObj = genres?.find(g => g.name === genre.name);
+                                return total + (genreObj?.totalBooks || 0);
+                              }, 0)})
+                            </span>
+                          </div>
+                          <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-primary dark:group-hover:text-red-400 ${expandedCategories.includes(group) ? 'rotate-90' : ''}`} />
+                        </CollapsibleTrigger>
+                        
+                        <CollapsibleContent className="mt-1 pl-2 space-y-1">
+                          {genres.map((genre: Category) => {
+                            const isSelected = selectedGenres.includes(genre.name);
+                            const genreObj = genres?.find(g => g.name === genre.name);
+                            
+                            return (
+                              <div key={genre.name} className="flex items-center space-x-2 py-1">
+                                <Checkbox 
+                                  id={`genre-${genre}`} 
+                                  checked={isSelected}
+                                  onCheckedChange={() => handleGenreToggle(genre.name)}
+                                  disabled={genreObj?.totalBooks === 0}
+                                  className={isSelected ? "text-red-500 border-red-500" : ""}
+                                />
+                                <Label 
+                                  htmlFor={`genre-${genre}`}
+                                  className={`text-sm cursor-pointer flex-1 flex justify-between items-center dark:text-gray-300
+                                    ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/50 dark:text-gray-500/50' : isSelected ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}
+                                >
+                                  <span className="leading-none">{genre.name}</span>
+                                  <span className={`text-xs inline-flex items-center px-1 
+                                    ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/30 dark:text-gray-600/30' : 
+                                    isSelected ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground dark:text-gray-400'}`}
+                                  >
+                                    {genreObj?.totalBooks || 0}
+                                  </span>
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Book Grid */}
+          <div className="flex-1">
+            {isTransitioning ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {Array(12).fill(0).map((_, index) => (
+                  <div key={index} className="flex flex-col space-y-2 border rounded-xl p-3">
+                    <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                    <Skeleton className="h-5 w-full" />
+                    <Skeleton className="h-4 w-24" />
                   </div>
                 ))}
               </div>
-              
-              {/* Empty state */}
-              {filteredBooks.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-lg font-medium">No books found</p>
-                  <p className="text-muted-foreground">Try adjusting your filters or search query</p>
-                  {(selectedGenres.length > 0 || searchQuery || selectedProgressStatus) && (
-                    <Button onClick={clearFilters} className="mt-4">
-                      Clear Filters
-                    </Button>
-                  )}
+            ) : (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {displayedBooks.map(book => (
+                    <div key={book.id} className="flex h-full">
+                      <BookCard
+                        id={book.id}
+                        title={book.title}
+                        author={book.author as Author}
+                        description={book.description}
+                        chapters={book.chapters}
+                        rating={book.rating}
+                        genres={book.genre}
+                        readingProgress={book.readingProgress}
+                        coverImage={book.coverImage}
+                        className="h-full w-full border-0 shadow-lg"
+                        showPreview={false}
+                        isCreator={book.author?.id ? user?.id === book.author?.id : false}
+                        isFollowed={book.isFollowed}
+                      />
+                    </div>
+                  ))}
                 </div>
-              )}
-              
-              {/* Pagination Controls */}
-              {filteredBooks.length > 0 && (
-                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>Showing</span>
-                    <Select value={pageSize.toString()} onValueChange={handlePageSizeChange} disabled={isTransitioning}>
-                      <SelectTrigger className="h-8 w-[70px]">
-                        <SelectValue placeholder={pageSize.toString()} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PAGE_SIZE_OPTIONS.map(size => (
-                          <SelectItem key={size} value={size.toString()}>
-                            {size}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <span>of {filteredBooks.length} books</span>
+                
+                {/* Empty state */}
+                {filteredBooks.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-lg font-medium dark:text-white">No books found</p>
+                    <p className="text-muted-foreground dark:text-gray-400">Try adjusting your filters or search query</p>
+                    {(selectedGenres.length > 0 || searchQuery || selectedProgressStatus) && (
+                      <Button onClick={clearFilters} className="mt-4">
+                        Clear Filters
+                      </Button>
+                    )}
                   </div>
-                  
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => goToPage(1)}
-                      disabled={currentPage === 1 || isTransitioning}
-                    >
-                      <ChevronsLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => goToPage(currentPage - 1)}
-                      disabled={currentPage === 1 || isTransitioning}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    
-                    <div className="flex items-center gap-1 mx-2">
-                      {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                        let pageNumber: number;
-                        
-                        // Calculate which page numbers to display
-                        if (totalPages <= 5) {
-                          pageNumber = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNumber = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNumber = totalPages - 4 + i;
-                        } else {
-                          pageNumber = currentPage - 2 + i;
-                        }
-                        
-                        return (
-                          <Button
-                            key={pageNumber}
-                            variant={currentPage === pageNumber ? "default" : "outline"}
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => goToPage(pageNumber)}
-                            disabled={isTransitioning}
-                          >
-                            {pageNumber}
-                          </Button>
-                        );
-                      })}
+                )}
+                
+                {/* Pagination Controls */}
+                {filteredBooks.length > 0 && (
+                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
+                      <span>Showing</span>
+                      <Select value={pageSize.toString()} onValueChange={handlePageSizeChange} disabled={isTransitioning}>
+                        <SelectTrigger className="h-8 w-[70px]">
+                          <SelectValue placeholder={pageSize.toString()} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAGE_SIZE_OPTIONS.map(size => (
+                            <SelectItem key={size} value={size.toString()}>
+                              {size}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <span>of {filteredBooks.length} books</span>
                     </div>
                     
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => goToPage(currentPage + 1)}
-                      disabled={currentPage === totalPages || isTransitioning}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => goToPage(totalPages)}
-                      disabled={currentPage === totalPages || isTransitioning}
-                    >
-                      <ChevronsRight className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1 || isTransitioning}
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => goToPage(currentPage - 1)}
+                        disabled={currentPage === 1 || isTransitioning}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      
+                      <div className="flex items-center gap-1 mx-2">
+                        {[...Array(Math.min(totalPages, 5))].map((_, i) => {
+                          let pageNumber: number;
+                          
+                          // Calculate which page numbers to display
+                          if (totalPages <= 5) {
+                            pageNumber = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNumber = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNumber = totalPages - 4 + i;
+                          } else {
+                            pageNumber = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <Button
+                              key={pageNumber}
+                              variant={currentPage === pageNumber ? "default" : "outline"}
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => goToPage(pageNumber)}
+                              disabled={isTransitioning}
+                            >
+                              {pageNumber}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => goToPage(currentPage + 1)}
+                        disabled={currentPage === totalPages || isTransitioning}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages || isTransitioning}
+                      >
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

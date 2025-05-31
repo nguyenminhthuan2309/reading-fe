@@ -33,10 +33,10 @@ const formatAgeRating = (rating: NumericAgeRating): string => {
 
 // Helper for text color based on score
 const getScoreColorClass = (score: number, bookAgeRating: NumericAgeRating) => {
-  if (score >= AGE_RATING.THRESHOLD_18_PLUS) return "bg-red-100 text-red-800";
-  if (score >= AGE_RATING.THRESHOLD_16_PLUS) return "bg-amber-100 text-amber-800";
-  if (score >= AGE_RATING.THRESHOLD_13_PLUS) return "bg-yellow-100 text-yellow-800";
-  return "bg-green-100 text-green-800";
+  if (score >= AGE_RATING.THRESHOLD_18_PLUS) return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+  if (score >= AGE_RATING.THRESHOLD_16_PLUS) return "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300";
+  if (score >= AGE_RATING.THRESHOLD_13_PLUS) return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300";
+  return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300";
 };
 
 const getBgColorClass = (score: number, bookAgeRating: NumericAgeRating) => {

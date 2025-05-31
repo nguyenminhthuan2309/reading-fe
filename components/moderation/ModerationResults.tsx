@@ -94,13 +94,13 @@ const getTextColorClass = (score: number, ageRating: NumericAgeRating = 0): stri
 
 // A component to display the rating badge
 const RatingBadge = ({ rating }: { rating: NumericAgeRating }) => {
-  let bgClass = 'bg-green-200 text-green-800';
+  let bgClass = 'bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300';
   
   switch (rating) {
-    case 3: bgClass = 'bg-red-200 text-red-800'; break;
-    case 2: bgClass = 'bg-orange-200 text-orange-800'; break;
-    case 1: bgClass = 'bg-amber-200 text-amber-800'; break;
-    case 0: bgClass = 'bg-green-200 text-green-800'; break;
+    case 3: bgClass = 'bg-red-200 dark:bg-red-900/30 text-red-800 dark:text-red-300'; break;
+    case 2: bgClass = 'bg-orange-200 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'; break;
+    case 1: bgClass = 'bg-amber-200 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'; break;
+    case 0: bgClass = 'bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300'; break;
   }
   
   return (

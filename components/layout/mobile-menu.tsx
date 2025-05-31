@@ -9,7 +9,7 @@ import {
   SheetTrigger 
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, BookOpen, User, LogOut, PlusCircle, BookIcon, Settings, Moon, Sun, Award, Search } from "lucide-react";
+import { Menu, User, LogOut, PlusCircle, BookIcon, Settings, Moon, Sun, Award, Search } from "lucide-react";
 import Link from 'next/link';
 import { useUserStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,7 @@ import { useTheme } from 'next-themes';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchDialog } from "@/components/search/search-dialog";
 import { generateUsername } from "@/lib/utils";
+import Image from "next/image";
 
 export function MobileMenu() {
   const router = useRouter();
@@ -51,7 +52,13 @@ export function MobileMenu() {
       <SheetContent side="right" className="w-[300px] sm:w-[350px] overflow-y-auto">
         <SheetHeader className="text-left mb-6">
           <SheetTitle className="flex items-center">
-            <BookOpen className="h-6 w-6 text-black dark:text-white mr-2" />
+            <Image 
+              src="/logo.png" 
+              alt="Haru's Library Logo" 
+              width={24} 
+              height={24} 
+              className="mr-2"
+            />
             <span className="font-bold text-xl">Haru's Library</span>
           </SheetTitle>
         </SheetHeader>

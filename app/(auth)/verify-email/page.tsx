@@ -78,30 +78,30 @@ export default function VerifyEmailPage() {
   // Show verification result if we have a token
   if (token && (isVerificationSuccessful || isVerificationFailed)) {
     return (
-      <div className="flex flex-col bg-background">
+      <div className="flex flex-col bg-background dark:bg-gray-950">
         <div className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
+          <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800">
             <div className="text-center">
               <div className="flex justify-center mb-4">
                 {isVerificationSuccessful ? (
-                  <CheckCircle className="h-16 w-16 text-green-500" />
+                  <CheckCircle className="h-16 w-16 text-green-500 dark:text-green-400" />
                 ) : (
-                  <XCircle className="h-16 w-16 text-red-500" />
+                  <XCircle className="h-16 w-16 text-red-500 dark:text-red-400" />
                 )}
               </div>
-              <h1 className="text-3xl font-bold mb-4">
+              <h1 className="text-3xl font-bold mb-4 dark:text-white">
                 {isVerificationSuccessful ? 'Email Verified' : 'Verification Failed'}
               </h1>
-              <p className="text-muted-foreground mb-6">{verificationMessage}</p>
+              <p className="text-muted-foreground dark:text-gray-300 mb-6">{verificationMessage}</p>
               
               {isVerificationSuccessful ? (
-                <p className="text-sm text-muted-foreground">Redirecting to sign in page...</p>
+                <p className="text-sm text-muted-foreground dark:text-gray-400">Redirecting to sign in page...</p>
               ) : (
                 <div className="space-y-4">
                   <Button 
                     onClick={() => router.back()}
                     variant="outline" 
-                    className="w-full"
+                    className="w-full dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     Back
                   </Button>
@@ -117,13 +117,13 @@ export default function VerifyEmailPage() {
   // Loading state
   if (token && isVerifyingEmail) {
     return (
-      <div className="flex flex-col bg-background">
+      <div className="flex flex-col bg-background dark:bg-gray-950">
         <div className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
+          <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800">
             <div className="text-center">
-              <RefreshCw className="h-16 w-16 text-primary mx-auto mb-4 animate-spin" />
-              <h1 className="text-2xl font-bold mb-2">Verifying Your Email</h1>
-              <p className="text-muted-foreground">Please wait while we verify your email address...</p>
+              <RefreshCw className="h-16 w-16 text-primary dark:text-red-400 mx-auto mb-4 animate-spin" />
+              <h1 className="text-2xl font-bold mb-2 dark:text-white">Verifying Your Email</h1>
+              <p className="text-muted-foreground dark:text-gray-300">Please wait while we verify your email address...</p>
             </div>
           </div>
         </div>
@@ -133,37 +133,37 @@ export default function VerifyEmailPage() {
 
   // Default state - no token, show instructions to check email
   return (
-    <div className="flex flex-col bg-background">
+    <div className="flex flex-col bg-background dark:bg-gray-950">
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
+        <div className="w-full max-w-md p-8 space-y-6 rounded-lg shadow-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800">
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <Mail className="h-16 w-16 text-primary" />
+              <Mail className="h-16 w-16 text-primary dark:text-red-400" />
             </div>
-            <h1 className="text-3xl font-bold mb-2">Verify Your Email</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold mb-2 dark:text-white">Verify Your Email</h1>
+            <p className="text-muted-foreground dark:text-gray-300">
               We've sent a verification link to:
             </p>
-            <p className="font-medium text-lg my-2">{email || 'your email address'}</p>
+            <p className="font-medium text-lg my-2 dark:text-white">{email || 'your email address'}</p>
           </div>
           
-          <div className="space-y-4 bg-secondary/50 rounded-lg p-4 border border-border">
+          <div className="space-y-4 bg-secondary/50 dark:bg-gray-700/30 rounded-lg p-4 border border-border dark:border-gray-600">
             <div className="flex items-start gap-3">
-              <AlarmClock className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+              <AlarmClock className="h-5 w-5 text-primary dark:text-red-400 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-medium">Verification link expires soon</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-medium dark:text-white">Verification link expires soon</h3>
+                <p className="text-sm text-muted-foreground dark:text-gray-300">
                   The verification link is only valid for 5 minutes. Please check your inbox and verify your email as soon as possible.
                 </p>
               </div>
             </div>
             
             <div className="flex items-start gap-3">
-              <Mail className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+              <Mail className="h-5 w-5 text-primary dark:text-red-400 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-medium">Check your spam folder</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-medium dark:text-white">Check your spam folder</h3>
+                <p className="text-sm text-muted-foreground dark:text-gray-300">
                   If you don't see the email in your inbox, please check your spam or junk folder.
                 </p>
               </div>
@@ -174,7 +174,7 @@ export default function VerifyEmailPage() {
             <Button 
               onClick={() => router.back()}
               variant="outline" 
-              className="w-full"
+              className="w-full dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
               Back
             </Button>

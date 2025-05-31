@@ -97,11 +97,11 @@ export default function SignUp() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
+      <div className="p-8 space-y-6 rounded-lg shadow-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800">
         <div className="space-y-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold">Sign Up</h1>
-            <p className="text-muted-foreground mt-2">Join our online reading community today</p>
+            <h1 className="text-3xl font-bold dark:text-white">Sign Up</h1>
+            <p className="text-muted-foreground dark:text-gray-300 mt-2">Join our online reading community today</p>
           </div>
           
           <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -125,7 +125,7 @@ export default function SignUp() {
             />
             
             <div className="space-y-2">
-              <Label className="flex items-center">
+              <Label className="flex items-center dark:text-white">
                 Gender
               </Label>
               <RadioGroup
@@ -135,19 +135,19 @@ export default function SignUp() {
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="male" id="male" />
-                  <Label htmlFor="male" className="font-normal cursor-pointer">
+                  <Label htmlFor="male" className="font-normal cursor-pointer dark:text-gray-300">
                     Male
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="female" id="female" />
-                  <Label htmlFor="female" className="font-normal cursor-pointer">
+                  <Label htmlFor="female" className="font-normal cursor-pointer dark:text-gray-300">
                     Female
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="other" id="other" />
-                  <Label htmlFor="other" className="font-normal cursor-pointer">
+                  <Label htmlFor="other" className="font-normal cursor-pointer dark:text-gray-300">
                     Other
                   </Label>
                 </div>
@@ -166,7 +166,7 @@ export default function SignUp() {
               />
               <button
                 type="button"
-                className="absolute right-2 top-[38px] text-muted-foreground hover:text-foreground p-1"
+                className="absolute right-2 top-[38px] text-muted-foreground dark:text-gray-400 hover:text-foreground dark:hover:text-white p-1"
                 onClick={togglePasswordVisibility}
                 tabIndex={-1}
               >
@@ -190,7 +190,7 @@ export default function SignUp() {
               />
               <button
                 type="button"
-                className="absolute right-2 top-[38px] text-muted-foreground hover:text-foreground p-1"
+                className="absolute right-2 top-[38px] text-muted-foreground dark:text-gray-400 hover:text-foreground dark:hover:text-white p-1"
                 onClick={toggleConfirmPasswordVisibility}
                 tabIndex={-1}
               >
@@ -202,15 +202,15 @@ export default function SignUp() {
               </button>
             </div>
             
-            <Button type="submit" className="w-full" disabled={isSigningUp}>
+            <Button type="submit" className="w-full dark:bg-red-600 dark:hover:bg-red-700 dark:text-white" disabled={isSigningUp}>
               {isSigningUp ? "Creating Account..." : "Sign Up"}
             </Button>
           </form>
           
           <div className="text-center">
-            <p className="text-sm">
+            <p className="text-sm dark:text-gray-300">
               Already have an account?{" "}
-              <Link href="/signin" className="text-primary hover:underline">
+              <Link href="/signin" className="text-primary dark:text-red-400 hover:underline">
                 Sign In
               </Link>
             </p>
@@ -220,17 +220,17 @@ export default function SignUp() {
         {/* Divider */}
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border"></div>
+            <div className="w-full border-t border-border dark:border-gray-600"></div>
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-card text-muted-foreground">or</span>
+            <span className="px-2 bg-card dark:bg-gray-800 text-muted-foreground dark:text-gray-400">or</span>
           </div>
         </div>
         
         {/* Continue without login button */}
         <div className="text-center">
           <Link href="/">
-            <Button variant="link" className="text-muted-foreground hover:text-primary">
+            <Button variant="link" className="text-muted-foreground dark:text-gray-400 hover:text-primary dark:hover:text-red-400">
               Continue as a Guest
             </Button>
           </Link>

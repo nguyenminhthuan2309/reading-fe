@@ -1,13 +1,9 @@
 'use client';
 
-import { Toaster as SonnerToaster } from 'sonner';
+import { Toaster as Sonner } from "@/components/ui/sonner";
 
 export function Toaster() {
   return (
-    <SonnerToaster
-      position="top-right"
-      richColors
-      theme='light'
-    />
+    <Sonner />
   );
 } 

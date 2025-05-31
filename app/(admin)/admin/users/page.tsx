@@ -56,16 +56,16 @@ type CreateManagerFormData = yup.InferType<typeof createManagerSchema>;
 
 // Role badge styles
 const roleBadgeStyles: Record<string, string> = {
-  [UserRoleEnum.ADMIN]: "bg-red-100 text-red-700 hover:bg-red-100",
-  [UserRoleEnum.MANAGER]: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-  [UserRoleEnum.MEMBER]: "bg-gray-100 text-gray-700 hover:bg-gray-100",
+  [UserRoleEnum.ADMIN]: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 border-red-200 dark:border-red-700/50",
+  [UserRoleEnum.MANAGER]: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border-blue-200 dark:border-blue-700/50",
+  [UserRoleEnum.MEMBER]: "bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 border-gray-200 dark:border-gray-600/50",
 };
 
 // Status badge styles
 const statusBadgeStyles: Record<number, string> = {
-  1: "bg-green-100 text-green-700 hover:bg-green-100", // ACTIVE
-  2: "bg-yellow-100 text-yellow-700 hover:bg-yellow-100", // INACTIVE
-  3: "bg-red-100 text-red-700 hover:bg-red-100", // BANNED
+  1: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border-green-200 dark:border-green-700/50", // ACTIVE
+  2: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700/50", // INACTIVE
+  3: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 border-red-200 dark:border-red-700/50", // BANNED
 };
 
 // Status options
@@ -195,7 +195,7 @@ export default function UsersPage() {
         const user = row.original;
         return (
           <Badge
-            variant="secondary"
+            variant="outline"
             className={cn(roleBadgeStyles[user.role.name])}
           >
             {user.role.name}
@@ -212,7 +212,7 @@ export default function UsersPage() {
         const statusLabel = statusOptions.find(opt => opt.value === user.status?.name)?.label || "Unknown";
         return (
           <Badge
-            variant="secondary"
+            variant="outline"
             className={cn(statusBadgeStyles[user.status?.id])}
           >
             {statusLabel}
@@ -268,9 +268,9 @@ export default function UsersPage() {
                     size="icon"
                     className={cn(
                       "h-8 w-8",
-                      isBlocked && canUnbanUser ? "text-green-600 hover:text-green-700 hover:bg-green-50" : 
+                      isBlocked && canUnbanUser ? "text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-green-400 dark:hover:text-green-300" : 
                       !canBanUser && !isBlocked ? "text-muted-foreground cursor-not-allowed" : 
-                      "text-red-600 hover:text-red-700 hover:bg-red-50"
+                      "text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300"
                     )}
                     onClick={() => isBlocked ? handleUnbanUser(rowUser.id) : handleBlockUser(rowUser.id)}
                     disabled={(!canBanUser && !isBlocked) || (!canUnbanUser && isBlocked) || isUpdatingStatus}

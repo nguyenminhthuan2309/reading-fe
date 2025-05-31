@@ -1458,20 +1458,12 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
 
   return (
     <div className="w-full">
-      {/* Back button in its own container */}
-      <div className="mb-1">
-        <Button type="button" variant="ghost" className="p-0" onClick={handleBack}>
-          <ChevronLeft className="h-5 w-5" />
-          Back
-        </Button>
-      </div>
-
       {/* Title and actions in a separate container below - sticky on scroll */}
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-6 sticky top-0 z-10 transition-all duration-200 px-4 ${
-        hasScrolled ? 'bg-white shadow-md px-4 py-3 -mx-4 rounded-b-lg' : ''
+        hasScrolled ? 'bg-white dark:bg-gray-900 shadow-md px-4 py-3 -mx-4 rounded-b-lg border-b dark:border-gray-700' : ''
       }`}>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold mb-4 md:mb-0">
+          <h1 className="text-2xl font-semibold mb-4 md:mb-0 dark:text-white">
             {isEditing ? 'Edit Book' : 'Submit Book'}
           </h1>
         </div>
@@ -1671,8 +1663,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       </div>
       
       {errors.form && (
-        <div className="mb-6 p-4 bg-destructive/10 border border-destructive rounded-md">
-          <p className="flex items-center text-destructive">
+        <div className="mb-6 p-4 bg-destructive/10 dark:bg-red-900/20 border border-destructive dark:border-red-800 rounded-md">
+          <p className="flex items-center text-destructive dark:text-red-400">
             <Trash2 size={16} className="mr-2" />
             <span>{errors.form}</span>
           </p>
@@ -1680,8 +1672,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       )}
       
       {!canEditBasicInfo && reasonIfDenied && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="flex items-center text-blue-600">
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
+          <p className="flex items-center text-blue-600 dark:text-blue-400">
             <AlertCircle size={16} className="mr-2 flex-shrink-0" />
             <span>{reasonIfDenied}</span>
           </p>
@@ -1689,9 +1681,9 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       )}
 
       {chapterUploadFailed && successBookId && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-md">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <p className="flex items-center text-amber-700">
+            <p className="flex items-center text-amber-700 dark:text-amber-400">
               <Trash2 size={16} className="mr-2 flex-shrink-0" />
               <span>Some chapters couldn't be uploaded. You can retry uploading them.</span>
             </p>
@@ -1718,7 +1710,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       
       <form id="book-form" onSubmit={handleSubmit} className="space-y-6 mb-3" noValidate>
         {/* Main container box with both sections */}
-        <div className="bg-white border border-secondary/90 rounded-lg shadow-sm overflow-hidden pb-6">
+        <div className="bg-white dark:bg-gray-800 border border-secondary/90 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden pb-6">
           <div className="flex flex-col md:flex-row">
             {/* Left column - Book Info Component */}
             <BookInfo
@@ -1754,7 +1746,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             />
             
             {/* Right column - Chapters using ChapterCreator Component */}
-            <div className="w-full md:flex-1 lg:pl-6 border-t md:border-t-0 md:border-l border-secondary/90">
+            <div className="w-full md:flex-1 lg:pl-6 border-t md:border-t-0 md:border-l border-secondary/90 dark:border-gray-700">
               <ChapterCreator
                 bookType={bookData.bookType}
                 chapters={chapters}

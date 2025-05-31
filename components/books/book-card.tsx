@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { Author, Category, ReadingProgress } from "@/models";
 import { FollowButton } from "@/components/books/follow-button";
+import { useTheme } from "next-themes";
 
 interface BookCardProps {
   id: number;
@@ -58,6 +59,9 @@ export function BookCard({
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Theme
+  const { theme } = useTheme();
   
   // Initialize state on client only
   useEffect(() => {
@@ -96,7 +100,7 @@ export function BookCard({
   const CardContent = () => (
     <div 
     className={cn(
-      "flex flex-col rounded-xl overflow-hidden transition-transform duration-300 cursor-pointer border border-gray-200 bg-white h-full w-full", 
+      "flex flex-col rounded-xl overflow-hidden transition-transform duration-300 cursor-pointer border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 h-full w-full", 
       className
     )}
     >
@@ -130,38 +134,38 @@ export function BookCard({
       <div className="px-4 pb-4 flex flex-col flex-grow justify-between">
         <div>
           <Link href={`/books/${id}`}>
-            <h3 className="font-medium text-gray-900 leading-tight line-clamp-1 hover:text-red-600 transition-colors">{title}</h3>
+            <h3 className="font-medium text-gray-900 dark:text-white leading-tight line-clamp-1 hover:text-red-600 dark:hover:text-red-400 transition-colors">{title}</h3>
           </Link>
-          <p className="text-xs text-gray-600 mt-1">by {author.name}</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">by {author.name}</p>
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center space-x-2">
               <div className="flex items-center">
                 <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
-                <span className="text-xs ml-1 text-gray-700">{rating.toFixed(1)}</span>
+                <span className="text-xs ml-1 text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
               </div>
-              <span className="text-gray-400 text-xs">•</span>
+              <span className="text-gray-400 dark:text-gray-600 text-xs">•</span>
               <div className="flex items-center">
-                <BookOpen className="h-3.5 w-3.5 text-gray-500" />
-                <span className="text-xs ml-1 text-gray-700">{chapters} Ch</span>
+                <BookOpen className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+                <span className="text-xs ml-1 text-gray-700 dark:text-gray-300">{chapters} Ch</span>
               </div>
             </div>
             
             {progress > 0 && (
               <div className="flex items-center">
-                <div className="relative h-1.5 w-12 bg-gray-200 rounded-full overflow-hidden">
+                <div className="relative h-1.5 w-12 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div 
                     className="absolute top-0 left-0 h-full bg-red-600 rounded-full" 
                     style={{ width: `${progress * 100}%` }}
                   />
                 </div>
-                <span className="text-[9px] text-gray-600 ml-1">{Math.round(progress * 100)}%</span>
+                <span className="text-[9px] text-gray-600 dark:text-gray-400 ml-1">{Math.round(progress * 100)}%</span>
               </div>
             )}
             
             {/* Last read chapter info - show only if available and progress > 0 */}
             {progress > 0 && lastReadChapterTitle && (
-              <div className="mt-1.5 flex items-center text-xs text-gray-600">
-                <Clock className="h-3 w-3 mr-1 text-gray-500" />
+              <div className="mt-1.5 flex items-center text-xs text-gray-600 dark:text-gray-400">
+                <Clock className="h-3 w-3 mr-1 text-gray-500 dark:text-gray-400" />
                 <span className="line-clamp-1 text-[10px]">
                   Last read: {lastReadChapterTitle}
                 </span>
@@ -178,7 +182,7 @@ export function BookCard({
               : `/books/${id}/read?chapter=${readingProgress?.lastReadChapterNumber}&id=${readingProgress?.lastReadChapterId}`} 
             className="flex-1"
           >
-            <Button variant="destructive" size="sm" className="w-full text-xs h-8 rounded-lg">
+            <Button variant={theme === 'dark' ? 'default' : 'destructive'} size="sm" className="w-full text-xs h-8 rounded-lg">
               {hasStartedReading ? 'Continue' : 'Read'}
             </Button>
           </Link>
@@ -189,9 +193,9 @@ export function BookCard({
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="h-8 px-2 rounded-lg border bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+                  className="h-8 px-2 rounded-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  <Pencil className="h-4 w-4 text-gray-500" />
+                  <Pencil className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 </Button>
               </Link>
             )}
@@ -236,7 +240,7 @@ export function BookCard({
       </PopoverTrigger>
       <PopoverContent 
         ref={popoverRef}
-        className="w-[320px] p-0 border-none rounded-lg shadow-xl transition-opacity duration-300 z-50" 
+        className="w-[320px] p-0 border-none rounded-lg shadow-xl transition-opacity duration-300 z-50 dark:bg-gray-800 dark:border-gray-700" 
         sideOffset={5}
         align="center"
         alignOffset={0}
@@ -246,14 +250,14 @@ export function BookCard({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="bg-white rounded-lg overflow-hidden border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
           <div className="p-4">
             <div className="flex justify-between items-start mb-3">
               <div>
                 <Link href={`/books/${id}`}>
-                  <h3 className="text-base font-bold text-black leading-tight mb-1 hover:underline">{title}</h3>
+                  <h3 className="text-base font-bold text-black dark:text-white leading-tight mb-1 hover:underline">{title}</h3>
                 </Link>
-                <p className="text-xs text-gray-600">by {author.name}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">by {author.name}</p>
               </div>
               <div className="flex flex-wrap gap-1 justify-end max-w-[40%]">
                 {genres?.map((genre) => (
@@ -262,16 +266,16 @@ export function BookCard({
               </div>
             </div>
             
-            <p className="text-xs text-gray-600 mb-4 line-clamp-3">{description}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">{description}</p>
             
             <div className="flex justify-between items-center">
-              <div className="flex items-center text-xs text-gray-600">
-                <BookOpen className="h-3 w-3 text-gray-500 mr-1" />
+              <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                <BookOpen className="h-3 w-3 text-gray-500 dark:text-gray-400 mr-1" />
                 <span>{chapters} Ch</span>
               </div>
               
-              <div className="flex items-center text-xs text-gray-600">
-                <Clock className="h-3 w-3 text-gray-500 mr-1" />
+              <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                <Clock className="h-3 w-3 text-gray-500 dark:text-gray-400 mr-1" />
                 <span>~{Math.round(chapters * 8)}m</span>
               </div>
             </div>

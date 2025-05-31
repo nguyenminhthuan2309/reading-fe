@@ -193,11 +193,11 @@ export function ModerateButton({
       <div className="py-2 px-1 border-b last:border-0 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">{label}</span>
+          <span className="text-sm font-medium dark:text-white">{label}</span>
           {moderated && (
             <Badge 
               variant="outline" 
-              className={`text-xs ${status?.passed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}
+              className={`text-xs ${status?.passed ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700/50'}`}
             >
               {status?.passed ? (
                 <div className="flex items-center gap-1">
@@ -300,14 +300,14 @@ export function ModerateButton({
         </PopoverTrigger>
       </div>
       
-      <PopoverContent className="w-100 p-0" align="end">
-        <div className="px-4 py-2 border-b bg-muted/50">
-          <h3 className="text-sm font-medium">Select Moderation Model</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      <PopoverContent className="w-100 p-0 dark:bg-gray-800 dark:border-gray-700" align="end">
+        <div className="px-4 py-2 border-b bg-muted/50 dark:bg-gray-700/50 dark:border-gray-600">
+          <h3 className="text-sm font-medium dark:text-white">Select Moderation Model</h3>
+          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-0.5">
             Choose a model to check content against age rating standards
           </p>
         </div>
-        <div className="divide-y px-4">
+        <div className="divide-y dark:divide-gray-600 px-4">
           <ModelOption 
             model={MODERATION_MODELS.OMNI} 
             label="Basic Moderation" 

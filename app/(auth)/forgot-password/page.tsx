@@ -228,139 +228,148 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="p-8 space-y-6 rounded-lg shadow-lg border border-border bg-card">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold">Reset Password</h1>
-          <p className="text-muted-foreground mt-2">
-            {resetStep === 'email' 
-              ? "Enter your email to receive a reset code" 
-              : "Enter the verification code sent to your email"}
-          </p>
-        </div>
-
+      <div className="p-8 space-y-6 rounded-lg shadow-lg border border-border dark:border-gray-700 bg-card dark:bg-gray-800">
         {resetStep === 'email' ? (
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="reset-email" className="block text-sm font-medium mb-2">
-                Email <span className="text-destructive">*</span>
-              </label>
-              <Input 
-                type="email" 
-                id="reset-email" 
-                className={emailError ? 'border-destructive' : ''}
-                value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
-                placeholder="Enter your email"
-              />
-              {emailError && (
-                <p className="text-destructive text-sm mt-1">{emailError}</p>
-              )}
-            </div>
-
-            <Button 
-              className="w-full" 
-              onClick={handleSendResetEmail} 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Sending..." : "Send Reset Code"}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-sm">
-                Code sent to <span className="font-medium">{resetEmail}</span>
+          <div className="space-y-6">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold dark:text-white">Reset Password</h1>
+              <p className="text-muted-foreground dark:text-gray-300 mt-2">
+                Enter your email address and we'll send you a verification code
               </p>
             </div>
-              
-            <div>
-              <label htmlFor="otp-code-0" className="block text-sm font-medium mb-2">
-                Verification Code <span className="text-destructive">*</span>
-              </label>
-              <div className="flex gap-2 w-full">
-                {[0, 1, 2, 3, 4, 5].map((index) => (
-                  <Input
-                    key={index}
-                    id={`otp-code-${index}`}
-                    ref={(el) => {
-                      otpRefs.current[index] = el;
-                      return undefined;
-                    }}
-                    type="text"
-                    inputMode="numeric"
-                    className={`text-center text-lg font-bold aspect-square p-0 flex items-center justify-center h-12 ${otpError ? 'border-destructive' : ''}`}
-                    value={otpValues[index]}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                    onPaste={index === 0 ? handleOtpPaste : undefined}
-                    maxLength={1}
-                    autoComplete="one-time-code"
-                  />
-                ))}
-              </div>
-              {otpError && (
-                <p className="text-destructive text-sm mt-1">{otpError}</p>
-              )}
-            </div>
-              
-            <div className="flex justify-between items-center text-xs text-muted-foreground">
-              <span>OTP code is valid for 5 minutes.</span>
-              <div className="flex items-center">
-                <span className={`font-medium ${otpTimeLeft <= 60 ? 'text-destructive' : ''}`}>
-                  {isOtpExpired ? (
-                    <span className="text-destructive flex items-center">
-                      <AlertCircle className="w-3 h-3 mr-1" />
-                      Expired
-                    </span>
-                  ) : (
-                    `${formatTime(otpTimeLeft)}`
-                  )}
-                </span>
-                {isOtpExpired && (
-                  <Button 
-                    variant="link" 
-                    className="p-0 h-auto text-xs ml-2"
-                    onClick={handleResendOtp}
-                    disabled={isResendingOtp}
-                  >
-                    {isResendingOtp ? "Resending..." : "Resend code"}
-                  </Button>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="email" className="block text-sm font-medium dark:text-white">
+                  Email Address <span className="text-destructive dark:text-red-400">*</span>
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className={emailError ? "border-destructive dark:border-red-500" : "dark:border-gray-600 dark:bg-gray-700 dark:text-white"}
+                  disabled={isSubmitting}
+                />
+                {emailError && (
+                  <div className="flex items-center gap-2 text-sm text-destructive dark:text-red-400">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{emailError}</span>
+                  </div>
                 )}
               </div>
-            </div>
-
-            <div className="text-xs text-muted-foreground mt-2">
-              After verification, a new password will be sent to your email.
-            </div>
-
-            <div className="flex gap-4 mt-6">
+              
               <Button 
-                variant="outline" 
-                className="flex-1"
+                className="w-full dark:bg-red-600 dark:hover:bg-red-700 dark:text-white" 
+                onClick={handleSendResetEmail} 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Sending..." : "Send Verification Code"}
+              </Button>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-sm dark:text-gray-300">
+                Remember your password?{" "}
+                <Link href="/signin" className="text-primary dark:text-red-400 hover:underline">
+                  Sign In
+                </Link>
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="text-center">
+              <button
                 onClick={handleBackToEmail}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400 hover:text-foreground dark:hover:text-white mb-4"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Change Email
-              </Button>
-              <Button 
-                className="flex-1" 
-                onClick={handleVerifyOtp}
-                disabled={isSubmitting || isOtpExpired || otpValues.some(val => val === '')}
-              >
-                {isSubmitting ? "Verifying..." : "Verify"}
-              </Button>
+                <ArrowLeft className="h-4 w-4" />
+                Back to email
+              </button>
+              <h1 className="text-3xl font-bold dark:text-white">Verify Code</h1>
+              <p className="text-muted-foreground dark:text-gray-300 mt-2">
+                Enter the 6-digit code sent to <span className="font-medium dark:text-white">{resetEmail}</span>
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="otp-code-0" className="block text-sm font-medium mb-2 dark:text-white">
+                  Verification Code <span className="text-destructive dark:text-red-400">*</span>
+                </label>
+                <div className="flex gap-2 w-full">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <Input
+                      key={index}
+                      id={`otp-code-${index}`}
+                      ref={(el) => {
+                        otpRefs.current[index] = el;
+                        return undefined;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      className={`text-center text-lg font-bold aspect-square p-0 flex items-center justify-center h-12 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${otpError ? 'border-destructive dark:border-red-500' : ''}`}
+                      value={otpValues[index]}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      onPaste={index === 0 ? handleOtpPaste : undefined}
+                      maxLength={1}
+                      autoComplete="one-time-code"
+                    />
+                  ))}
+                </div>
+                {otpError && (
+                  <div className="flex items-center gap-2 text-sm text-destructive dark:text-red-400 mt-1">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{otpError}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-between items-center text-xs text-muted-foreground dark:text-gray-400">
+                <span>OTP code is valid for 5 minutes.</span>
+                <div className="flex items-center">
+                  <span className={`font-medium ${otpTimeLeft <= 60 ? 'text-destructive dark:text-red-400' : 'dark:text-gray-300'}`}>
+                    {isOtpExpired ? (
+                      <span className="text-destructive dark:text-red-400 flex items-center">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Expired
+                      </span>
+                    ) : (
+                      `${formatTime(otpTimeLeft)}`
+                    )}
+                  </span>
+                  {isOtpExpired && (
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-xs ml-2 text-primary dark:text-red-400 hover:text-primary/80 dark:hover:text-red-300"
+                      onClick={handleResendOtp}
+                      disabled={isResendingOtp}
+                    >
+                      {isResendingOtp ? "Resending..." : "Resend code"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground dark:text-gray-400 mt-2">
+                After verification, a new password will be sent to your email.
+              </div>
+
+              <div className="flex gap-4 mt-6">
+                <Button 
+                  className="flex-1 dark:bg-red-600 dark:hover:bg-red-700 dark:text-white" 
+                  onClick={handleVerifyOtp}
+                  disabled={isSubmitting || isOtpExpired || otpValues.some(val => val === '')}
+                >
+                  {isSubmitting ? "Verifying..." : "Verify"}
+                </Button>
+              </div>
             </div>
           </div>
         )}
-
-        <div className="text-center mt-6">
-          <p className="text-sm text-muted-foreground">
-            Remember your password?{" "}
-            <Link href="/signin" className="text-primary hover:underline">
-              Sign In
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );
