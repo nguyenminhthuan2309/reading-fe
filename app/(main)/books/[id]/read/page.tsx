@@ -162,9 +162,6 @@ export default function ReadPage() {
 
   const isOwner = bookData?.author.id === user?.id;
   
-  // Check is chapter pending review or draft
-  const unreadableChapter = chapterData?.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW || chapterData?.chapterAccessStatus === ChapterAccessStatus.DRAFT;
-  
   // Add state for purchase dialog
   const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
@@ -251,6 +248,9 @@ export default function ReadPage() {
 
   const isPendingChapter = chapterData?.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW || chapterData?.chapterAccessStatus === ChapterAccessStatus.DRAFT;
   const isAdminOrModerator = user && (user.role.id === 1 || user.role.id === 2);
+  const unreadableChapter = isPendingChapter && !isAdminOrModerator;
+  const isCurrentChapterLocked = chapterData?.isLocked && !isAdminOrModerator;
+
   
   // Update reading history when chapter data is loaded
   useEffect(() => {
@@ -262,9 +262,6 @@ export default function ReadPage() {
       });
     }
   }, [bookId, chapterId, isLoadingChapter, chapterData, isPendingChapter]);
-  
-  // Check if the current chapter is locked
-  const isCurrentChapterLocked = chapterData?.isLocked && !isAdminOrModerator;
   
   // If loading, show a skeleton UI
   if (isLoadingBook || isLoadingChapter || isLoadingChapterList) {
