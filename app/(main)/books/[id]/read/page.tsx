@@ -250,6 +250,7 @@ export default function ReadPage() {
   };
 
   const isPendingChapter = chapterData?.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW || chapterData?.chapterAccessStatus === ChapterAccessStatus.DRAFT;
+  const isAdminOrModerator = user && (user.role.id === 1 || user.role.id === 2);
   
   // Update reading history when chapter data is loaded
   useEffect(() => {
@@ -260,10 +261,10 @@ export default function ReadPage() {
         chapterId
       });
     }
-  }, [bookId, chapterId, isLoadingChapter, chapterData]);
+  }, [bookId, chapterId, isLoadingChapter, chapterData, isPendingChapter]);
   
   // Check if the current chapter is locked
-  const isCurrentChapterLocked = chapterData?.isLocked;
+  const isCurrentChapterLocked = chapterData?.isLocked && !isAdminOrModerator;
   
   // If loading, show a skeleton UI
   if (isLoadingBook || isLoadingChapter || isLoadingChapterList) {
