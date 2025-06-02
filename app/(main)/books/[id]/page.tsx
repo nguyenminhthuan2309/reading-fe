@@ -144,8 +144,11 @@ export default function BookPage() {
   // Check if current user is the book owner
   const isOwner = user && book?.author?.id === user.id;
 
+  // Check is admin or moderator
+  const isAdminOrModerator = user && (user.role.id === 1 || user.role.id === 2);
+
   // Check if book is pending and no published chapters
-  const isPendingBook = !isOwner && book?.accessStatus?.id === AccessStatusEnum.PENDING && chaptersData?.filter(chapter => chapter.chapterAccessStatus === ChapterAccessStatus.PUBLISHED).length === 0;
+  const isPendingBook = !isOwner && !isAdminOrModerator && book?.accessStatus?.id === AccessStatusEnum.PENDING && chaptersData?.filter(chapter => chapter.chapterAccessStatus === ChapterAccessStatus.PUBLISHED).length === 0;
 
   // Check if book is draft
   const isDraftBook = !isOwner && book?.accessStatus?.id === AccessStatusEnum.PRIVATE;
