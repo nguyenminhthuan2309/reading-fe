@@ -246,10 +246,10 @@ export default function ReadPage() {
     return chapter && chapter.chapter !== chapterNumber;
   };
 
-  const isPendingChapter = chapterData?.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW || chapterData?.chapterAccessStatus === ChapterAccessStatus.DRAFT;
   const isAdminOrModerator = user && (user.role.id === 1 || user.role.id === 2);
-  const unreadableChapter = isPendingChapter && !isAdminOrModerator;
+  const isPendingChapter = chapterData?.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW || chapterData?.chapterAccessStatus === ChapterAccessStatus.DRAFT;
   const isCurrentChapterLocked = chapterData?.isLocked && !isAdminOrModerator;
+  const unreadableChapter = isPendingChapter && !isAdminOrModerator;
 
   
   // Update reading history when chapter data is loaded
