@@ -248,10 +248,12 @@ export default function ReadPage() {
     const chapter = chapterList.find(chapter => chapter.id === chapterId);
     return chapter && chapter.chapter !== chapterNumber;
   };
+
+  const isPendingChapter = chapterData?.chapterAccessStatus === ChapterAccessStatus.PENDING_REVIEW || chapterData?.chapterAccessStatus === ChapterAccessStatus.DRAFT;
   
   // Update reading history when chapter data is loaded
   useEffect(() => {
-    if (chapterId && bookId && !isLoadingChapter && chapterData && !isCurrentChapterLocked && !!user && !isOwner) {
+    if (chapterId && bookId && !isLoadingChapter && chapterData && !isCurrentChapterLocked && !!user && !isOwner && !isPendingChapter) {
       
       updateReadingHistoryMutation.mutate({
         bookId: Number(bookId),
