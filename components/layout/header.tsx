@@ -624,11 +624,11 @@ export default function Header() {
             </div>
           ) : (
             <>
-              <Link href="/signin" className="hidden md:block text-black hover:text-black text-sm font-medium">
+              <Link href="/signin" className="hidden md:block text-black hover:text-black dark:hover:text-destructive text-sm font-medium">
                 Sign In
               </Link>
               
-              <Link href="/signup" className="hidden md:block text-black hover:text-black text-sm font-medium">
+              <Link href="/signup" className="hidden md:block text-black hover:text-black dark:hover:text-destructive text-sm font-medium">
                 Sign Up
               </Link>
             </>

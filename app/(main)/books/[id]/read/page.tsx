@@ -84,7 +84,7 @@ export default function ReadPage() {
   } = useQuery({
     queryKey: CHAPTER_KEYS.LIST(bookId),
     queryFn: async () => {
-      const response = await getChaptersByBookId(Number(bookId), ChapterAccessStatus.PUBLISHED);
+      const response = await getChaptersByBookId(Number(bookId), isAdminOrModerator ? undefined : ChapterAccessStatus.PUBLISHED);
       if (response.status !== 200) {
         throw new Error(response.msg || 'Failed to fetch chapter list');
       }
