@@ -48,7 +48,7 @@ export function useUpdateBookStatus() {
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: BOOK_KEYS.ALL });
-      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId) });
+      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId.toString()) });
       
       // Call the optional onSuccess callback
       if (onSuccess) {

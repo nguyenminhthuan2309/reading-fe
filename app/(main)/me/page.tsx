@@ -42,7 +42,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useMutation,  useQueryClient } from "@tanstack/react-query";
 import { updateUserProfile } from "@/lib/api/auth";
 import { updatePassword } from "@/lib/api/auth";
-import { uploadAvatar } from "@/lib/api/user";
+import { MAX_AVATAR_SIZE, uploadAvatar } from "@/lib/api/user";
 import { useUserStore } from "@/lib/store/useUserStore";
 import { User } from "@/models";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -56,8 +56,6 @@ import { AvailableMissions } from "@/components/user/available-missions";
 import { MissionHistory } from "@/components/user/mission-history";
 import { useMe, useUserBallance } from "@/lib/hooks/useUsers";
 import { RecentTransactions } from "@/components/user/recent-transactions";
-
-export const MAX_AVATAR_SIZE = 1 * 1024 * 1024; // 1MB in bytes
 
 
 type ProfilePage = "account" | "balance" | "shelf" | "bookmarks" | "history" | "analytics" | "preferences" | "missions";

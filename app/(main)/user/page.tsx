@@ -2,16 +2,17 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { currentUser } from "@/lib/mock-user";
+import { useUserStore } from "@/lib/store";
 
 export default function UserRedirectPage() {
   const router = useRouter();
-  
+  const { user } = useUserStore();
+
   useEffect(() => {
     // In a real app, this would get the current authenticated user's ID
     // For now, redirect to our mock user's profile
-    router.push(`/user/${currentUser.id}`);
-  }, [router]);
+    router.push(`/user/${user?.id}`);
+  }, [router, user]);
   
   // Show a simple loading state while redirecting
   return (

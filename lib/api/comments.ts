@@ -11,6 +11,7 @@ export async function getChapterComments(bookId: number, chapterId: number): Pro
     // For development: temporarily return mock data if API endpoint doesn't exist yet
     console.warn("Using mock comment data - implement actual API endpoint");
     return {
+      success: false,
       status: 200,
       code: 200,
       msg: "Success",
@@ -29,6 +30,7 @@ export async function addChapterComment(bookId: number, chapterId: number, conte
     // For development: temporarily return success if API endpoint doesn't exist yet
     console.warn("Mock comment added - implement actual API endpoint");
     return {
+      success: false,
       status: 200,
       code: 200,
       msg: "Comment added successfully",
@@ -47,6 +49,7 @@ export async function likeComment(commentId: number): Promise<ApiResponse<any>> 
     // For development: temporarily return success if API endpoint doesn't exist yet
     console.warn("Mock like added - implement actual API endpoint");
     return {
+      success: false,
       status: 200,
       code: 200,
       msg: "Comment liked successfully",
@@ -65,6 +68,7 @@ export async function unlikeComment(commentId: number): Promise<ApiResponse<any>
     // For development: temporarily return success if API endpoint doesn't exist yet
     console.warn("Mock like removed - implement actual API endpoint");
     return {
+      success: false,
       status: 200,
       code: 200,
       msg: "Comment unliked successfully",

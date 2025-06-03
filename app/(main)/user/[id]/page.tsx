@@ -30,8 +30,6 @@ const defaultPreferences: Required<UserPreferences> = {
   volume: 50,
 };
 
-export const MAX_AVATAR_SIZE = 1 * 1024 * 1024; // 1MB in bytes
-
 
 // Initial user data
 const INITIAL_USER_DATA: User = {
