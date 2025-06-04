@@ -141,6 +141,7 @@ export function SearchDialog({ variant = 'default' }: SearchDialogProps) {
         search: debouncedQuery,
         page: pageParam as number,
         limit: 5,
+        accessStatusId: 1,
       });
       
       return response.data;

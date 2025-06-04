@@ -158,6 +158,7 @@ export default function BooksPage() {
       page: currentPage,
       limit: pageSize,
       sortBy: sortByParam as "createdAt" | "updatedAt" | "views" | "title",
+      accessStatusId: 1,
       sortDirection: sortDirectionParam as SortDirectionEnum,
     };
     

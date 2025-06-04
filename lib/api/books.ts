@@ -100,6 +100,13 @@ export async function updateBookStatus(bookId: number, bookData: {accessStatusId
 }
 
 /**
+ * Reject a book with a detailed reason
+ */
+export async function rejectBook(bookId: number, reason: string): Promise<ApiResponse<Book>> {
+  return post<Book>(`/book/${bookId}/reject`, { reason });
+}
+
+/**
  * Delete a book
  */
 export async function deleteBook(bookId: number): Promise<ApiResponse<{ success: boolean }>> {

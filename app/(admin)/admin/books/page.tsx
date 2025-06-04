@@ -4,6 +4,7 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Search, 
   CheckCircle, 
@@ -34,6 +35,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import { AccessStatusEnum, Chapter, ChapterAccessStatus, BookType, BOOK_TYPES, AgeRatingEnum } from "@/models/book";
 import { ModerationResults, NumericAgeRating } from "@/components/moderation/ModerationResults";
@@ -113,6 +119,179 @@ const checkContentFlagged = (scores: Record<string, number>, rating: number) => 
   return isContentFlagged(scores, safeRating);
 };
 
+// RejectBookPopover Component
+interface RejectBookPopoverProps {
+  bookId: number;
+  bookTitle: string;
+  onReject: (bookId: number, reason: string) => void;
+  isLoading?: boolean;
+  trigger: React.ReactNode;
+}
+
+function RejectBookPopover({ bookId, bookTitle, onReject, isLoading = false, trigger }: RejectBookPopoverProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const handleReject = () => {
+    if (!reason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+    
+    onReject(bookId, reason);
+    setIsOpen(false);
+    setReason("");
+  };
+
+  const handleCancel = () => {
+    setIsOpen(false);
+    setReason("");
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        {trigger}
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="end">
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-medium text-sm">Reject Book</h4>
+            <p className="text-xs text-muted-foreground mt-1">
+              Rejecting "{bookTitle}"
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="reason" className="text-sm font-medium">
+              Rejection Reason <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              id="reason"
+              placeholder="Please provide a detailed reason for rejecting this book..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[80px] text-sm"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleReject}
+              disabled={isLoading || !reason.trim()}
+              className="flex-1"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-1" />
+              )}
+              Reject
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// BulkRejectPopover Component
+interface BulkRejectPopoverProps {
+  selectedBooks: ExtendedBook[];
+  onReject: (reason: string) => void;
+  isLoading?: boolean;
+  trigger: React.ReactNode;
+}
+
+function BulkRejectPopover({ selectedBooks, onReject, isLoading = false, trigger }: BulkRejectPopoverProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const handleReject = () => {
+    if (!reason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+    
+    onReject(reason);
+    setIsOpen(false);
+    setReason("");
+  };
+
+  const handleCancel = () => {
+    setIsOpen(false);
+    setReason("");
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        {trigger}
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="end">
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-medium text-sm">Reject Books</h4>
+            <p className="text-xs text-muted-foreground mt-1">
+              Rejecting {selectedBooks.length} selected {selectedBooks.length === 1 ? 'book' : 'books'}
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="bulk-reason" className="text-sm font-medium">
+              Rejection Reason <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              id="bulk-reason"
+              placeholder="Please provide a detailed reason for rejecting these books..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[80px] text-sm"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleReject}
+              disabled={isLoading || !reason.trim()}
+              className="flex-1"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-1" />
+              )}
+              Reject All
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function BooksPage() {
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<"pending" | "published" | "blocked">("pending");
@@ -152,7 +331,7 @@ export default function BooksPage() {
 
   // Use the mutation hooks
   const { approveBook, isPending: isApproving } = useApproveBook();
-  const { rejectBook, isPending: isRejecting } = useRejectBook();
+  const rejectBookMutation = useRejectBook();
   const { 
     bulkApproveBooks, 
     bulkRejectBooks, 
@@ -187,9 +366,9 @@ export default function BooksPage() {
     clearSelection(); // Clear selection after action
   };
   
-  const handleBulkReject = async (selectedBooks: ExtendedBook[], clearSelection: () => void) => {
+  const handleBulkReject = async (selectedBooks: ExtendedBook[], clearSelection: () => void, reason: string) => {
     const bookIds = selectedBooks.map(book => book.id);
-    await bulkRejectBooks(bookIds);
+    await bulkRejectBooks(bookIds, reason);
     // Invalidate queries to refresh the data
     queryClient.invalidateQueries({
       queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
@@ -207,12 +386,14 @@ export default function BooksPage() {
     });
   };
   
-  const handleRejectBook = (bookId: number) => {
-    rejectBook(bookId, () => {
-      // Invalidate the current query to refresh the data
-      queryClient.invalidateQueries({
-        queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
-      });
+  const handleRejectBook = (bookId: number, reason: string) => {
+    rejectBookMutation.mutate({ bookId, reason }, {
+      onSuccess: () => {
+        // Invalidate the current query to refresh the data
+        queryClient.invalidateQueries({
+          queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
+        });
+      }
     });
   };
 
@@ -468,20 +649,26 @@ export default function BooksPage() {
                 )}
                 Approve Selected
               </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="text-red-600"
-                onClick={() => handleBulkReject(selectedBooks, clearSelection)}
-                disabled={isBulkUpdating}
-              >
-                {isBulkUpdating ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <XCircle className="h-4 w-4 mr-1" />
-                )}
-                Reject Selected
-              </Button>
+              <BulkRejectPopover
+                selectedBooks={selectedBooks}
+                onReject={(reason) => handleBulkReject(selectedBooks, clearSelection, reason)}
+                isLoading={isBulkUpdating}
+                trigger={
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-red-600"
+                    disabled={isBulkUpdating}
+                  >
+                    {isBulkUpdating ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4 mr-1" />
+                    )}
+                    Reject Selected
+                  </Button>
+                }
+              />
             </>
           )}
 
@@ -799,16 +986,23 @@ export default function BooksPage() {
                   <CheckCircle className="h-4 w-4" />
                   <span className="sr-only">Approve book</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
-                  onClick={() => handleRejectBook(book.id)}
-                  title="Reject Book"
-                >
-                  <XCircle className="h-4 w-4" />
-                  <span className="sr-only">Reject book</span>
-                </Button>
+                <RejectBookPopover
+                  bookId={book.id}
+                  bookTitle={book.title}
+                  onReject={handleRejectBook}
+                  isLoading={rejectBookMutation.isPending}
+                  trigger={
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                      title="Reject Book"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span className="sr-only">Reject book</span>
+                    </Button>
+                  }
+                />
                 <ModerateButton
                   bookId={book.id}
                   book={book}
@@ -1147,16 +1341,23 @@ export default function BooksPage() {
                   <CheckCircle className="h-4 w-4" />
                   <span className="sr-only">Approve book</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
-                  onClick={() => handleRejectBook(book.id)}
-                  title="Reject Book"
-                >
-                  <XCircle className="h-4 w-4" />
-                  <span className="sr-only">Reject book</span>
-                </Button>
+                <RejectBookPopover
+                  bookId={book.id}
+                  bookTitle={book.title}
+                  onReject={handleRejectBook}
+                  isLoading={rejectBookMutation.isPending}
+                  trigger={
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                      title="Reject Book"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span className="sr-only">Reject book</span>
+                    </Button>
+                  }
+                />
                 <ModerateButton
                   bookId={book.id}
                   book={book}
