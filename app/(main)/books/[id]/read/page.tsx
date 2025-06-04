@@ -2,7 +2,7 @@
 
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Menu, X, Volume2, VolumeX, Volume1, MessageCircle, Maximize2, ScrollText, BookOpen,  Square, Lock, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu, X, Volume2, VolumeX, Volume1, MessageCircle, ScrollText, BookOpen, Square, Lock, Play } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { PictureBookReader } from "@/components/books/picture-book-reader";
@@ -715,7 +715,7 @@ export default function ReadPage() {
                 <Button 
                   variant={readingMode === 'flip' ? "default" : "ghost"} 
                   size="icon"
-                  className="h-10 w-10 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
+                  className="h-12 w-12 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
                   onClick={() => setReadingMode('flip')}
                 >
                   <BookOpen className="h-4 w-4" />
@@ -723,23 +723,6 @@ export default function ReadPage() {
               </TooltipTrigger>
               <TooltipContent side="left">
                 <p>Flip Mode</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-10 w-10 rounded-full dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p>Focus Mode</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
