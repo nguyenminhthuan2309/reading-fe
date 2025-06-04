@@ -101,6 +101,12 @@ export enum SortDirectionEnum {
   DESC = 'DESC'
 }
 
+// Sort types for different categories (renaming to match the new requirement)
+export enum SortTypeEnum {
+  ASC = 'ASC',
+  DESC = 'DESC'
+}
+
 // Book types constants - Internal format
 export const BOOK_TYPES_INTERNAL = {
   PICTURE_BOOK: "picture_book",
@@ -204,7 +210,7 @@ export interface BookFilters {
   progressStatusId?: number; // ProgressStatus id
   accessStatusId?: number; // AccessStatus id
   hasChapter?: boolean; // Whether book has chapter
-  sortDirection?: SortDirectionEnum; // Sort direction (ASC or DESC)
+  sortType?: SortTypeEnum; // Sort type (ASC or DESC)
   ageRating?: number; // Age rating
 }
 

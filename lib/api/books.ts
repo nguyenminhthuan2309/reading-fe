@@ -36,7 +36,7 @@ export async function getBooks(filters: BookFilters): Promise<ApiResponse<Pagina
   }
   
   if (filters.hasChapter !== undefined) queryParams.append('hasChapter', filters.hasChapter.toString());
-  if (filters.sortDirection) queryParams.append('sortDirection', filters.sortDirection);
+  if (filters.sortType) queryParams.append('sortType', filters.sortType);
   if (filters.ageRating) queryParams.append('ageRating', filters.ageRating.toString());
   
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';

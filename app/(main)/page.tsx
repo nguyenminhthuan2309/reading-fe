@@ -6,10 +6,11 @@ import Link from "next/link";
 import { PenLine, Trophy, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getUserReadingHistory, getBooks, getTrendingBooks, getRecommendedBooks } from "@/lib/api/books";
-import { ReadingHistoryItem, SortDirectionEnum, AccessStatusEnum, Book } from "@/models/book";
+import { ReadingHistoryItem, SortTypeEnum, AccessStatusEnum, Book } from "@/models/book";
 import { useQuery } from "@tanstack/react-query";
 import { BOOK_KEYS } from "@/lib/constants/query-keys";
 import { useUserStore } from "@/lib/store/useUserStore";
+
 export default function Home() {
   const { isLoggedIn } = useUserStore();
   // Fetch reading history using React Query
@@ -48,8 +49,8 @@ export default function Home() {
       const response = await getBooks({
         page: 1,
         limit: 10,
-        sortBy: 'createdAt', // This should map to createdAt on the backend
-        sortDirection: SortDirectionEnum.DESC, // Get the newest first
+        sortBy: 'createdAt', // Sort by creation date
+        sortType: SortTypeEnum.DESC, // Descending order (newest first)
         accessStatusId: AccessStatusEnum.PUBLISHED // Only published books
       });
 
@@ -73,7 +74,7 @@ export default function Home() {
         page: 1,
         limit: 10,
         sortBy: 'updatedAt', // Sort by update date
-        sortDirection: SortDirectionEnum.DESC, // Get the most recently updated first
+        sortType: SortTypeEnum.DESC, // Descending order (most recent first)
         accessStatusId: AccessStatusEnum.PUBLISHED // Only published books
       });
       
@@ -166,7 +167,7 @@ export default function Home() {
         <SectionCarousel 
           title="Recently Updated" 
           books={recentlyUpdatedData || []} 
-          linkHref="/books?sortBy=updatedAt" 
+          linkHref="/books?sortBy=updatedAt_desc" 
           className="bg-section-light dark:bg-gray-900"
           isLoading={isLoadingRecentlyUpdated}
         />
@@ -177,7 +178,7 @@ export default function Home() {
         <SectionCarousel 
           title="Top Trending" 
           books={trendingData || []} 
-          linkHref="/books?sort=trending" 
+          linkHref="/books?sortBy=views_desc" 
           className="bg-section-dark dark:bg-gray-800"
           isLoading={isLoadingTrending}
         />

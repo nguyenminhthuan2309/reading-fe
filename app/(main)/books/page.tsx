@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getBooks, getGenres } from "@/lib/api/books";
-import {  BookFilters, Category, SortDirectionEnum, ReadingProgress, ProgressStatusEnum, PROGRESS_STATUSES } from "@/models/book";
+import {  BookFilters, Category, SortTypeEnum, ReadingProgress, ProgressStatusEnum, PROGRESS_STATUSES } from "@/models/book";
 import { BookCard } from "@/components/books/book-card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Filter, PlusCircle, Search, SlidersHorizontal, ChevronsLeft, ChevronsRight } from "lucide-react";
@@ -66,8 +66,7 @@ export default function BooksPage() {
   const currentPage = Number(searchParams.get("page")) || 1;
   const pageSize = Number(searchParams.get("limit")) || 16;
   const searchQuery = searchParams.get("search") || "";
-  const sortByParam = searchParams.get("sortBy") || "title";
-  const sortDirectionParam = searchParams.get("sortDirection") || SortDirectionEnum.DESC;
+  const sortByParam = searchParams.get("sortBy") || "title_asc";
   
   // Parse selectedGenres from URL (comma-separated list of genres)
   const selectedGenresParam = searchParams.get("genres") || "";
@@ -152,14 +151,32 @@ export default function BooksPage() {
     }, 300);
   };
 
+  // Helper function to get sortBy and sortType from the combined sortBy parameter
+  const getSortParams = (sortByParam: string) => {
+    switch (sortByParam) {
+      case "title_asc":
+        return { sortBy: "title", sortType: SortTypeEnum.ASC };
+      case "views_desc":
+        return { sortBy: "views", sortType: SortTypeEnum.DESC };
+      case "createdAt_desc":
+        return { sortBy: "createdAt", sortType: SortTypeEnum.DESC };
+      case "updatedAt_desc":
+        return { sortBy: "updatedAt", sortType: SortTypeEnum.DESC };
+      default:
+        return { sortBy: "title", sortType: SortTypeEnum.ASC };
+    }
+  };
+
   // Prepare filters for API request
   const filters: BookFilters = useMemo(() => {
+    const { sortBy, sortType } = getSortParams(sortByParam);
+    
     const queryFilters: BookFilters = {
       page: currentPage,
       limit: pageSize,
-      sortBy: sortByParam as "createdAt" | "updatedAt" | "views" | "title",
+      sortBy: sortBy as "createdAt" | "updatedAt" | "views" | "title",
       accessStatusId: 1,
-      sortDirection: sortDirectionParam as SortDirectionEnum,
+      sortType: sortType as SortTypeEnum,
     };
     
     if (searchQuery) queryFilters.search = searchQuery;
@@ -188,7 +205,7 @@ export default function BooksPage() {
     }
 
     return queryFilters;
-  }, [currentPage, pageSize, sortByParam, sortDirectionParam, searchQuery, selectedGenres, selectedProgressStatus, genres]);
+  }, [currentPage, pageSize, sortByParam, searchQuery, selectedGenres, selectedProgressStatus, genres]);
   
   // Fetch books data with React Query - now with request cancellation
   const { 
@@ -342,10 +359,10 @@ export default function BooksPage() {
   };
   
   // Handle sort change
-  const handleSortChange = (value: string) => {
+  const handleSortByChange = (value: string) => {
     updateUrlParams({ 'sortBy': value });
   };
-  
+
   // Determine if we should show loading states
   const showFullPageLoading = (isLoadingBooks && !booksData) || isLoadingGenres;
   const isTransitioning = isFetchingBooks && !isLoadingBooks;
@@ -482,19 +499,20 @@ export default function BooksPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
               </form>
               
-              {/* Sort Dropdown */}
+              {/* Sort Controls */}
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <SlidersHorizontal size={16} className="text-muted-foreground dark:text-gray-400 hidden sm:block" />
-                <Select value={sortByParam} onValueChange={handleSortChange} disabled={isTransitioning}>
-                  <SelectTrigger className="w-full sm:w-[150px]">
+                
+                {/* Sort By Dropdown */}
+                <Select value={sortByParam} onValueChange={handleSortByChange} disabled={isTransitioning}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="title">Title (A-Z)</SelectItem>
-                    <SelectItem value="rating">Rating (High to Low)</SelectItem>
-                    <SelectItem value="chapters">Chapters (Most to Least)</SelectItem>
-                    <SelectItem value="createdAt">Newest</SelectItem>
-                    <SelectItem value="views">Most Popular</SelectItem>
+                    <SelectItem value="title_asc">Title (A-Z)</SelectItem>
+                    <SelectItem value="views_desc">Most View</SelectItem>
+                    <SelectItem value="createdAt_desc">Newest</SelectItem>
+                    <SelectItem value="updatedAt_desc">Recent Update</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
