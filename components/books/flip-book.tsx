@@ -69,16 +69,16 @@ interface BookEndProps  {
 const BookCover = React.forwardRef<HTMLDivElement, BookCoverProps>(({ bookData, currentChapter }, ref) => {
   return (
     <div
-      className="relative bg-white shadow-md overflow-hidden"
+      className="relative bg-white dark:bg-gray-900 shadow-md overflow-hidden"
       ref={ref}
     >
       <div className="w-full h-full flex flex-col items-center justify-center">
         {/* Book Title */}
-        <h1 className="text-2xl font-bold">{bookData.title}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{bookData.title}</h1>
         {/* Author */}
-        <p className="text-sm text-muted-foreground">By: {bookData.author.name}</p>
+        <p className="text-sm text-muted-foreground dark:text-gray-300">By: {bookData.author.name}</p>
         {/* Chapter Title */}
-        <p className="text-sm text-muted-foreground">Chapter: {currentChapter.chapter} - {currentChapter.title}</p>
+        <p className="text-sm text-muted-foreground dark:text-gray-300">Chapter: {currentChapter.chapter} - {currentChapter.title}</p>
       </div>
     </div>
   );
@@ -87,12 +87,12 @@ const BookCover = React.forwardRef<HTMLDivElement, BookCoverProps>(({ bookData, 
 // Book End component for react-pageflip
 const BookEnd = React.forwardRef<HTMLDivElement, BookEndProps>(({ bookData, nextChapter }, ref) => {
   return (
-    <div className="relative bg-white shadow-md overflow-hidden" ref={ref}>
+    <div className="relative bg-white dark:bg-gray-900 shadow-md overflow-hidden" ref={ref}>
       <div className="w-full h-full flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold">The End</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">The End</h1>
 
         {/* next chapter button */}
-         { nextChapter && <Link className="flex items-center gap-2" href={`/books/${bookData.id}/read?chapter=${nextChapter.chapter}&id=${nextChapter.id}`}>Next Chapter <ArrowRight className="w-4 h-4" /></Link> }  
+         { nextChapter && <Link className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors" href={`/books/${bookData.id}/read?chapter=${nextChapter.chapter}&id=${nextChapter.id}`}>Next Chapter <ArrowRight className="w-4 h-4" /></Link> }  
       </div>
     </div>
   );
@@ -103,7 +103,7 @@ const BookEnd = React.forwardRef<HTMLDivElement, BookEndProps>(({ bookData, next
 const Page = React.forwardRef<HTMLDivElement, PageProps>(({ content, caption }, ref) => {
   return (
     <div
-      className="relative bg-white shadow-md overflow-hidden"
+      className="relative bg-white dark:bg-gray-900 shadow-md overflow-hidden"
       ref={ref}
     >
       <div className="w-full h-full">
@@ -131,17 +131,19 @@ const Page = React.forwardRef<HTMLDivElement, PageProps>(({ content, caption }, 
 // Custom Page component for text content in flip book
 const TextPage = React.forwardRef<HTMLDivElement, PageProps>(({ content }, ref) => {
   return (
-    <div className="relative bg-white shadow-md overflow-hidden p-8" ref={ref}>
+    <div className="relative bg-white dark:bg-gray-900 shadow-md overflow-hidden p-8" ref={ref}>
+      <div className="text-gray-900 dark:text-gray-100">
         <NovelContent 
-              content={content}
-              className="mx-auto"
-            />
+          content={content}
+          className="mx-auto prose prose-gray dark:prose-invert prose-sm max-w-none"
+        />
+      </div>
     </div>
-      );
-    }
-);
+  );
+});
 
 Page.displayName = "Page";
+TextPage.displayName = "TextPage";
 
 interface FlipBookProps {
   bookType: 'manga' | 'novel';
@@ -169,6 +171,8 @@ export function FlipBook({
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [totalPages, setTotalPages] = useState(pages.length);
   const bookRef = useRef<PageRef>(null);
+
+  console.log('pages', pages);
 
   // Add cleanup effect for chapter changes
   useEffect(() => {
@@ -236,17 +240,17 @@ export function FlipBook({
   return (
     <div className={cn("w-full flex flex-col items-center", className)}>
       {/* Book container */}
-      <div className="relative w-full max-w-2xl mx-auto mb-8">
+      <div className="relative w-full max-w-6xl mx-auto mb-8">
         <div className="book-container relative overflow-hidden">
           <HTMLFlipBook
             key={`flip-book-${currentChapter.id}`}
-            width={500}
-            height={700}
+            width={700}
+            height={900}
             size="stretch"
-            minWidth={315}
-            maxWidth={1000}
-            minHeight={400}
-            maxHeight={1533}
+            minWidth={400}
+            maxWidth={1400}
+            minHeight={500}
+            maxHeight={1800}
             drawShadow={true}
             flippingTime={1000}
             usePortrait={true}
@@ -309,7 +313,9 @@ export function FlipBook({
           disabled={currentPage === 0}
           className={cn(
             "h-12 w-12 rounded-full shadow-lg",
-            "bg-white/80 backdrop-blur-sm hover:bg-white",
+            "bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700",
+            "border border-gray-200 dark:border-gray-600",
+            "text-gray-700 dark:text-gray-200",
             currentPage === 0 && "opacity-50 cursor-not-allowed"
           )}
         >
@@ -318,7 +324,7 @@ export function FlipBook({
         
         {/* Page number indicator */}
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground dark:text-gray-300">
             Page {currentPage + 1} of {totalPages}
           </p>
         </div>
@@ -330,7 +336,9 @@ export function FlipBook({
           disabled={currentPage >= totalPages - 1}
           className={cn(
             "h-12 w-12 rounded-full shadow-lg",
-            "bg-white/80 backdrop-blur-sm hover:bg-white",
+            "bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700",
+            "border border-gray-200 dark:border-gray-600",
+            "text-gray-700 dark:text-gray-200",
             currentPage >= totalPages - 1 && "opacity-50 cursor-not-allowed"
           )}
         >

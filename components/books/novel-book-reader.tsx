@@ -7,6 +7,68 @@ import { Button } from "@/components/ui/button";
 import { BookOpen, ScrollText, ChevronLeft, ChevronRight } from "lucide-react";
 import { FlipBookWrapper } from "./flip-book";
 import { Book, Chapter } from "@/models/book";
+
+// Function to split content into pages that fit the page size
+function splitContentIntoPages(content: string, maxWordsPerPage: number = 300): string[] {
+  if (!content) return ['No content available'];
+  
+  // Extract text content into paragraphs
+  const extractedParagraphs = extractTextContent(content);
+  if (extractedParagraphs.length === 0) return ['No content available'];
+  
+  const pages: string[] = [];
+  let currentPage: string[] = [];
+  let currentWordCount = 0;
+  
+  for (const paragraph of extractedParagraphs) {
+    const trimmedParagraph = paragraph.trim();
+    if (!trimmedParagraph) continue;
+    
+    const paragraphWords = trimmedParagraph.split(/\s+/).length;
+    
+    // If this single paragraph is too long for one page, we need to split it
+    if (paragraphWords > maxWordsPerPage) {
+      // Save current page if it has content
+      if (currentPage.length > 0) {
+        pages.push(currentPage.map(p => `<p class="mb-4 text-justify leading-relaxed">${p.replace(/\n/g, '<br/>')}</p>`).join(''));
+        currentPage = [];
+        currentWordCount = 0;
+      }
+      
+      // Split the long paragraph into chunks
+      const words = trimmedParagraph.split(/\s+/);
+      let chunkStart = 0;
+      
+      while (chunkStart < words.length) {
+        const chunkEnd = Math.min(chunkStart + maxWordsPerPage, words.length);
+        const chunk = words.slice(chunkStart, chunkEnd).join(' ');
+        pages.push(`<p class="mb-4 text-justify leading-relaxed">${chunk.replace(/\n/g, '<br/>')}</p>`);
+        chunkStart = chunkEnd;
+      }
+    } 
+    // If adding this paragraph would exceed the word limit, start a new page
+    else if (currentWordCount + paragraphWords > maxWordsPerPage && currentPage.length > 0) {
+      // Save current page
+      pages.push(currentPage.map(p => `<p class="mb-4 text-justify leading-relaxed">${p.replace(/\n/g, '<br/>')}</p>`).join(''));
+      
+      // Start new page with current paragraph
+      currentPage = [trimmedParagraph];
+      currentWordCount = paragraphWords;
+    } else {
+      // Add paragraph to current page
+      currentPage.push(trimmedParagraph);
+      currentWordCount += paragraphWords;
+    }
+  }
+  
+  // Add the last page if it has content
+  if (currentPage.length > 0) {
+    pages.push(currentPage.map(p => `<p class="mb-4 text-justify leading-relaxed">${p.replace(/\n/g, '<br/>')}</p>`).join(''));
+  }
+  
+  return pages.length > 0 ? pages : ['No content available'];
+}
+
 // Define type for flip book reference
 interface PageFlipRef {
   pageFlip: () => {
@@ -43,23 +105,23 @@ export function NovelBookReader({
   highlightWordEnd,
   onParagraphClick,
 }: NovelBookReaderProps) {
-  // Extract text content for flip book pages
-  const textPages = React.useMemo(() => {
-    const extractedText = extractTextContent(content);
-    return extractedText.length > 0 ? extractedText : ['No content available'];
-  }, [content]);
-  
-  // Generate HTML paragraphs for each page
+  // Split content into properly sized pages for flip book
   const htmlPages = React.useMemo(() => {
-    return textPages.map(text => `<p>${text.replace(/\n/g, '<br/>')}</p>`);
-  }, [textPages]);
+    if (isFlipMode) {
+      return splitContentIntoPages(content, 250); // ~250 words per page for better fit
+    }
+    return [];
+  }, [content, isFlipMode]);
   
   // Generate captions for pages
   const captions = React.useMemo(() => {
-    return textPages.map((_, index) => 
-      `Page ${index + 1} of ${textPages.length}`
-    );
-  }, [textPages]);
+    if (isFlipMode) {
+      return htmlPages.map((_, index) => 
+        `Page ${index + 1} of ${htmlPages.length}`
+      );
+    }
+    return [];
+  }, [htmlPages, isFlipMode]);
 
   return (
     <div className={`w-full ${className}`}>
