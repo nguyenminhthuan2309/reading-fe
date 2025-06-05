@@ -43,7 +43,6 @@ import {
 import { toast } from "sonner";
 import { AccessStatusEnum, Chapter, ChapterAccessStatus, BookType, BOOK_TYPES, AgeRatingEnum } from "@/models/book";
 import { ModerationResults, NumericAgeRating } from "@/components/moderation/ModerationResults";
-import { ModerateButton } from "@/components/moderation/ModerateButton";
 import { ModerationModelType, MODERATION_MODELS } from "@/lib/hooks/useOpenAI";
 import { 
   useUpdateBookStatus, 
@@ -941,20 +940,24 @@ export default function BooksPage() {
     {
       id: "moderated",
       accessorKey: "moderated",
-      header: "Moderation",
+      header: "Result",
       cell: ({ row }) => (
         <div>
           {row.original.moderated ? (
             <Badge 
               variant="outline" 
               className={`${row.original.moderated ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-700/50'} cursor-pointer`}
-              onClick={() => handleViewModerationResults(MODERATION_MODELS.GPT4O, row.original, isViewingModeration)}
+              onClick={() => handleViewModerationResults(MODERATION_MODELS.GPT4O, row.original, true)}
             >
               <Shield className="h-3 w-3 mr-1" />
               {row.original.moderated ? 'Passed' : 'Review Required'}
             </Badge>
           ) : (
-            <Badge variant="outline" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600/50">
+            <Badge 
+              variant="outline" 
+              className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600/50 cursor-pointer"
+              onClick={() => handleViewModerationResults(MODERATION_MODELS.GPT4O, row.original, false)}
+            >
               Not Moderated
             </Badge>
           )}
@@ -1002,13 +1005,6 @@ export default function BooksPage() {
                       <span className="sr-only">Reject book</span>
                     </Button>
                   }
-                />
-                <ModerateButton
-                  bookId={book.id}
-                  book={book}
-                  onOpenResults={(model, book, isViewing, result) => handleViewModerationResults(model, book, isViewing, result)}
-                  onRunModeration={(model, isEdit) => handleRunModeration(model, book, isEdit)}
-                  isLoading={checkingModeration && selectedBook?.id === book.id}
                 />
               </>
             )}
@@ -1306,13 +1302,18 @@ export default function BooksPage() {
             {book.moderated ? (
               <Badge 
                 variant="outline" 
-                className={`${book.moderated ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-700/50'}`}
+                className={`${book.moderated ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-700/50'} cursor-pointer`}
+                onClick={() => handleViewModerationResults(MODERATION_MODELS.GPT4O, book, true)}
               >
                 <Shield className="h-3 w-3 mr-1" />
                 {book.moderated ? book.moderated : 'Review Required'}
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600/50">
+              <Badge 
+                variant="outline" 
+                className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-600/50 cursor-pointer"
+                onClick={() => handleViewModerationResults(MODERATION_MODELS.GPT4O, book, false)}
+              >
                 Not Moderated
               </Badge>
             )}
@@ -1357,13 +1358,6 @@ export default function BooksPage() {
                       <span className="sr-only">Reject book</span>
                     </Button>
                   }
-                />
-                <ModerateButton
-                  bookId={book.id}
-                  book={book}
-                  onOpenResults={(model, book, isViewing, result) => handleViewModerationResults(model, book, isViewing, result)}
-                  onRunModeration={(model, isEdit) => handleRunModeration(model, book, isEdit)}
-                  isLoading={checkingModeration && selectedBook?.id === book.id}
                 />
               </>
             )}
