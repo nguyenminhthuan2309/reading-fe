@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 
 // Custom styles for the MultiSelect component
 const multiSelectStyles = {
-  dropdown: "absolute top-full mt-1 w-full z-20 rounded-md border border-input bg-background shadow-lg overflow-y-auto",
+  dropdown: "absolute top-full mt-1 w-full z-20 rounded-md border border-input bg-background dark:bg-gray-800 dark:border-gray-600 shadow-lg overflow-y-auto",
   // Calculate min-height to show at least 5 items (each item is approximately 42px tall)
   minHeight: "min-h-[210px]",
   maxHeight: "max-h-[300px]",
-  item: "cursor-pointer flex items-center py-2.5 px-2 hover:bg-muted/50 aria-selected:bg-muted",
-  checkbox: "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-  selectedCheckbox: "bg-primary text-primary-foreground",
-  emptyCheckbox: "opacity-50",
+  item: "cursor-pointer flex items-center py-2.5 px-2 hover:bg-muted/50 dark:hover:bg-gray-700/50 aria-selected:bg-muted dark:aria-selected:bg-gray-700 dark:text-white",
+  checkbox: "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary dark:border-blue-400",
+  selectedCheckbox: "bg-primary text-primary-foreground dark:bg-blue-500 dark:text-white",
+  emptyCheckbox: "opacity-50 dark:opacity-40",
 };
 
 interface MultiSelectProps {
@@ -81,7 +81,7 @@ export function MultiSelect({
     <div className={cn("relative", className)}>
       <div
         className={cn(
-          "flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background dark:bg-gray-800 dark:border-gray-600 px-3 py-2 text-sm ring-offset-background dark:text-white",
           disabled ? "opacity-50 cursor-not-allowed" : "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-text"
         )}
         onClick={handleContainerClick}
@@ -92,7 +92,7 @@ export function MultiSelect({
               <Badge
                 key={selectedItem}
                 variant="secondary"
-                className="px-2 py-1 text-xs flex items-center gap-1"
+                className="px-2 py-1 text-xs flex items-center gap-1 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
               >
                 {options.find(opt => opt.value === selectedItem)?.label || selectedItem}
                 <span 
@@ -128,7 +128,7 @@ export function MultiSelect({
               }
             }}
             placeholder={selected.length > 0 ? '' : placeholder}
-            className="bg-transparent outline-none border-none p-1 text-sm flex-1 min-w-[80px]"
+            className="bg-transparent outline-none border-none p-1 text-sm flex-1 min-w-[80px] dark:text-white dark:placeholder-gray-400"
             disabled={disabled}
           />
         </CommandPrimitive>
@@ -138,7 +138,7 @@ export function MultiSelect({
           <Command className={cn(multiSelectStyles.dropdown, multiSelectStyles.minHeight, multiSelectStyles.maxHeight)}>
             <CommandGroup className="h-full overflow-auto">
               {options.length === 0 && (
-                <p className="py-2 px-3 text-sm text-muted-foreground text-center">
+                <p className="py-2 px-3 text-sm text-muted-foreground dark:text-gray-400 text-center">
                   No items found.
                 </p>
               )}

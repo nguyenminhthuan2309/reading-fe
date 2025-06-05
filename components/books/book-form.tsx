@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Save, Trash2, Loader2, Eye, Home, Shield, ChevronLeft, AlertCircle } from "lucide-react";
+import { Save, Trash2, Loader2, Eye, Home, Shield, ChevronLeft, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as yup from "yup";
 import { createBook, updateBook, getGenres, getChaptersByBookId, createChapters, updateChapter, addChapter, deleteChapter, updateBookStatus, getModerationResults } from "@/lib/api/books";
@@ -91,7 +91,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
   const [chapters, setChapters] = useState<ExtendedLocalChapter[]>([]);
   const [emptyChapters, setEmptyChapters] = useState<string[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isBookInfoCollapsed, setIsBookInfoCollapsed] = useState(false);
+  const [isBookInfoCollapsed, setIsBookInfoCollapsed] = useState(false); // Open by default
+  const [isChaptersCollapsed, setIsChaptersCollapsed] = useState(false); // Open by default
   const [hasScrolled, setHasScrolled] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
@@ -2015,44 +2016,79 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       )}
       
       <form id="book-form" onSubmit={handleSubmit} className="space-y-6 mb-3" noValidate>
-        {/* Main container box with both sections */}
-        <div className="bg-white dark:bg-gray-800 border border-secondary/90 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden pb-6">
-          <div className="flex flex-col md:flex-row">
-            {/* Left column - Book Info Component */}
-            <BookInfo
-              isCollapsed={isBookInfoCollapsed}
-              setIsCollapsed={setIsBookInfoCollapsed}
-              errors={errors}
-              coverImage={bookData.coverImage}
-              coverImagePreview={bookData.coverImagePreview}
-              handleImageUpload={handleImageUpload}
-              bookType={bookData.bookType}
-              handleBookTypeChange={handleBookTypeChange}
-              selectedGenres={bookData.selectedGenres}
-              setSelectedGenres={handleGenresChange}
-              ageRating={bookData.ageRating}
-              setAgeRating={handleAgeRatingChange}
-              progressStatus={bookData.progressStatus}
-              setProgressStatus={handleProgressStatusChange}
-              genres={genresQuery.data || []}
-              isEnhancingTitle={recommendation.enhanceTitle.isLoading}
-              enhanceTitle={enhanceTitle}
-              isEnhancingDescription={recommendation.enhanceDescription.isLoading}
-              enhanceDescription={enhanceDescription}
-              isEditing={isEditing}
-              canEdit={canEditBasicInfo}
-              canEditProgressStatus={canEditProgressStatus}
-              reasonIfDenied={reasonIfDenied}
-              titleValue={bookData.title}
-              descriptionValue={bookData.description}
-              onTitleChange={handleTitleChange}
-              onDescriptionChange={handleDescriptionChange}
-              onTitleApply={handleTitleApply}
-              onDescriptionApply={handleDescriptionApply}
-            />
-            
-            {/* Right column - Chapters using ChapterCreator Component */}
-            <div className="w-full md:flex-1 lg:pl-6 border-t md:border-t-0 md:border-l border-secondary/90 dark:border-gray-700">
+        {/* Book Info Accordion */}
+        <div className="bg-white dark:bg-gray-800 border border-secondary/90 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+          {/* Book Info Header */}
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-secondary/90 dark:border-gray-700"
+            onClick={() => setIsBookInfoCollapsed(!isBookInfoCollapsed)}
+          >
+            <h3 className="text-lg font-semibold dark:text-white">Book Information</h3>
+            {isBookInfoCollapsed ? (
+              <ChevronDown size={20} className="text-gray-500" />
+            ) : (
+              <ChevronUp size={20} className="text-gray-500" />
+            )}
+          </div>
+          
+          {/* Book Info Content */}
+          {!isBookInfoCollapsed && (
+            <div className="p-6">
+              <BookInfo
+                isCollapsed={false} // Always expanded when accordion is open
+                setIsCollapsed={() => {}} // No-op since we control via accordion
+                errors={errors}
+                coverImage={bookData.coverImage}
+                coverImagePreview={bookData.coverImagePreview}
+                handleImageUpload={handleImageUpload}
+                bookType={bookData.bookType}
+                handleBookTypeChange={handleBookTypeChange}
+                selectedGenres={bookData.selectedGenres}
+                setSelectedGenres={handleGenresChange}
+                ageRating={bookData.ageRating}
+                setAgeRating={handleAgeRatingChange}
+                progressStatus={bookData.progressStatus}
+                setProgressStatus={handleProgressStatusChange}
+                genres={genresQuery.data || []}
+                isEnhancingTitle={recommendation.enhanceTitle.isLoading}
+                enhanceTitle={enhanceTitle}
+                isEnhancingDescription={recommendation.enhanceDescription.isLoading}
+                enhanceDescription={enhanceDescription}
+                isEditing={isEditing}
+                canEdit={canEditBasicInfo}
+                canEditProgressStatus={canEditProgressStatus}
+                reasonIfDenied={reasonIfDenied}
+                titleValue={bookData.title}
+                descriptionValue={bookData.description}
+                onTitleChange={handleTitleChange}
+                onDescriptionChange={handleDescriptionChange}
+                onTitleApply={handleTitleApply}
+                onDescriptionApply={handleDescriptionApply}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Chapters Accordion */}
+        <div className="bg-white dark:bg-gray-800 border border-secondary/90 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+          {/* Chapters Header */}
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-secondary/90 dark:border-gray-700"
+            onClick={() => setIsChaptersCollapsed(!isChaptersCollapsed)}
+          >
+            <h3 className="text-lg font-semibold dark:text-white">
+              Chapters {chapters.length > 0 && `(${chapters.length})`}
+            </h3>
+            {isChaptersCollapsed ? (
+              <ChevronDown size={20} className="text-gray-500" />
+            ) : (
+              <ChevronUp size={20} className="text-gray-500" />
+            )}
+          </div>
+          
+          {/* Chapters Content */}
+          {!isChaptersCollapsed && (
+            <div className="p-6">
               <ChapterCreator
                 bookType={bookData.bookType}
                 chapters={chapters}
@@ -2071,7 +2107,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   ?.map((genre: any) => genre.name) || []}
               />
             </div>
-          </div>
+          )}
         </div>
       </form>
       
