@@ -388,6 +388,7 @@ export default function BooksPage() {
   const handleRejectBook = (bookId: number, reason: string) => {
     rejectBookMutation.mutate({ bookId, reason }, {
       onSuccess: () => {
+        toast.success("Book rejected successfully");
         // Invalidate the current query to refresh the data
         queryClient.invalidateQueries({
           queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
@@ -447,7 +448,7 @@ export default function BooksPage() {
       try {
         setCheckingModeration(true);
         const response = await getModerationResults(book.id);
-        if (response.code === 200 && response.data) {
+        if (response.code === 200 && response.data && response.data.length > 0) {
           // Store all available results
           const resultsMap: Record<string, ModerationResultsResponse> = {};
           response.data.forEach(result => {
@@ -456,94 +457,30 @@ export default function BooksPage() {
           
           setAvailableModelResults(resultsMap);
           
-          // Check if we have results for the selected model
-          const resultForModel = resultsMap[model];
-          if (resultForModel) {
-            // If we have results for the selected model, recursively call with that result
-            handleViewModerationResults(model, book, isViewing, resultForModel);
-          } else {
-            // If no results for this model, run moderation
-            handleRunModeration(model, book, false);
-          }
+          // Use the first available result and set the model to that result's model
+          const firstResult = response.data[0];
+          setSelectedModel(firstResult.model as ModerationModelType);
+          
+          // Parse and display the first result
+          const enhancedResults = parseStoredModerationResult(firstResult, book.ageRating as NumericAgeRating);
+          setModerationResults(enhancedResults);
+          setModerationDialogOpen(true);
         } else {
-          // If no results at all, run moderation
-          handleRunModeration(model, book, false);
+          // If no results at all, just open the modal with empty state
+          setAvailableModelResults({});
+          setModerationResults(null);
+          setModerationDialogOpen(true);
         }
       } catch (error) {
         console.error("Error fetching moderation results:", error);
         toast.error("Failed to fetch moderation results");
-        handleRunModeration(model, book, false);
+        // Still open the modal with empty state instead of running moderation
+        setAvailableModelResults({});
+        setModerationResults(null);
+        setModerationDialogOpen(true);
       } finally {
         setCheckingModeration(false);
       }
-    }
-  };
-
-  // Function to run content moderation
-  const handleRunModeration = async (model: ModerationModelType, book: ExtendedBook, isEdit: boolean = false) => {
-    // Set loading state and book
-    setCheckingModeration(true);
-    setSelectedModel(model);
-    setSelectedBook(book);
-    setIsViewingModeration(false); // Reset viewing mode
-    setIsEditingModeration(isEdit); // Set edit mode based on parameter
-    
-    try {
-      // Call moderation API
-      const results = await checkContentModeration(model, book);
-      
-      // Update moderation results and open dialog
-      setModerationResults(results);
-      
-      // Automatically save results if book ID is available
-      if (book.id) {
-        // Prepare the moderation data
-        const moderationData: ModerationResultsPayload = {
-          title: results.contentResults?.title 
-            ? JSON.stringify(results.contentResults.title) 
-            : null,
-          description: results.contentResults?.description 
-            ? JSON.stringify(results.contentResults.description) 
-            : null,
-          coverImage: results.contentResults?.coverImage 
-            ? JSON.stringify(results.contentResults.coverImage) 
-            : null,
-          chapters: results.contentResults?.chapters 
-            ? JSON.stringify(results.contentResults.chapters)
-            : null,
-          model: results.model,
-          bookId: book.id,
-        };
-
-        try {
-          // Save results using the static function
-          const savedResult = await saveModerateResultsStatic(book.id, moderationData, isEdit);
-          
-          // Store the saved result in available results
-          if (savedResult) {
-            setAvailableModelResults(prev => ({
-              ...prev,
-              [model]: savedResult
-            }));
-          }
-          
-          // Re-fetch the book data
-          queryClient.invalidateQueries({
-            queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
-          });
-
-        } catch (saveError) {
-          console.error("Error saving moderation results:", saveError);
-          toast.error("Failed to save moderation results automatically");
-        }
-      }
-      
-      setModerationDialogOpen(true);
-    } catch (error) {
-      console.error("Error checking moderation:", error);
-      toast.error("Failed to check moderation");
-    } finally {
-      setCheckingModeration(false);
     }
   };
 
@@ -1690,6 +1627,74 @@ export default function BooksPage() {
     }
     
     return result as EnhancedModerationResult;
+  };
+
+  // Function to run content moderation
+  const handleRunModeration = async (model: ModerationModelType, book: ExtendedBook, isEdit: boolean = false) => {
+    // Set loading state and book
+    setCheckingModeration(true);
+    setSelectedModel(model);
+    setSelectedBook(book);
+    setIsViewingModeration(false); // Reset viewing mode
+    setIsEditingModeration(isEdit); // Set edit mode based on parameter
+    
+    try {
+      // Call moderation API
+      const results = await checkContentModeration(model, book);
+      
+      // Update moderation results and open dialog
+      setModerationResults(results);
+      
+      // Automatically save results if book ID is available
+      if (book.id) {
+        // Prepare the moderation data
+        const moderationData: ModerationResultsPayload = {
+          title: results.contentResults?.title 
+            ? JSON.stringify(results.contentResults.title) 
+            : null,
+          description: results.contentResults?.description 
+            ? JSON.stringify(results.contentResults.description) 
+            : null,
+          coverImage: results.contentResults?.coverImage 
+            ? JSON.stringify(results.contentResults.coverImage) 
+            : null,
+          chapters: results.contentResults?.chapters 
+            ? JSON.stringify(results.contentResults.chapters)
+            : null,
+          model: results.model,
+          bookId: book.id,
+        };
+
+        try {
+          // Save results using the static function
+          const savedResult = await saveModerateResultsStatic(book.id, moderationData, isEdit);
+          
+          // Store the saved result in available results
+          if (savedResult) {
+            setAvailableModelResults(prev => ({
+              ...prev,
+              [model]: savedResult
+            }));
+          }
+          
+          // Re-fetch the book data
+          queryClient.invalidateQueries({
+            queryKey: ADMIN_KEYS.BOOKS.LIST(selectedTab, currentPage, searchApplied)
+          });
+
+        } catch (saveError) {
+          console.error("Error saving moderation results:", saveError);
+          toast.error("Failed to save moderation results automatically");
+        }
+      }
+      
+      setModerationDialogOpen(true);
+    } catch (error) {
+      console.error("Error checking moderation:", error);
+      toast.error("Failed to check moderation");
+    } finally {
+      setCheckingModeration(false);
+    }
   };
 
   return (

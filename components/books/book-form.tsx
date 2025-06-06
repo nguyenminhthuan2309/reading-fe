@@ -240,7 +240,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                 }
               } catch (e) {
                 // Content is not valid JSON, so it's probably just text content
-                console.log("Content is not a valid JSON array of images:", e);
+                console.error("Content is not a valid JSON array of images:", e);
               }
             }
           } catch (error) {
@@ -595,56 +595,103 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                   
                   // Extract chapter IDs that have been moderated
                   existingChapters.forEach((chapter: any) => {
-                    if (chapter.chapterId || chapter.id) {
-                      moderatedChapterIds.add(chapter.chapterId || chapter.id);
+                    if (chapter.id) {
+                      moderatedChapterIds.add(Number(chapter.id));
                     }
                   });
                   
-                  console.log(`Found existing moderation for chapters: ${Array.from(moderatedChapterIds).join(', ')}`);
                 } catch (error) {
                   console.error('Error parsing existing moderated chapters:', error);
                 }
               }
               
-              console.log('Found existing moderation results, will only moderate new/unmoderated chapters');
             }
           }
         } catch (error) {
-          console.log('No existing moderation results found, will moderate all content');
+          console.error('No existing moderation results found, will moderate all content');
         }
       }
       
-      // Filter chapters - only moderate chapters that haven't been moderated yet
-      let chaptersToModerate = chapters;
-      if (isEditing && existingModerationResults) {
-        // Only moderate chapters that haven't been moderated yet
-        chaptersToModerate = chapters.filter(chapter => {
-          // If chapter has a numeric ID, check if it's been moderated
-          if (!chapter.id.startsWith('chapter-')) {
-            const chapterId = parseInt(chapter.id);
-            return !moderatedChapterIds.has(chapterId);
-          }
-          // New chapters (with temp IDs) always need moderation
-          return true;
-        });
-        console.log(`Moderating ${chaptersToModerate.length} new/unmoderated chapters out of ${chapters.length} total chapters`);
+      // Get uploaded chapters from the server to use their uploaded images/content
+      let serverChapters: Chapter[] = [];
+      try {
+        const chaptersResponse = await getChaptersByBookId(bookId);
+        if (chaptersResponse.code === 200 && chaptersResponse.data) {
+          serverChapters = chaptersResponse.data;
+        }
+      } catch (error) {
+        console.error('Error fetching server chapters for moderation:', error);
+        // Fallback to using client-side chapters if server fetch fails
       }
       
-      // Prepare chapters for moderation
-      const chaptersForModeration = chaptersToModerate.map((chapter, index) => ({
-        id: chapter.id.startsWith('chapter-') ? index + 1 : parseInt(chapter.id),
-        chapter: index + 1,
-        title: chapter.title,
-        content: bookData.bookType === BOOK_TYPES.NOVEL && typeof chapter.content === 'string'
-          ? extractChapterContent(chapter.content)
-          : (chapter.images ? chapter.images.map((img: any) => typeof img === 'string' ? img : img.url) : [])
-      }));
+      // Filter chapters - only moderate chapters that haven't been moderated yet
+      let chaptersToModerate: (Chapter | ExtendedLocalChapter)[] = serverChapters.length > 0 ? serverChapters : chapters;
+      if (isEditing && existingModerationResults) {
+        // Only moderate chapters that haven't been moderated yet
+        chaptersToModerate = chaptersToModerate.filter(chapter => {
+          // For server chapters, use their ID directly; for client chapters, parse if needed
+          const chapterId = serverChapters.length > 0 
+            ? (chapter as Chapter).id 
+            : (!String(chapter.id).startsWith('chapter-') ? parseInt(String(chapter.id)) : null);
+          
+          return chapterId && !moderatedChapterIds.has(chapterId);
+        });
+      }
+      
+      // Prepare chapters for moderation using server uploaded content
+      const chaptersForModeration = chaptersToModerate.map((chapter, index) => {
+        const chapterId = serverChapters.length > 0 
+          ? (chapter as Chapter).id 
+          : (String(chapter.id).startsWith('chapter-') ? index + 1 : parseInt(String(chapter.id)));
+        
+        let content: string | string[];
+        
+        if (bookData.bookType === BOOK_TYPES.NOVEL) {
+          // For novels, extract text content
+          content = typeof chapter.content === 'string' 
+            ? extractChapterContent(chapter.content)
+            : chapter.content;
+        } else {
+          // For manga, use the uploaded image URLs from server
+          if (serverChapters.length > 0) {
+            // Use server chapter content which contains uploaded image URLs
+            try {
+              if (Array.isArray(chapter.content)) {
+                content = chapter.content;
+              } else if (typeof chapter.content === 'string') {
+                const parsedContent = JSON.parse(chapter.content);
+                content = Array.isArray(parsedContent) ? parsedContent : [];
+              } else {
+                content = [];
+              }
+            } catch (error) {
+              console.error('Error parsing server chapter content:', error);
+              content = [];
+            }
+          } else {
+            // Fallback to client-side images (should be avoided but kept for safety)
+            const localChapter = chapter as ExtendedLocalChapter;
+            content = localChapter.images ? localChapter.images.map((img: any) => typeof img === 'string' ? img : img.url) : [];
+          }
+        }
+        
+        return {
+          id: chapterId,
+          chapter: index + 1,
+          title: chapter.title,
+          content
+        };
+      });
 
       // Get cover image data (only if we need to moderate book info)
       let coverImageData = '';
       if (shouldModerateBookInfo) {
-        if (bookData.coverImage) {
-          // Convert file to base64
+        // Use server uploaded cover URL if available (passed as bookData.coverImage now)
+        if (typeof bookData.coverImage === 'string' && bookData.coverImage.trim() !== '') {
+          // This is a server uploaded URL, use it directly
+          coverImageData = bookData.coverImage;
+        } else if (bookData.coverImage && typeof bookData.coverImage === 'object') {
+          // This is a File object, convert to base64
           const reader = new FileReader();
           await new Promise<void>((resolve, reject) => {
             reader.onload = () => {
@@ -753,8 +800,8 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             newChapters = moderationResult.contentResults.chapters.map((chapter: any, index: number) => {
               // Find the corresponding chapter from chaptersToModerate to get the real ID
               const originalChapter = chaptersToModerate[index];
-              const chapterId = originalChapter && !originalChapter.id.startsWith('chapter-') 
-                ? parseInt(originalChapter.id) 
+              const chapterId = originalChapter && !String(originalChapter.id).startsWith('chapter-') 
+                ? parseInt(String(originalChapter.id)) 
                 : chapter.id || chapter.chapterId;
               
               return {
@@ -801,11 +848,6 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           // Use update if we have existing results, create if new
           const isUpdate = existingModerationResults !== null;
           await saveModerateResultsStatic(bookId, finalModerationData, isUpdate);
-          
-          // Note: The book's moderation status is automatically handled by the backend
-          // when moderation results are saved, so we don't need to update it manually
-          
-          console.log(`Moderation completed for book ${bookId}${isUpdate ? ' (updated existing results)' : ' (new results)'}`);
           return true;
         } catch (saveError) {
           console.error("Error saving moderation results:", saveError);
@@ -966,11 +1008,10 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
       // NEW: Run moderation when publishing (submitting for review)
       if (isPublishing && !isDraft) {
         try {
-          console.log('Running automatic moderation for book submission...');
           await runContentModeration(updatedBookId, {
             title,
             description,
-            coverImage,
+            coverImage: coverUrl, // Use server uploaded URL instead of File object
             ageRating,
             bookType: bookData.bookType
           });

@@ -85,19 +85,11 @@ export function useRejectBook() {
     mutationFn: async ({ bookId, reason }: { bookId: number; reason: string }) => {
       const response = await rejectBookAPI(bookId, reason);
 
-      if (response.status !== 200) {
+      if (response.status !== 201) {
         throw new Error(response.msg || "Failed to reject book");
       }
 
       return response.data;
-    },
-    onSuccess: (_, { bookId }) => {
-      // Show success toast
-      toast.success("Book rejected successfully");
-
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.ALL });
-      queryClient.invalidateQueries({ queryKey: BOOK_KEYS.DETAIL(bookId.toString()) });
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to reject book");
