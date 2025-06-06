@@ -145,7 +145,7 @@ export function Chat() {
       {!isOpen ? (
         <Button
           onClick={toggleChat}
-          className="h-12 w-12 rounded-full shadow-lg bg-primary hover:bg-primary/90 dark:bg-red-600 dark:hover:bg-red-700 dark:shadow-gray-900/50 transition-all"
+          className="h-12 w-12 rounded-full shadow-lg bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-600 dark:hover:bg-yellow-700 dark:shadow-gray-900/50 transition-all"
           size="icon"
         >
           <Bot className="h-6 w-6 text-white" />
@@ -178,13 +178,13 @@ export function Chat() {
                     user?.avatar ? (
                       <AvatarImage src={user.avatar} alt={user.name || 'User'} />
                     ) : (
-                      <AvatarFallback className="bg-primary/10 dark:bg-red-600/20">
-                        <User className="h-4 w-4 text-primary dark:text-red-400" />
+                      <AvatarFallback className="bg-amber-100 dark:bg-yellow-600/20">
+                        <User className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                       </AvatarFallback>
                     )
                   ) : (
-                    <AvatarFallback className="bg-primary/10 dark:bg-red-600/20">
-                      <Sparkles className="h-4 w-4 text-primary dark:text-red-400" />
+                    <AvatarFallback className="bg-amber-100 dark:bg-yellow-600/20">
+                      <Sparkles className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                     </AvatarFallback>
                   )}
                 </Avatar>
@@ -192,7 +192,7 @@ export function Chat() {
                   className={cn(
                     "max-w-[80%] rounded-lg p-3 break-words",
                     message.isUser
-                      ? "bg-primary dark:bg-red-600 text-primary-foreground dark:text-white whitespace-pre-wrap"
+                      ? "bg-yellow-600 dark:bg-yellow-600 text-white dark:text-white whitespace-pre-wrap"
                       : "bg-muted dark:bg-gray-700 dark:text-gray-200"
                   )}
                 >
@@ -203,8 +203,8 @@ export function Chat() {
             {isLoading && (
               <div className="flex items-start gap-2">
                 <Avatar className="h-8 w-8 shrink-0">
-                  <AvatarFallback className="bg-primary/10 dark:bg-red-600/20">
-                    <Sparkles className="h-4 w-4 text-primary dark:text-red-400" />
+                  <AvatarFallback className="bg-amber-100 dark:bg-yellow-600/20">
+                    <Sparkles className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="bg-muted dark:bg-gray-700 rounded-lg p-3">
@@ -243,7 +243,7 @@ export function Chat() {
                 placeholder="Type your message..."
                 className="flex-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
-              <Button type="submit" size="icon" className="dark:bg-red-600 dark:hover:bg-red-700">
+              <Button type="submit" size="icon" className="dark:bg-yellow-600 dark:hover:bg-yellow-700">
                 <Send className="h-4 w-4" />
               </Button>
             </div>

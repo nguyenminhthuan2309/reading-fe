@@ -124,7 +124,7 @@ export function BookCard({
           {/* Genre badge */}
           <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1 max-w-[90%]">
              {genres?.map((genre) => (
-               <span key={genre.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{genre.name}</span>
+               <span key={genre.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-yellow-600/80 text-white uppercase font-bold">{genre.name}</span>
              ))}
           </div>
         </div>
@@ -134,7 +134,7 @@ export function BookCard({
       <div className="px-4 pb-4 flex flex-col flex-grow justify-between">
         <div>
           <Link href={`/books/${id}`}>
-            <h3 className="font-medium text-gray-900 dark:text-white leading-tight line-clamp-1 hover:text-red-600 dark:hover:text-red-400 transition-colors">{title}</h3>
+            <h3 className="font-medium text-gray-900 dark:text-white leading-tight line-clamp-1 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">{title}</h3>
           </Link>
           <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">by {author.name}</p>
           <div className="flex items-center justify-between mt-2">
@@ -154,7 +154,7 @@ export function BookCard({
               <div className="flex items-center">
                 <div className="relative h-1.5 w-12 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div 
-                    className="absolute top-0 left-0 h-full bg-red-600 rounded-full" 
+                    className="absolute top-0 left-0 h-full bg-yellow-600 rounded-full" 
                     style={{ width: `${progress * 100}%` }}
                   />
                 </div>
@@ -240,7 +240,7 @@ export function BookCard({
       </PopoverTrigger>
       <PopoverContent 
         ref={popoverRef}
-        className="w-[320px] p-0 border-none rounded-lg shadow-xl transition-opacity duration-300 z-50 dark:bg-gray-800 dark:border-gray-700" 
+        className="w-[320px] p-0 border-none rounded-lg shadow-lg transition-opacity duration-300 z-50" 
         sideOffset={5}
         align="center"
         alignOffset={0}
@@ -251,21 +251,23 @@ export function BookCard({
         onMouseLeave={handleMouseLeave}
       >
         <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-          <div className="p-4">
-            <div className="flex justify-between items-start mb-3">
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/10 p-4 rounded-t-lg">
+            <div className="flex justify-between items-start mb-2">
               <div>
                 <Link href={`/books/${id}`}>
-                  <h3 className="text-base font-bold text-black dark:text-white leading-tight mb-1 hover:underline">{title}</h3>
+                  <h3 className="text-base font-bold text-amber-700 dark:text-amber-300 leading-tight mb-1 hover:underline">{title}</h3>
                 </Link>
-                <p className="text-xs text-gray-600 dark:text-gray-400">by {author.name}</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">by {author.name}</p>
               </div>
               <div className="flex flex-wrap gap-1 justify-end max-w-[40%]">
                 {genres?.map((genre) => (
-                  <span key={genre.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">{genre.name}</span>
+                  <span key={genre.id} className="text-[9px] px-1.5 py-0.5 rounded-full bg-yellow-600/80 text-white uppercase font-bold">{genre.name}</span>
                 ))}
               </div>
             </div>
-            
+          </div>
+          
+          <div className="p-4">
             <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">{description}</p>
             
             <div className="flex justify-between items-center">

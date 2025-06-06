@@ -137,7 +137,7 @@ const SortableImageItem = ({
         type="button"
         variant="ghost"
         size="icon"
-        className="h-8 w-8 text-muted-foreground hover:text-destructive dark:text-gray-400 dark:hover:text-red-400"
+        className="h-8 w-8 text-muted-foreground hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400"
         disabled={!isChapterEditable}
         onClick={() => onRemoveImage(imgIndex)}
       >
@@ -390,7 +390,7 @@ export default function ChapterCreator({
 
   // Helper function for error messages
   const ErrorMessage = ({ message }: { message: string }) => (
-    <div className="flex items-center text-destructive dark:text-red-400 text-xs mt-1">
+    <div className="flex items-center text-yellow-600 dark:text-yellow-400 text-xs mt-1">
       <AlertCircle size={12} className="mr-1.5" />
       <span>{message}</span>
     </div>
@@ -531,8 +531,8 @@ export default function ChapterCreator({
           )}
         </h3>
         {errors.chapters && (
-          <div className="text-xs p-1.5 bg-destructive/10 dark:bg-red-900/20 border border-destructive dark:border-red-600 rounded-md flex-shrink-0">
-            <p className="flex items-center text-destructive dark:text-red-400">
+          <div className="text-xs p-1.5 bg-yellow-100/10 dark:bg-yellow-900/20 border border-yellow-500 dark:border-yellow-600 rounded-md flex-shrink-0">
+            <p className="flex items-center text-yellow-600 dark:text-yellow-400">
               <Trash2 size={12} className="mr-1.5 flex-shrink-0" />
               <span className="line-clamp-1">{errors.chapters}</span>
             </p>
@@ -558,7 +558,7 @@ export default function ChapterCreator({
                     <AccordionItem 
                       key={chapter.id} 
                       value={chapter.id}
-                      className={`bg-white dark:bg-gray-800 border rounded-lg mb-3 overflow-hidden ${emptyChapters.includes(chapter.id) ? 'border-destructive dark:border-red-500' : 'border-border dark:border-gray-700'}`}
+                      className={`bg-white dark:bg-gray-800 border rounded-lg mb-3 overflow-hidden ${emptyChapters.includes(chapter.id) ? 'border-yellow-500 dark:border-yellow-500' : 'border-border dark:border-gray-700'}`}
                     >
                       <div className="px-4 py-3 flex items-center border-b dark:border-gray-700">
                         <h3 
@@ -665,7 +665,7 @@ export default function ChapterCreator({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive dark:text-gray-400 dark:hover:text-red-400"
+                            className="h-8 w-8 text-muted-foreground hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400"
                             onClick={(e) => {
                               e.stopPropagation();
                               confirmDeleteChapter(chapter.id);
@@ -755,7 +755,7 @@ export default function ChapterCreator({
                                               // No longer calling setEmptyChapters as it's handled in parent
                                             }
                                           }}
-                                          className={emptyChapters.includes(chapter.id) ? 'border-destructive focus-visible:ring-destructive/40' : ''}
+                                          className={emptyChapters.includes(chapter.id) ? 'border-yellow-500 focus-visible:ring-yellow-500/40' : ''}
                                           editable={isChapterEditable(chapter)}
                                         />
                                       </div>
@@ -875,17 +875,17 @@ export default function ChapterCreator({
                                     )}
                                     
                                     {/* For manga books, upload images */}
-                                    <div className={`border-2 border-dashed rounded-lg ${emptyChapters.includes(chapter.id) ? 'border-destructive dark:border-red-500 bg-destructive/5 dark:bg-red-900/10' : 'border-border dark:border-gray-600'} p-6 text-center relative`}>
+                                    <div className={`border-2 border-dashed rounded-lg ${emptyChapters.includes(chapter.id) ? 'border-yellow-500 dark:border-yellow-500 bg-yellow-50/5 dark:bg-yellow-900/10' : 'border-yellow-500 dark:border-yellow-500'} p-6 text-center relative`}>
                                       <div className="flex flex-col items-center">
-                                        <Upload size={16} className="mb-2 text-muted-foreground dark:text-gray-400" />
-                                        <p className="text-sm text-muted-foreground dark:text-gray-400">
+                                        <Upload size={16} className="mb-2 text-yellow-600 dark:text-yellow-400" />
+                                        <p className="text-sm text-yellow-600 dark:text-yellow-400">
                                           Click to upload images
                                         </p>
                                         <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
                                           JPG, PNG or WebP (max 5MB each)
                                         </p>
                                         {emptyChapters.includes(chapter.id) && (
-                                          <p className="text-xs text-destructive dark:text-red-400 mt-3 font-medium">
+                                          <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-3 font-medium">
                                             Please add at least one image to this chapter
                                           </p>
                                         )}

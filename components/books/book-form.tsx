@@ -1946,7 +1946,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                         type="submit"
                         form="book-form"
                         disabled={isAnyOperationInProgress()}
-                        className="gap-2 bg-green-600 hover:bg-green-700"
+                        className="gap-2 bg-yellow-600 text-white hover:bg-yellow-700"
                         onClick={(e) => {
                           e.preventDefault();
                           handlePublishChanges();
@@ -1983,7 +1983,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
                       <Button
                         type="button"
                         disabled={isAnyOperationInProgress()}
-                        className="gap-2 bg-green-600 hover:bg-green-700"
+                        className="gap-2 bg-yellow-600 text-white hover:bg-yellow-700"
                         onClick={handlePublishChanges}
                       >
                         {isPublishingChapters || isRunningModeration ? (

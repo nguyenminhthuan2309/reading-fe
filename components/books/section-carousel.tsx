@@ -37,11 +37,11 @@ export function SectionCarousel({ title, books, linkHref, className, isLoading =
         <div className="flex justify-between items-center mb-1">
           {/* Header with pill shape */}
           <div className="flex items-center">
-            <div className="h-8 w-3 bg-gradient-to-b from-red-500 to-red-600 rounded-full mr-3 shadow-sm"></div>
+            <div className="h-8 w-3 bg-gradient-to-b from-yellow-500 to-yellow-600 rounded-full mr-3 shadow-sm"></div>
             <h2 className="text-xl font-bold text-black dark:text-white">{title}</h2>
           </div>
           
-          <Link href={linkHref} className="flex items-center gap-1 text-sm font-medium text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:underline group">
+          <Link href={linkHref} className="flex items-center gap-1 text-sm font-medium text-yellow-500 hover:text-yellow-600 dark:text-yellow-400 dark:hover:text-yellow-300 hover:underline group">
             View All <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>

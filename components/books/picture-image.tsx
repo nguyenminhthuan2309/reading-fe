@@ -47,7 +47,7 @@ export function PictureImage({
             </div>
           </PopoverTrigger>
           <PopoverContent 
-            className="p-0 border-none rounded-lg shadow-xl"
+            className="p-0 border-none rounded-lg shadow-lg"
             sideOffset={5}
             align="center"
             side="top"

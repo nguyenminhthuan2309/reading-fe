@@ -621,7 +621,7 @@ export default function BooksPage() {
                       onOpenChange={() => toggleCategory(group)}
                       className="border-b border-border dark:border-gray-600 pb-2 last:border-0 last:pb-0"
                       >
-                        <CollapsibleTrigger className="flex justify-between items-center w-full text-left py-1 hover:text-primary dark:hover:text-red-400 group">
+                        <CollapsibleTrigger className="flex justify-between items-center w-full text-left py-1 hover:text-yellow-700 dark:hover:text-yellow-400 group">
                           <div className="flex items-center">
                             <h4 className="text-sm font-medium leading-none dark:text-white">{group}</h4>
                             <span className={`text-xs inline-flex items-center ml-1.5 ${genres.length === 0 ? 'text-muted-foreground/50 dark:text-gray-500/50' : 'text-muted-foreground dark:text-gray-400'}`}>
@@ -631,7 +631,7 @@ export default function BooksPage() {
                               }, 0)})
                             </span>
                           </div>
-                          <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-primary dark:group-hover:text-red-400 ${expandedCategories.includes(group) ? 'rotate-90' : ''}`} />
+                          <ChevronRight className={`h-4 w-4 transition-transform duration-200 group-hover:text-yellow-700 dark:group-hover:text-yellow-400 ${expandedCategories.includes(group) ? 'rotate-90' : ''}`} />
                         </CollapsibleTrigger>
                         
                         <CollapsibleContent className="mt-1 pl-2 space-y-1">
@@ -646,17 +646,17 @@ export default function BooksPage() {
                                   checked={isSelected}
                                   onCheckedChange={() => handleGenreToggle(genre.name)}
                                   disabled={genreObj?.totalBooks === 0}
-                                  className={isSelected ? "text-red-500 border-red-500" : ""}
+                                  className={isSelected ? "text-yellow-600 border-yellow-500" : ""}
                                 />
                                 <Label 
                                   htmlFor={`genre-${genre}`}
                                   className={`text-sm cursor-pointer flex-1 flex justify-between items-center dark:text-gray-300
-                                    ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/50 dark:text-gray-500/50' : isSelected ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}
+                                    ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/50 dark:text-gray-500/50' : isSelected ? 'text-yellow-600 dark:text-yellow-400 font-medium' : ''}`}
                                 >
                                   <span className="leading-none">{genre.name}</span>
                                   <span className={`text-xs inline-flex items-center px-1 
                                     ${genreObj?.totalBooks === 0 ? 'text-muted-foreground/30 dark:text-gray-600/30' : 
-                                    isSelected ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground dark:text-gray-400'}`}
+                                    isSelected ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground dark:text-gray-400'}`}
                                   >
                                     {genreObj?.totalBooks || 0}
                                   </span>

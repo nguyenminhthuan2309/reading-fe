@@ -184,7 +184,7 @@ function RelatedBookCard({ book }: { book: Book }) {
           />
           {book.categories && book.categories.length > 0 && (
             <div className="absolute top-3 left-3 z-10">
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-600/80 text-white uppercase font-bold">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-600/80 text-white uppercase font-bold">
                 {book.categories[0].name}
               </span>
             </div>
@@ -195,7 +195,7 @@ function RelatedBookCard({ book }: { book: Book }) {
       {/* Basic info below the cover */}
       <div className="px-4 pb-4">
         <Link href={`/books/${book.id}`}>
-          <h3 className="font-medium text-gray-900 leading-tight line-clamp-1 hover:text-red-600 transition-colors">
+          <h3 className="font-medium text-gray-900 leading-tight line-clamp-1 hover:text-yellow-600 transition-colors">
             {book.title}
           </h3>
         </Link>
@@ -217,7 +217,7 @@ function RelatedBookCard({ book }: { book: Book }) {
         {/* Action button */}
         <div className="mt-3">
           <Link href={`/books/${book.id}`} className="w-full">
-            <Button variant="destructive" size="sm" className="w-full text-xs h-8 rounded-lg">
+            <Button variant="default" size="sm" className="w-full text-xs h-8 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white">
               View Book
             </Button>
           </Link>

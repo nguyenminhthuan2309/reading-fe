@@ -44,7 +44,7 @@ export function DatePicker({
           {date ? format(date, "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0 rounded-lg border shadow-lg" align="start">
         <DayPicker
           mode="single"
           selected={date}

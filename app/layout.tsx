@@ -52,7 +52,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
-        className={`${oswald.variable} antialiased min-h-full flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white manga-background`}
+        className={`${oswald.variable} antialiased min-h-full flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white`}
       >
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <LanguageProvider>

@@ -23,7 +23,7 @@ import { BOOK_TYPES, AGE_RATINGS, AgeRatingEnum, PROGRESS_STATUSES, ProgressStat
 
 // Helper function to display error messages
 const ErrorMessage = ({ message }: { message: string }) => (
-  <div className="flex items-center text-destructive dark:text-red-400 text-xs mt-1">
+  <div className="flex items-center text-yellow-600 dark:text-yellow-400 text-xs mt-1">
     <AlertCircle size={12} className="mr-1" />
     <span>{message}</span>
   </div>
@@ -109,9 +109,9 @@ export default function BookInfo({
             <div className="space-y-2 h-full flex flex-col">
               <Label htmlFor="cover-upload" className="flex items-center dark:text-white">
                 Cover Image
-                <span className="text-destructive dark:text-red-400 ml-1">*</span>
+                <span className="text-yellow-600 dark:text-yellow-400 ml-1">*</span>
               </Label>
-              <div className={`border-2 border-dashed rounded-lg p-4 text-center relative flex-1 flex flex-col justify-center ${errors.coverImage ? 'border-destructive dark:border-red-500 bg-destructive/5 dark:bg-red-900/10' : 'border-border dark:border-gray-600'}`}>
+              <div className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center flex-1 min-h-[400px] w-full ${errors.coverImage ? 'border-yellow-500 dark:border-yellow-500 bg-yellow-50/5 dark:bg-yellow-900/10' : 'border-yellow-500 dark:border-yellow-500'} relative`}>
                 {coverImagePreview ? (
                   <div className="relative w-full h-full min-h-[300px] rounded-lg overflow-hidden mb-2 hover:cursor-pointer group">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -130,9 +130,9 @@ export default function BookInfo({
                     )}
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center py-10">
-                    <Upload size={48} className={`mb-2 ${errors.coverImage ? 'text-destructive dark:text-red-400' : 'text-muted-foreground dark:text-gray-400'}`} />
-                    <p className={`text-sm ${errors.coverImage ? 'text-destructive dark:text-red-400' : 'text-muted-foreground dark:text-gray-400'}`}>
+                  <div className="flex-1 flex flex-col items-center justify-center py-10 w-full">
+                    <Upload size={48} className={`mb-2 ${errors.coverImage ? 'text-yellow-600 dark:text-yellow-400' : 'text-yellow-600 dark:text-yellow-400'}`} />
+                    <p className={`text-sm ${errors.coverImage ? 'text-yellow-600 dark:text-yellow-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
                       Click or drag to upload cover image
                     </p>
                     <p className="text-xs text-muted-foreground dark:text-gray-500 mt-1">
@@ -166,7 +166,7 @@ export default function BookInfo({
               <div className="space-y-2">
                 <Label htmlFor="title" className="flex items-center dark:text-white">
                   Book Title
-                  <span className="text-destructive dark:text-red-400 ml-1">*</span>
+                  <span className="text-yellow-600 dark:text-yellow-400 ml-1">*</span>
                 </Label>
                 <div className="relative">
                   <EnhancementPopover
@@ -188,7 +188,7 @@ export default function BookInfo({
                   >
                     <Input
                       id="title"
-                      className={errors.title ? 'border-destructive pr-10' : 'pr-10'}
+                      className={errors.title ? 'border-yellow-500 pr-10' : 'pr-10'}
                       placeholder="Enter book title"
                       disabled={!canEdit}
                       value={titleValue}
@@ -208,7 +208,7 @@ export default function BookInfo({
               <div className="space-y-2">
                 <Label htmlFor="genres" className="flex items-center dark:text-white">
                   Genres
-                  <span className="text-destructive dark:text-red-400 ml-1">*</span>
+                  <span className="text-yellow-600 dark:text-yellow-400 ml-1">*</span>
                 </Label>
                 <MultiSelect
                   options={genres?.map(genre => ({
@@ -220,7 +220,7 @@ export default function BookInfo({
                     setSelectedGenres(selected);
                   }}
                   placeholder="Select genres (multiple)"
-                  className={`w-full ${errors.genres ? 'border-destructive' : ''}`}
+                  className={`w-full ${errors.genres ? 'border-yellow-500' : ''}`}
                   disabled={!canEdit}
                 />
                 {errors.genres ? (
@@ -238,7 +238,7 @@ export default function BookInfo({
                 <div className="space-y-2">
                   <Label htmlFor="age-rating" className="flex items-center dark:text-white">
                     Age Rating
-                    <span className="text-destructive dark:text-red-400 ml-1">*</span>
+                    <span className="text-yellow-600 dark:text-yellow-400 ml-1">*</span>
                   </Label>
                   <Select
                     value={ageRating.toString()}
@@ -247,7 +247,7 @@ export default function BookInfo({
                     }}
                     disabled={!canEdit}
                   >
-                    <SelectTrigger id="age-rating" className={errors.ageRating ? 'border-destructive' : ''}>
+                    <SelectTrigger id="age-rating" className={errors.ageRating ? 'border-yellow-500' : ''}>
                       <SelectValue placeholder="Select age rating" />
                     </SelectTrigger>
                     <SelectContent>
@@ -271,7 +271,7 @@ export default function BookInfo({
                 <div className="space-y-2">
                   <Label htmlFor="progress-status" className="flex items-center dark:text-white">
                     Progress Status
-                    <span className="text-destructive dark:text-red-400 ml-1">*</span>
+                    <span className="text-yellow-600 dark:text-yellow-400 ml-1">*</span>
                   </Label>
                   <Select
                     value={progressStatus.toString()}
@@ -280,7 +280,7 @@ export default function BookInfo({
                     }}
                     disabled={!canEditProgressStatus}
                   >
-                    <SelectTrigger id="progress-status" className={errors.progressStatus ? 'border-destructive' : ''}>
+                    <SelectTrigger id="progress-status" className={errors.progressStatus ? 'border-yellow-500' : ''}>
                       <SelectValue placeholder="Select progress status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -307,17 +307,17 @@ export default function BookInfo({
               <div className="space-y-2">
                 <Label className="flex items-center dark:text-white">
                   Book Type
-                  <span className="text-destructive dark:text-red-400 ml-1">*</span>
+                  <span className="text-yellow-600 dark:text-yellow-400 ml-1">*</span>
                 </Label>
                 <RadioGroup
                   value={bookType}
                   onValueChange={handleBookTypeChange}
-                  className={`space-y-3 ${errors.bookType ? 'border-destructive' : ''}`}
+                  className={`space-y-3 ${errors.bookType ? 'border-yellow-500' : ''}`}
                   disabled={!canEdit}
                 >
                   <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
                     bookType === BOOK_TYPES.NOVEL 
-                      ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm' 
+                      ? 'border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 shadow-sm' 
                       : 'border-border dark:border-gray-600 hover:border-muted-foreground/20 dark:hover:border-gray-500'
                   }`}>
                     <RadioGroupItem value={BOOK_TYPES.NOVEL} id="word-book" />
@@ -331,7 +331,7 @@ export default function BookInfo({
                   
                   <div className={`flex items-center space-x-2 border p-3 rounded-md transition-all ${
                     bookType === BOOK_TYPES.MANGA 
-                      ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm' 
+                      ? 'border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 shadow-sm' 
                       : 'border-border dark:border-gray-600 hover:border-muted-foreground/20 dark:hover:border-gray-500'
                   }`}>
                     <RadioGroupItem value={BOOK_TYPES.MANGA} id="picture-book" />
@@ -357,7 +357,7 @@ export default function BookInfo({
             <div className="space-y-2 mt-4">
               <Label htmlFor="description" className="flex items-center dark:text-white">
                 Description
-                <span className="text-destructive dark:text-red-400 ml-1">*</span>
+                <span className="text-yellow-600 dark:text-yellow-400 ml-1">*</span>
               </Label>
               <div className="relative">
                 <EnhancementPopover
@@ -380,7 +380,7 @@ export default function BookInfo({
                 >
                   <Textarea
                     id="description"
-                    className={errors.description ? 'border-destructive resize-none min-h-[120px] pr-10' : 'resize-none min-h-[120px] pr-10'}
+                    className={errors.description ? 'border-yellow-500 resize-none min-h-[120px] pr-10' : 'resize-none min-h-[120px] pr-10'}
                     placeholder="Enter book description"
                     rows={5}
                     disabled={!canEdit}

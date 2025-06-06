@@ -14,8 +14,8 @@ const multiSelectStyles = {
   minHeight: "min-h-[210px]",
   maxHeight: "max-h-[300px]",
   item: "cursor-pointer flex items-center py-2.5 px-2 hover:bg-muted/50 dark:hover:bg-gray-700/50 aria-selected:bg-muted dark:aria-selected:bg-gray-700 dark:text-white",
-  checkbox: "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary dark:border-blue-400",
-  selectedCheckbox: "bg-primary text-primary-foreground dark:bg-blue-500 dark:text-white",
+  checkbox: "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-yellow-500 dark:border-yellow-400",
+  selectedCheckbox: "bg-yellow-600 text-white dark:bg-yellow-600 dark:text-white border-yellow-600 dark:border-yellow-600",
   emptyCheckbox: "opacity-50 dark:opacity-40",
 };
 

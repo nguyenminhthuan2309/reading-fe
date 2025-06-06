@@ -96,15 +96,15 @@ export function DocumentUploader({ onContentConverted, disabled = false }: Docum
         
         <div 
           onClick={handleUploadClick}
-          className={`border-2 border-dashed rounded-md p-8 transition-colors ${
+          className={`border-2 border-dashed border-yellow-500 dark:border-yellow-500 rounded-md p-8 transition-colors ${
             disabled 
               ? 'opacity-50 cursor-not-allowed' 
-              : 'hover:bg-muted/50 cursor-pointer'
+              : 'hover:bg-yellow-50/50 dark:hover:bg-yellow-900/10 cursor-pointer'
           }`}
         >
           <div className="flex flex-col items-center gap-2">
             {getFileIcon()}
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
               {file ? file.name : 'Click to upload or drag and drop'}
             </p>
             <p className="text-xs text-muted-foreground">

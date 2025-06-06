@@ -201,20 +201,20 @@ export default function Header() {
                 height={64} 
                 className="mr-2"
               />
-              <span className="font-bold text-xl">Haru's Library</span>
+              <span className="font-bold text-xl text-yellow-600 dark:text-yellow-400">Haru's Library</span>
             </Link>
           </div>
           
           <NavigationMenu className="text-black dark:text-white hidden md:block">
             <NavigationMenuList>
               <NavigationMenuItem>
-                <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-black bg-white hover:bg-gray-100 hover:text-black focus:bg-gray-100 dark:text-white dark:bg-gray-950 dark:hover:bg-gray-800 dark:hover:text-white dark:focus:bg-gray-800")}>
+                <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-black bg-white hover:bg-amber-100 hover:text-yellow-700 focus:bg-amber-100 dark:text-white dark:bg-gray-950 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 dark:focus:bg-yellow-900/20")}>
                   <Link href="/">Home</Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
               
               <NavigationMenuItem>
-                <NavigationMenuTrigger className="text-black bg-white hover:bg-gray-100 hover:text-black focus:bg-gray-100 dark:text-white dark:bg-gray-950 dark:hover:bg-gray-800 dark:hover:text-white dark:focus:bg-gray-800">Browse</NavigationMenuTrigger>
+                <NavigationMenuTrigger className="text-black bg-white hover:bg-amber-100 hover:text-yellow-700 focus:bg-amber-100 dark:text-white dark:bg-gray-950 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 dark:focus:bg-yellow-900/20">Browse</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="p-4 w-[600px] md:w-[1000px] bg-white text-black dark:bg-gray-900 dark:text-white">
                     <div className="flex gap-3">
@@ -226,7 +226,7 @@ export default function Header() {
                               <NavigationMenuLink key={genre.id} asChild>
                                 <Link
                                   href={`/books?genres=${genre.name.replace(/\s+/g, '+')}&page=1`}
-                                  className="text-sm hover:text-black cursor-pointer dark:hover:text-gray-300"
+                                  className="text-sm hover:text-yellow-700 cursor-pointer dark:hover:text-yellow-400"
                                 >
                                   {genre.name}
                                 </Link>
@@ -241,7 +241,7 @@ export default function Header() {
                       <NavigationMenuLink asChild>
                         <Link
                           href="/books"
-                          className="inline-flex items-center gap-1.5 font-medium text-black hover:text-black dark:text-white dark:hover:text-gray-300"
+                          className="inline-flex items-center gap-1.5 font-medium text-black hover:text-yellow-700 dark:text-white dark:hover:text-yellow-400"
                         >
                           View All Books
                         </Link>
@@ -252,7 +252,7 @@ export default function Header() {
               </NavigationMenuItem>
               
               <NavigationMenuItem>
-                <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-black bg-white hover:bg-gray-100 hover:text-black focus:bg-gray-100 dark:text-white dark:bg-gray-950 dark:hover:bg-gray-800 dark:hover:text-white dark:focus:bg-gray-800")}>
+                <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-black bg-white hover:bg-amber-100 hover:text-yellow-700 focus:bg-amber-100 dark:text-white dark:bg-gray-950 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 dark:focus:bg-yellow-900/20")}>
                   <Link href="/books/create">Create</Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
@@ -413,43 +413,6 @@ export default function Header() {
             <span className="sr-only">Toggle theme</span>
           </Button>
           
-          {/* Language Selector - hide on mobile */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="hidden md:flex h-9 px-3 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 items-center gap-2"
-                aria-label="Change language"
-              >
-                <span className="text-base">🇺🇸</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-48 p-0 rounded-lg border shadow-md">
-              <div className="p-2">
-                <div className="text-xs font-medium text-muted-foreground mb-2 px-2">SELECT LANGUAGE</div>
-                <div className="space-y-1">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full justify-start font-normal text-sm rounded-md bg-gray-100/50 dark:bg-gray-800/50"
-                  >
-                    <span className="w-6 flex justify-center mr-2 text-base">🇺🇸</span> English
-                    <Check className="ml-auto h-4 w-4 opacity-100" />
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full justify-start font-normal text-sm rounded-md"
-                  >
-                    <span className="w-6 flex justify-center mr-2 text-base">🇻🇳</span> Tiếng Việt
-                    <Check className="ml-auto h-4 w-4 opacity-0" />
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          
           {/* Auth section - normal display for desktop, hide sign in on mobile */}
           { user ? (
             <div className="hidden md:flex items-center gap-3">
@@ -468,83 +431,102 @@ export default function Header() {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-80 p-0 max-h-[400px] overflow-auto rounded-lg border shadow-md">
-                  <div className="p-4 border-b flex items-center justify-between">
-                    <h4 className="font-medium">Notifications</h4>
-                    {unreadCount > 0 && (
-                      <Button variant="ghost" size="icon" onClick={handleMarkAllAsRead} className="h-8 w-8 rounded-full" title="Mark all as read">
-                        <CheckSquare className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  
-                  {isLoadingNotifications ? (
-                    <div className="py-8 text-center text-muted-foreground">
-                      <p>Loading notifications...</p>
-                    </div>
-                  ) : notifications?.length === 0 ? (
-                    <div className="py-8 text-center text-muted-foreground">
-                      <p>No notifications</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y p-2">
-                      {notifications?.map((notification) => (
-                        <div 
-                          key={notification.id} 
-                          className={cn(
-                            "p-3 hover:bg-muted flex items-start gap-3 group rounded-md my-1",
-                            !notification.isRead && "bg-blue-50/50 dark:bg-blue-900/10"
-                          )}
-                        >
-                          <div className="mt-1">
-                            {getNotificationIcon(notification.type)}
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <div className="flex justify-between">
-                              <p className="text-sm font-medium">{notification.title}</p>
-                              <span className="text-xs text-muted-foreground">{formatNotificationTime(notification.createdAt)}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{notification.message}</p>
-                          </div>
-                          {!notification.isRead && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 rounded-full"
-                              onClick={() => handleMarkAsRead(notification.id)}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {/* Load More Button */}
-                      {hasMoreNotifications && (
-                        <div className="pt-2 pb-1 flex justify-center">
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1"
-                            onClick={handleLoadMore}
-                            disabled={isFetchingMore}
-                          >
-                            {isFetchingMore ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                Loading...
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="h-3 w-3" />
-                                Load more
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                <PopoverContent align="end" className="w-80 p-0 rounded-lg border shadow-lg">
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/10 p-4 border-b rounded-t-lg">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-amber-700 dark:text-amber-300">Notifications</h4>
+                      {unreadCount > 0 && (
+                        <Button variant="ghost" size="icon" onClick={handleMarkAllAsRead} className="h-8 w-8 rounded-full bg-white/70 backdrop-blur-sm border-amber-200 hover:bg-amber-100 transition-all duration-200 shadow-sm" title="Mark all as read">
+                          <CheckSquare className="h-4 w-4 text-amber-600" />
+                        </Button>
                       )}
                     </div>
-                  )}
+                  </div>
+                  
+                  <div className="max-h-[400px] overflow-y-auto pb-4">
+                    {isLoadingNotifications ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <p>Loading notifications...</p>
+                      </div>
+                    ) : notifications?.length === 0 ? (
+                      <div className="py-8 text-center text-muted-foreground">
+                        <p>No notifications</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y p-2">
+                        {notifications?.map((notification) => (
+                          <div 
+                            key={notification.id} 
+                            className={cn(
+                              "flex items-center justify-between text-sm py-2 px-3 rounded-md bg-white dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 shadow-sm my-1.5",
+                              !notification.isRead && "border-amber-200 dark:border-amber-700/50 bg-amber-50/50 dark:bg-amber-900/10"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <div className={cn(
+                                "flex items-center justify-center h-6 w-6 rounded-full flex-shrink-0",
+                                !notification.isRead 
+                                  ? "bg-amber-100 dark:bg-amber-900/50" 
+                                  : "bg-gray-100 dark:bg-gray-700/50"
+                              )}>
+                                {React.cloneElement(getNotificationIcon(notification.type), {
+                                  className: cn(
+                                    "h-3 w-3",
+                                    !notification.isRead 
+                                      ? "text-amber-600 dark:text-amber-400" 
+                                      : "text-gray-500 dark:text-gray-400"
+                                  )
+                                })}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs font-medium line-clamp-1 flex-1">{notification.title}</p>
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">{formatNotificationTime(notification.createdAt)}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{notification.message}</p>
+                              </div>
+                            </div>
+                            {!notification.isRead && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 ml-2 rounded-full bg-white/70 hover:bg-amber-100 border-amber-200 transition-all duration-200 shadow-sm flex-shrink-0"
+                                onClick={() => handleMarkAsRead(notification.id)}
+                                title="Mark as read"
+                              >
+                                <Check className="h-3 w-3 text-amber-600" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        
+                        {/* Load More Button */}
+                        {hasMoreNotifications && (
+                          <div className="pt-2 pb-1 flex justify-center">
+                            <Button 
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1"
+                              onClick={handleLoadMore}
+                              disabled={isFetchingMore}
+                            >
+                              {isFetchingMore ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                  Loading...
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="h-3 w-3" />
+                                  Load more
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </PopoverContent>
               </Popover>
               
@@ -612,7 +594,7 @@ export default function Header() {
 
                   <div className="border-t border-border pt-2 mt-3 flex justify-center">
                     <button 
-                      className="flex items-center rounded-md px-6 py-1.5 text-sm text-red-600 hover:bg-red-50 transition-colors dark:hover:bg-red-900/20"
+                      className="flex items-center rounded-md px-6 py-1.5 text-sm text-yellow-600 hover:bg-yellow-50 transition-colors dark:hover:bg-yellow-900/20"
                       onClick={handleLogout}
                     >
                       <LogOut className="mr-2 h-4 w-4" />
@@ -624,11 +606,11 @@ export default function Header() {
             </div>
           ) : (
             <>
-              <Link href="/signin" className="hidden md:block text-black hover:text-black dark:hover:text-destructive text-sm font-medium">
+              <Link href="/signin" className="hidden md:block text-black hover:text-yellow-700 dark:hover:text-yellow-400 text-sm font-medium">
                 Sign In
               </Link>
               
-              <Link href="/signup" className="hidden md:block text-black hover:text-black dark:hover:text-destructive text-sm font-medium">
+              <Link href="/signup" className="hidden md:block text-black hover:text-yellow-700 dark:hover:text-yellow-400 text-sm font-medium">
                 Sign Up
               </Link>
             </>

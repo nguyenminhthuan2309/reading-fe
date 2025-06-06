@@ -74,7 +74,7 @@ const getScoreColor = (score: number, ageRating: NumericAgeRating = 0): string =
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
   
   // Color based on how far score exceeds threshold
-  if (score > threshold * 3) return 'bg-red-500';      // Severely exceeds threshold
+  if (score > threshold * 3) return 'bg-yellow-500';      // Severely exceeds threshold
   if (score > threshold * 2) return 'bg-amber-500';    // Significantly exceeds threshold
   if (score > threshold) return 'bg-yellow-500';       // Exceeds threshold
   return 'bg-green-500';                              // Below threshold
@@ -86,7 +86,7 @@ const getTextColorClass = (score: number, ageRating: NumericAgeRating = 0): stri
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
   
   // Text color based on how far score exceeds threshold
-  if (score > threshold * 3) return "text-red-600 font-semibold";
+  if (score > threshold * 3) return "text-yellow-600 font-semibold";
   if (score > threshold * 2) return "text-amber-600 font-semibold";
   if (score > threshold) return "text-yellow-600";
   return "text-green-600";
@@ -97,7 +97,7 @@ const RatingBadge = ({ rating }: { rating: NumericAgeRating }) => {
   let bgClass = 'bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300';
   
   switch (rating) {
-    case 3: bgClass = 'bg-red-200 dark:bg-red-900/30 text-red-800 dark:text-red-300'; break;
+    case 3: bgClass = 'bg-yellow-200 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'; break;
     case 2: bgClass = 'bg-orange-200 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'; break;
     case 1: bgClass = 'bg-amber-200 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'; break;
     case 0: bgClass = 'bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300'; break;
@@ -267,7 +267,7 @@ export function ModerationResults({
     return (
       <div className={`
         rounded-lg border overflow-hidden transition-all
-        ${passes ? 'bg-white dark:bg-gray-800 dark:border-gray-700' : 'bg-red-50/30 dark:bg-red-900/20 border-red-200 dark:border-red-800'}
+        ${passes ? 'bg-white dark:bg-gray-800 dark:border-gray-700' : 'bg-yellow-50/30 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'}
       `}>
         <div 
           className="p-3 border-b cursor-pointer hover:bg-slate-50/50 dark:hover:bg-gray-700/50 dark:border-gray-700"
@@ -275,18 +275,18 @@ export function ModerationResults({
         >
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <div className={`p-1.5 rounded-md ${passes ? 'bg-slate-100 dark:bg-gray-700' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                {passes ? icon : <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400" />}
+              <div className={`p-1.5 rounded-md ${passes ? 'bg-slate-100 dark:bg-gray-700' : 'bg-yellow-100 dark:bg-yellow-900/50'}`}>
+                {passes ? icon : <ShieldAlert className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />}
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
                   <h4 className="font-medium text-sm dark:text-white">{title}</h4>
                   {!passes && (
-                    <span className="text-xs text-red-600 dark:text-red-400 font-medium">{violationReason}</span>
+                    <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">{violationReason}</span>
                   )}
                 </div>
                 {!passes && (
-                  <div className="text-xs mt-0.5 text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <div className="text-xs mt-0.5 text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     <span>Needs review</span>
                   </div>

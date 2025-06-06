@@ -49,9 +49,11 @@ export function FollowButton({
       variant={variant} 
       size={size} 
       className={cn(
-        isFollowed 
-          ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:text-red-700" 
-          : "",
+        "transition-colors duration-200",
+        size === "sm" ? "h-8 px-3 text-xs" : "px-4 py-2",
+        isFollowed
+          ? "bg-yellow-50 border-yellow-200 text-yellow-600 hover:bg-yellow-100 hover:text-yellow-700"
+          : "border-gray-200 text-gray-600 hover:border-gray-300",
         className
       )}
       onClick={handleFollow}
@@ -60,7 +62,7 @@ export function FollowButton({
       <Bookmark 
         className={cn(
           "h-4 w-4 transition-colors", 
-          isFollowed ? "text-red-500 fill-red-500" : "text-gray-500"
+          isFollowed ? "text-yellow-500 fill-yellow-500" : "text-gray-500"
         )} 
       />
       {showText && (

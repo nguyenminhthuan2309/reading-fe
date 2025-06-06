@@ -133,7 +133,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen dark:bg-gray-900">
       {/* Hero Section */}
-      <BookCarousel books={trendingData} isLoading={isLoadingTrending} />
+      <BookCarousel books={trendingData || []} isLoading={isLoadingTrending} />
       
       {/* Spacer between hero and first section */}
       <div className="h-8 dark:bg-gray-900"></div>
@@ -216,8 +216,8 @@ export default function Home() {
                   {/* Feature 1 */}
                   <div className="p-5 rounded-lg border border-gray-100 dark:border-gray-700 dark:bg-gray-800/50">
                     <div className="flex items-center mb-3">
-                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mr-3">
-                        <PenLine className="h-5 w-5 text-red-700 dark:text-red-400" />
+                      <div className="bg-amber-100 dark:bg-yellow-900/30 p-2 rounded-full mr-3">
+                        <PenLine className="h-5 w-5 text-yellow-700 dark:text-yellow-400" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Write Your Story</h3>
                     </div>
@@ -229,8 +229,8 @@ export default function Home() {
                   {/* Feature 2 */}
                   <div className="p-5 rounded-lg border border-gray-100 dark:border-gray-700 dark:bg-gray-800/50">
                     <div className="flex items-center mb-3">
-                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mr-3">
-                        <TrendingUp className="h-5 w-5 text-red-700 dark:text-red-400" />
+                      <div className="bg-amber-100 dark:bg-yellow-900/30 p-2 rounded-full mr-3">
+                        <TrendingUp className="h-5 w-5 text-yellow-700 dark:text-yellow-400" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Grow Your Audience</h3>
                     </div>
@@ -242,8 +242,8 @@ export default function Home() {
                   {/* Feature 3 */}
                   <div className="p-5 rounded-lg border border-gray-100 dark:border-gray-700 dark:bg-gray-800/50">
                     <div className="flex items-center mb-3">
-                      <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mr-3">
-                        <Trophy className="h-5 w-5 text-red-700 dark:text-red-400" />
+                      <div className="bg-amber-100 dark:bg-yellow-900/30 p-2 rounded-full mr-3">
+                        <Trophy className="h-5 w-5 text-yellow-700 dark:text-yellow-400" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Earn Rewards</h3>
                     </div>
@@ -255,7 +255,7 @@ export default function Home() {
                 
                 <div className="text-center">
                   <Link href="/books/create">
-                    <Button size="lg" className="bg-red-700 hover:bg-red-800 text-white rounded-full px-8 font-semibold text-base">
+                    <Button size="lg" className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-full px-8 font-semibold text-base">
                       Start Creating
                     </Button>
                   </Link>

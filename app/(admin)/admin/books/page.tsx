@@ -152,18 +152,18 @@ function RejectBookPopover({ bookId, bookTitle, onReject, isLoading = false, tri
       <PopoverTrigger asChild>
         {trigger}
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
-        <div className="space-y-4">
-          <div>
-            <h4 className="font-medium text-sm">Reject Book</h4>
-            <p className="text-xs text-muted-foreground mt-1">
-              Rejecting "{bookTitle}"
-            </p>
-          </div>
-          
+      <PopoverContent className="w-80 p-0 rounded-lg border shadow-lg" align="end">
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/10 p-4 rounded-t-lg">
+          <h4 className="font-medium text-sm text-amber-700 dark:text-amber-300">Reject Book</h4>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            Rejecting "{bookTitle}"
+          </p>
+        </div>
+        
+        <div className="p-4 space-y-4">
           <div className="space-y-2">
             <label htmlFor="reason" className="text-sm font-medium">
-              Rejection Reason <span className="text-red-500">*</span>
+              Rejection Reason <span className="text-yellow-500">*</span>
             </label>
             <Textarea
               id="reason"
@@ -238,18 +238,18 @@ function BulkRejectPopover({ selectedBooks, onReject, isLoading = false, trigger
       <PopoverTrigger asChild>
         {trigger}
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="end">
-        <div className="space-y-4">
-          <div>
-            <h4 className="font-medium text-sm">Reject Books</h4>
-            <p className="text-xs text-muted-foreground mt-1">
-              Rejecting {selectedBooks.length} selected {selectedBooks.length === 1 ? 'book' : 'books'}
-            </p>
-          </div>
-          
+      <PopoverContent className="w-80 p-0 rounded-lg border shadow-lg" align="end">
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/10 p-4 rounded-t-lg">
+          <h4 className="font-medium text-sm text-amber-700 dark:text-amber-300">Reject Books</h4>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            Rejecting {selectedBooks.length} selected {selectedBooks.length === 1 ? 'book' : 'books'}
+          </p>
+        </div>
+        
+        <div className="p-4 space-y-4">
           <div className="space-y-2">
             <label htmlFor="bulk-reason" className="text-sm font-medium">
-              Rejection Reason <span className="text-red-500">*</span>
+              Rejection Reason <span className="text-yellow-500">*</span>
             </label>
             <Textarea
               id="bulk-reason"
@@ -593,7 +593,7 @@ export default function BooksPage() {
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="text-red-600"
+                    className="text-yellow-600"
                     disabled={isBulkUpdating}
                   >
                     {isBulkUpdating ? (
@@ -773,7 +773,7 @@ export default function BooksPage() {
               className="w-8 h-10 object-cover rounded mr-2" 
             />
           )}
-          <Link href={`/books/${row.original.id}`} className="hover:underline hover:text-destructive">{row.getValue("title")}</Link>
+          <Link href={`/books/${row.original.id}`} className="hover:underline hover:text-yellow-600">{row.getValue("title")}</Link>
         </div>
       ),
     },
@@ -919,7 +919,7 @@ export default function BooksPage() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 cursor-pointer"
+                  className="h-8 w-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 cursor-pointer"
                   onClick={() => handleApproveBook(book.id)}
                   title="Approve Book"
                 >
@@ -935,7 +935,7 @@ export default function BooksPage() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                      className="h-8 w-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 cursor-pointer"
                       title="Reject Book"
                     >
                       <XCircle className="h-4 w-4" />
@@ -1165,7 +1165,7 @@ export default function BooksPage() {
                 className="w-8 h-10 object-cover rounded mr-2" 
               />
             )}
-            <Link href={`/books/${book.id}`} className="hover:underline hover:text-destructive">{book.title}</Link>
+            <Link href={`/books/${book.id}`} className="hover:underline hover:text-yellow-600">{book.title}</Link>
           </div>
         );
       }
@@ -1272,7 +1272,7 @@ export default function BooksPage() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 cursor-pointer"
+                  className="h-8 w-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 cursor-pointer"
                   onClick={() => handleApproveBook(book.id)}
                   title="Approve Book"
                 >
@@ -1288,7 +1288,7 @@ export default function BooksPage() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                      className="h-8 w-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 cursor-pointer"
                       title="Reject Book"
                     >
                       <XCircle className="h-4 w-4" />
@@ -1731,7 +1731,7 @@ export default function BooksPage() {
           </div>
 
           {isError && (
-            <div className="rounded-md bg-destructive/15 dark:bg-red-900/20 p-4 text-destructive dark:text-red-400 flex items-center border dark:border-red-800">
+            <div className="rounded-md bg-yellow-100/15 dark:bg-yellow-900/20 p-4 text-yellow-600 dark:text-yellow-400 flex items-center border dark:border-yellow-800">
               <AlertTriangle className="h-5 w-5 mr-2" />
               <p>Error loading books: {error?.message || "Unknown error occurred"}</p>
               <Button variant="outline" size="sm" className="ml-auto dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700" onClick={() => refetch()}>

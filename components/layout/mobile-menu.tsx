@@ -168,7 +168,7 @@ export function MobileMenu() {
                 
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="w-full justify-start text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

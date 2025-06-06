@@ -33,7 +33,7 @@ const formatAgeRating = (rating: NumericAgeRating): string => {
 
 // Helper for text color based on score
 const getScoreColorClass = (score: number, bookAgeRating: NumericAgeRating) => {
-  if (score >= AGE_RATING.THRESHOLD_18_PLUS) return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+  if (score >= AGE_RATING.THRESHOLD_18_PLUS) return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300";
   if (score >= AGE_RATING.THRESHOLD_16_PLUS) return "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300";
   if (score >= AGE_RATING.THRESHOLD_13_PLUS) return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300";
   return "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300";
@@ -42,26 +42,26 @@ const getScoreColorClass = (score: number, bookAgeRating: NumericAgeRating) => {
 const getBgColorClass = (score: number, bookAgeRating: NumericAgeRating) => {
   // If we're 18+, everything passes
   if (bookAgeRating === 3) {
-    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "bg-red-500" : 
+    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "bg-yellow-500" : 
            score >= AGE_RATING.THRESHOLD_16_PLUS ? "bg-amber-500" : 
            score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-yellow-500" : "bg-green-500";
   }
   
   // If we're 16+, content should be below 18+ threshold
   if (bookAgeRating === 2) {
-    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "bg-red-500" : 
+    return score >= AGE_RATING.THRESHOLD_18_PLUS ? "bg-yellow-500" : 
            score >= AGE_RATING.THRESHOLD_16_PLUS ? "bg-amber-500" : 
            score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-yellow-500" : "bg-green-500";
   }
   
   // If we're 13+, content should be below 16+ threshold
   if (bookAgeRating === 1) {
-    return score >= AGE_RATING.THRESHOLD_16_PLUS ? "bg-red-500" : 
+    return score >= AGE_RATING.THRESHOLD_16_PLUS ? "bg-yellow-500" : 
            score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-yellow-500" : "bg-green-500";
   }
   
   // If we're 'ALL', content should be below 13+ threshold
-  return score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-red-500" : "bg-green-500";
+  return score >= AGE_RATING.THRESHOLD_13_PLUS ? "bg-yellow-500" : "bg-green-500";
 };
 
 const contentPassesForCategory = (score: number, bookAgeRating: NumericAgeRating) => {
@@ -116,19 +116,19 @@ export const ContentResult = ({ title, result, content, showDetailedScores, book
   return (
     <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
       <div className={`p-3 flex justify-between items-center ${
-        hasFailingCategories ? 'bg-red-50 border-b border-red-200' : 'bg-green-50 border-b border-green-200'
+        hasFailingCategories ? 'bg-yellow-50 border-b border-yellow-200' : 'bg-green-50 border-b border-green-200'
       }`}>
         <div className="flex items-center gap-2">
           <h4 className="font-medium">{title}</h4>
           {hasFailingCategories ? (
-            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
           ) : (
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           )}
         </div>
         
         <div className={`text-xs px-2 py-1 rounded ${
-          hasFailingCategories ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+          hasFailingCategories ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
         }`}>
           {hasFailingCategories ? `Fails for ${formatAgeRating(bookAgeRating)}` : 'Passes'}
         </div>
@@ -136,16 +136,16 @@ export const ContentResult = ({ title, result, content, showDetailedScores, book
       
       {/* Flagged categories section */}
       {hasFailingCategories && sortedScores.length > 0 && (
-        <div className="p-4 bg-red-50/30">
+        <div className="p-4 bg-yellow-50/30">
           <h5 className="text-sm font-medium mb-2 flex items-center gap-1.5">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
             Categories exceeding {formatAgeRating(bookAgeRating)} rating
           </h5>
           <div className="flex flex-wrap gap-1.5">
             {sortedScores
               .filter(({ score }) => !contentPassesForCategory(score, bookAgeRating))
               .map(({ category, score }) => (
-                <div key={`${title}-${category}`} className="text-xs px-2.5 py-1.5 bg-red-100 text-red-800 rounded inline-block">
+                <div key={`${title}-${category}`} className="text-xs px-2.5 py-1.5 bg-yellow-100 text-yellow-800 rounded inline-block">
                   {category.replace(/[-_]/g, ' ')} ({(score * 100).toFixed(1)}%)
                 </div>
               ))}
@@ -239,7 +239,7 @@ export function TopScoreSummary({
               {chapterTitle && <span className="text-muted-foreground"> ({chapterTitle})</span>}
             </span>
             <span className={`px-1.5 py-0.5 rounded ${
-              passes ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600 font-medium'
+              passes ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600 font-medium'
             }`}>
               {(item.score * 100).toFixed(1)}%
             </span>

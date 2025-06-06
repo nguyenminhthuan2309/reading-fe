@@ -59,7 +59,7 @@ export default function AdminLayout({
             </Button>
 
             <Link href="/">
-              <h1 className="text-xl font-bold dark:text-white">Haru's Library Admin</h1>
+              <h1 className="text-xl font-bold dark:text-white text-yellow-600 dark:text-yellow-400">Haru's Library Admin</h1>
             </Link>
           </div>
           <Link href="/">
@@ -89,7 +89,7 @@ export default function AdminLayout({
                   "flex items-center rounded-md transition-colors cursor-pointer",
                   isSidebarOpen ? "px-4 py-3" : "p-2 justify-center",
                   pathname === item.path || pathname.startsWith(`${item.path}/`)
-                    ? "bg-primary text-primary-foreground dark:bg-red-600 dark:text-white"
+                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400"
                     : "text-foreground dark:text-gray-300 hover:bg-secondary dark:hover:bg-gray-800"
                 )}
               >

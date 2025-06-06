@@ -113,16 +113,18 @@ export function EnhancementPopover({
       </div>
       
       <PopoverContent 
-        className={`w-80 p-4 ${contentClassName}`}
+        className={`w-80 p-0 rounded-lg border shadow-lg ${contentClassName}`}
         align="end"
         side="bottom"
       >
-        <div className="space-y-3">
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/10 p-4 rounded-t-lg">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-primary" />
-            <h4 className="font-medium text-sm">AI Enhancement</h4>
+            <Sparkles size={16} className="text-amber-600 dark:text-amber-400" />
+            <h4 className="font-medium text-sm text-amber-700 dark:text-amber-300">AI Enhancement</h4>
           </div>
-          
+        </div>
+        
+        <div className="p-4 space-y-3">
           {isLoading && <TypingEffect />}
           
           {error && (

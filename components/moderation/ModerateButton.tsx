@@ -197,7 +197,7 @@ export function ModerateButton({
           {moderated && (
             <Badge 
               variant="outline" 
-              className={`text-xs ${status?.passed ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700/50'}`}
+              className={`text-xs ${status?.passed ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-700/50'}`}
             >
               {status?.passed ? (
                 <div className="flex items-center gap-1">
@@ -300,10 +300,10 @@ export function ModerateButton({
         </PopoverTrigger>
       </div>
       
-      <PopoverContent className="w-100 p-0 dark:bg-gray-800 dark:border-gray-700" align="end">
-        <div className="px-4 py-2 border-b bg-muted/50 dark:bg-gray-700/50 dark:border-gray-600">
-          <h3 className="text-sm font-medium dark:text-white">Select Moderation Model</h3>
-          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-0.5">
+      <PopoverContent className="w-80 p-0 rounded-lg border shadow-lg" align="end">
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/10 px-4 py-3 border-b rounded-t-lg">
+          <h3 className="text-sm font-medium text-amber-700 dark:text-amber-300">Select Moderation Model</h3>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
             Choose a model to check content against age rating standards
           </p>
         </div>

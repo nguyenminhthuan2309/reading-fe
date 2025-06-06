@@ -627,29 +627,29 @@ export default function UserProfilePage() {
             </div>
 
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "account" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "account" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("account")}
             >
-              <UserIcon size={16} className={activePage === "account" ? "text-primary" : "dark:text-gray-200"} />
+              <UserIcon size={16} className={activePage === "account" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>Account</span>
             </button>
 
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "balance" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "balance" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("balance")}
             >
-              <Wallet size={16} className={activePage === "balance" ? "text-primary" : "dark:text-gray-200"} />
+              <Wallet size={16} className={activePage === "balance" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>Balance</span>
             </button>
 
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "missions" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "missions" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("missions")}
             >
-              <Star size={16} className={activePage === "missions" ? "text-primary" : "dark:text-gray-200"} />
+              <Star size={16} className={activePage === "missions" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>Missions</span>
             </button>
 
@@ -658,27 +658,27 @@ export default function UserProfilePage() {
             <p className="text-xs text-muted-foreground dark:text-gray-400 px-3 py-0.5">Books & Reading</p>
 
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "shelf" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "shelf" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("shelf")}
             >
-              <LayoutGrid size={16} className={activePage === "shelf" ? "text-primary" : "dark:text-gray-200"} />
+              <LayoutGrid size={16} className={activePage === "shelf" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>My Books</span>
             </button>
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "bookmarks" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "bookmarks" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("bookmarks")}
             >
-              <Bookmark size={16} className={activePage === "bookmarks" ? "text-primary" : "dark:text-gray-200"} />
+              <Bookmark size={16} className={activePage === "bookmarks" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>Bookmarked</span>
             </button>
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "history" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "history" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("history")}
             >
-              <Clock size={16} className={activePage === "history" ? "text-primary" : "dark:text-gray-200"} />
+              <Clock size={16} className={activePage === "history" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>Recently Read</span>
             </button>
 
@@ -687,20 +687,20 @@ export default function UserProfilePage() {
             <p className="text-xs text-muted-foreground dark:text-gray-400 px-3 py-0.5">Stats & Settings</p>
 
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "analytics" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "analytics" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("analytics")}
             >
-              <BarChart size={16} className={activePage === "analytics" ? "text-primary" : "dark:text-gray-200"} />
+              <BarChart size={16} className={activePage === "analytics" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>Statistics</span>
             </button>
 
             <button
-              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/20 dark:hover:bg-primary/30 text-sm ${activePage === "preferences" ? "bg-primary/10 text-primary font-medium dark:bg-primary/20" : "dark:text-gray-200"
+              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-100 dark:hover:bg-yellow-900/20 text-sm ${activePage === "preferences" ? "bg-amber-100 text-yellow-700 font-medium dark:bg-yellow-900/20 dark:text-yellow-400" : "dark:text-gray-200"
                 }`}
               onClick={() => handleNavigate("preferences")}
             >
-              <Settings size={16} className={activePage === "preferences" ? "text-primary" : "dark:text-gray-200"} />
+              <Settings size={16} className={activePage === "preferences" ? "text-yellow-700 dark:text-yellow-400" : "dark:text-gray-200"} />
               <span>Preferences</span>
             </button>
           </div>

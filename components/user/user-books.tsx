@@ -192,12 +192,12 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
   
   if (error) {
     return (
-      <div className="rounded-md bg-destructive/15 p-4">
-        <div className="flex items-center">
-          <AlertCircle className="h-4 w-4 text-destructive mr-2" />
-          <h3 className="font-medium text-destructive">Error</h3>
+      <div className="rounded-md bg-yellow-100/15 p-4">
+        <div className="flex">
+          <AlertCircle className="h-4 w-4 text-yellow-600 mr-2" />
+          <h3 className="font-medium text-yellow-600">Error</h3>
         </div>
-        <p className="text-destructive text-sm mt-2">
+        <p className="text-yellow-600 text-sm mt-2">
           Failed to load books. {(error as Error).message}
         </p>
       </div>
@@ -244,7 +244,7 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
                       />
                     </div>
                     <div>
-                      <Link href={`/books/${book.id}`} className="font-medium hover:underline hover:text-destructive">{book.title}</Link>
+                      <Link href={`/books/${book.id}`} className="font-medium hover:underline hover:text-yellow-600 dark:hover:text-yellow-400">{book.title}</Link>
                       <div className="text-xs text-muted-foreground">by {book.author.name}</div>
                     </div>
                   </div>
@@ -264,7 +264,7 @@ export function UserBooks({ userId, limitPage = 12 }: UserBooksProps) {
                     <Badge className="bg-slate-100 dark:bg-slate-700/50 text-slate-800 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60">Draft</Badge>
                   )}
                   {book.accessStatus?.id === 3 && (
-                    <Badge className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40">Blocked</Badge>
+                    <Badge className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/40">Blocked</Badge>
                   )}
                   {book.accessStatus?.id === 4 && (
                     <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40">Pending</Badge>
