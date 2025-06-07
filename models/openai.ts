@@ -1,3 +1,5 @@
+import { DisplayModerationModelType } from "@/lib/hooks/useOpenAI";
+
 export interface OpenAIRequest {
   prompt: string;
   model?: string;
@@ -94,7 +96,7 @@ export interface ShortenModerationResult{
 }
 
 export interface EnhancedModerationResult {
-  model: string;
+  model: DisplayModerationModelType;
   timestamp: string;
   flagged?: boolean;
   passed?: boolean;
@@ -138,7 +140,7 @@ export interface ModerationResultsPayload {
   description: string | null;
   coverImage: string | null;
   chapters: string | null;
-  model: string;
+  model: DisplayModerationModelType;
 }
 
 export interface ModerationResultsResponse {
@@ -151,7 +153,7 @@ export interface ModerationResultsResponse {
     chapterId: number;
     result: string;
   }[];
-  model: string;
+  model: DisplayModerationModelType;
   createdAt: string;
   updatedAt: string;
 }

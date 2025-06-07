@@ -198,9 +198,9 @@ export default function Home() {
       )}
       
       {/* Call to Action Section */}
-      <div className="py-16 dark:bg-gray-900">
+      <div className="py-16 pb-24 dark:bg-gray-900">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             <div className="bg-white/50 dark:bg-gray-800/50 rounded-xl overflow-hidden border dark:border-gray-700">
               <div className="p-6 md:p-8">
                 

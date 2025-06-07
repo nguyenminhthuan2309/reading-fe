@@ -69,9 +69,9 @@ export function BookCarousel({ books, isLoading = false }: BookCarouselProps) {
       <div className="relative border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
         <div className="container mx-auto px-4 py-6">
           <div className="overflow-hidden">
-            <div className="h-[400px] md:h-[480px]">
-              <div className="relative w-full h-full overflow-hidden">
-                <div className="relative h-full container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-6 py-6">
+            <div className="h-auto min-h-[500px] md:h-[480px]">
+              <div className="relative w-full h-full overflow-visible">
+                <div className="relative h-auto min-h-[500px] md:h-full container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-6 py-6">
                   {/* Book cover skeleton */}
                   <div className="w-full max-w-[180px] md:max-w-[240px] md:w-1/3 flex-shrink-0 relative">
                     <div className="relative aspect-[3/4] rounded-lg overflow-hidden shadow-lg">
@@ -135,12 +135,12 @@ export function BookCarousel({ books, isLoading = false }: BookCarouselProps) {
               align: "start",
             }}
           >
-            <CarouselContent className="h-[400px] md:h-[480px]">
+            <CarouselContent className="h-auto min-h-[500px] md:h-[480px]">
               {heroBooks.map((book, index) => (
                 <CarouselItem key={book.id} className="pt-0 h-full">
-                  <div className="relative w-full h-full overflow-hidden">
+                  <div className="relative w-full h-full overflow-visible">
                     {/* Content container with gradient overlay */}
-                    <div className="relative h-auto min-h-[400px] md:h-full container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-6 py-6">
+                    <div className="relative h-auto min-h-[500px] md:h-full container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-6 py-6">
                       {/* Book details - now on left side */}
                       <div className="w-full md:w-2/3 space-y-4 text-center md:text-left order-2 md:order-1">
                         <div>

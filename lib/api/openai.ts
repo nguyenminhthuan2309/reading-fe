@@ -1,20 +1,19 @@
 import { ModerationResponse, OpenAIError, EnhancedModerationRequest, EnhancedModerationResponse, ModerationRequest, ModerationResult, TextModerationInput, ImageModerationInput, ModerationInput } from '@/models/openai';
-import { OpenAIRequest, OpenAIResponse } from '@/models';
+import { AgeRatingEnum, OpenAIRequest, OpenAIResponse } from '@/models';
 import axios from 'axios';
 import OpenAI from 'openai'; 
 import { OPENAI_MODERATION_SYSTEM_PROMPT, OPENAI_IMAGE_MODERATION_SYSTEM_PROMPT, ENHANCEMENT_PROMPTS } from '../constants/openai-sys';
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
+import { DisplayModerationModelType } from '../hooks/useOpenAI';
 
 // Age rating thresholds for content moderation
 export const AGE_RATING_THRESHOLDS = {
-  0: 0,            // All ages: no content above 0 score
-  1: 0.05,   // 13+: scores below 0.05
-  2: 0.1,    // 16+: scores below 0.1
-  3: 0.2     // 18+: scores below 0.2
+  [AgeRatingEnum.EVERYONE]: 0,            // All ages: no content above 0 score
+  [AgeRatingEnum.TEEN]: 0.05,   // 13+: scores below 0.05
+  [AgeRatingEnum.MATURE]: 0.1,    // 16+: scores below 0.1
+  [AgeRatingEnum.ADULT]: 0.2     // 18+: scores below 0.2
 };
 
-// Age rating type
-export type AgeRating = 0 | 1 | 2 | 3;
 
 // Initialize the OpenAI client
 // Note: The API key should be handled securely, this is just for demonstration
@@ -54,7 +53,7 @@ export const MODERATION_MODELS = {
  * @param ageRating Target age rating for the content
  * @returns Boolean indicating if the content should be flagged
  */
-export function isContentFlagged(scores: Record<string, number>, ageRating: AgeRating = 0): boolean {
+export function isContentFlagged(scores: Record<string, number>, ageRating: AgeRatingEnum = AgeRatingEnum.EVERYONE): boolean {
   if (!scores || Object.keys(scores).length === 0) return false;
   
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
@@ -191,7 +190,7 @@ export async function moderateContent(
     
     // Return combined results without flagged property
     return {
-      model,
+      model: 'Level 1',
       contentResults,
       timestamp: new Date().toISOString(),
     };
@@ -409,7 +408,7 @@ async function moderateContentWithGPT(
     
     // Return combined results without flagged property
     return {
-      model,
+      model: model === 'o4-mini' ? 'Level 2' : 'Level 3',
       contentResults,
       timestamp: new Date().toISOString(),
     };

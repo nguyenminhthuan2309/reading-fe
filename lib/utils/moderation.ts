@@ -10,7 +10,7 @@ import { isContentFlagged } from "@/lib/api/openai";
  */
 export function parseStoredModerationResult(
   storedResult: ModerationResultsResponse, 
-  ageRating: NumericAgeRating = 0
+  ageRating: NumericAgeRating = 1
 ): EnhancedModerationResult {
   // Parse the stored JSON data
   let parsedTitle = null;
@@ -77,7 +77,7 @@ export function parseStoredModerationResult(
  */
 export function checkContentForFlagging(
   result: EnhancedModerationResult, 
-  ageRating: NumericAgeRating = 0
+  ageRating: NumericAgeRating = 1
 ): {
   titleFlagged: boolean;
   descriptionFlagged: boolean;
@@ -142,9 +142,29 @@ export function checkContentForFlagging(
  */
 export function checkCategoryScores(
   scores: Record<string, number>, 
-  ageRating: NumericAgeRating = 0
+  ageRating: NumericAgeRating = 1
 ): boolean {
   return isContentFlagged(scores, ageRating);
+}
+
+/**
+ * Checks if a single moderation result passed moderation
+ * @param moderationResult The moderation result to check
+ * @param ageRating The age rating to use for threshold checking
+ * @returns Boolean indicating if the moderation passed (true) or failed (false)
+ */
+export function checkModerationPassed(
+  moderationResult: ModerationResultsResponse, 
+  ageRating: NumericAgeRating = 1
+): boolean {
+  try {
+    // Parse and check the moderation data
+    const enhancedResult = parseStoredModerationResult(moderationResult, ageRating);
+    return enhancedResult.passed || false;
+  } catch (error) {
+    console.error("Error checking moderation result:", error);
+    return false; // Default to failed if we can't parse
+  }
 }
 
 /**
@@ -155,7 +175,7 @@ export function checkCategoryScores(
  */
 export function processAllModerationResults(
   results: ModerationResultsResponse[], 
-  ageRating: NumericAgeRating = 0
+  ageRating: NumericAgeRating = 1
 ): Record<string, EnhancedModerationResult> {
   const processedResults: Record<string, EnhancedModerationResult> = {};
   

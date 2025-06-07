@@ -37,7 +37,6 @@ import { useOpenAI } from "@/lib/hooks/useOpenAI";
 import { 
   isContentFlagged, 
   AGE_RATING_THRESHOLDS,
-  AgeRating
 } from "@/lib/api/openai";
 import { EnhancedModerationResult, ModerationResultsPayload } from "@/models/openai";
 import { saveModerateResultsStatic } from "@/lib/hooks/useModerationResults";
@@ -558,7 +557,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
    * Helper function to check if content is flagged, explicitly handling the threshold
    */
   const checkContentFlagged = (scores: Record<string, number>, rating: number) => {
-    const safeRating = Math.min(Math.max(0, rating), 3) as AgeRating;
+    const safeRating = Math.min(Math.max(0, rating), 3) as AgeRatingEnum;
     return isContentFlagged(scores, safeRating);
   };
 
@@ -579,7 +578,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
           const moderationResponse = await getModerationResults(bookId);
           if (moderationResponse.code === 200 && moderationResponse.data && moderationResponse.data.length > 0) {
             // Find o4-mini results
-            existingModerationResults = moderationResponse.data.find(result => result.model === MODERATION_MODELS.O4_MINI);
+            existingModerationResults = moderationResponse.data.find(result => result.model === 'Level 2');
             if (existingModerationResults) {
               shouldModerateBookInfo = false; // Skip book info moderation if already exists
               

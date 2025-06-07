@@ -31,23 +31,24 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
-import { MODERATION_MODELS, ModerationModelType } from "@/lib/hooks/useOpenAI";
+import { MODERATION_MODELS, ModerationModelType, DisplayModerationModelType } from "@/lib/hooks/useOpenAI";
 import { EnhancedModerationResult } from "@/models/openai";
 import { ContentResult } from "./ContentResults";
 import { AGE_RATING_THRESHOLDS } from "@/lib/api/openai";
 import { ModerationResultsPayload } from "@/models/openai";
 import { useModerationResults, useSaveModerationResults } from "@/lib/hooks/useModerationResults";
 import { processAllModerationResults, checkCategoryScores } from "@/lib/utils/moderation";
+import { AgeRatingEnum } from "@/models/book";
 
 // Primary numeric type that we now use
-export type NumericAgeRating = 0 | 1 | 2 | 3;
+export type NumericAgeRating =  AgeRatingEnum;
 
 export interface ModerationResultsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   results: EnhancedModerationResult | null;
-  selectedModel: ModerationModelType;
-  onModelChange: (model: ModerationModelType) => void;
+  selectedModel: DisplayModerationModelType;
+  onModelChange: (model: DisplayModerationModelType) => void;
   onRecheck?: (isEdit: boolean) => void;
   isLoading?: boolean;
   bookAgeRating?: NumericAgeRating;
@@ -59,16 +60,16 @@ export interface ModerationResultsProps {
 // Helper function to format age rating for display
 const formatAgeRating = (rating: NumericAgeRating): string => {
   switch (rating) {
-    case 3: return "18+";
-    case 2: return "16+";
-    case 1: return "13+";
-    case 0: return "All";
+    case AgeRatingEnum.ADULT: return "18+";
+    case AgeRatingEnum.MATURE: return "16+";
+    case AgeRatingEnum.TEEN: return "13+";
+    case AgeRatingEnum.EVERYONE: return "All";
     default: return "All Ages";
   }
 };
 
 // Get color for score display based on age rating thresholds
-const getScoreColor = (score: number, ageRating: NumericAgeRating = 0): string => {
+const getScoreColor = (score: number, ageRating: NumericAgeRating = 1): string => {
   
   // Get threshold for chosen age rating
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
@@ -81,7 +82,7 @@ const getScoreColor = (score: number, ageRating: NumericAgeRating = 0): string =
 }
 
 // Helper for text color display with age rating threshold
-const getTextColorClass = (score: number, ageRating: NumericAgeRating = 0): string => {
+const getTextColorClass = (score: number, ageRating: NumericAgeRating = 1): string => {
   // Get threshold for chosen age rating
   const threshold = AGE_RATING_THRESHOLDS[ageRating];
   
@@ -97,10 +98,10 @@ const RatingBadge = ({ rating }: { rating: NumericAgeRating }) => {
   let bgClass = 'bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300';
   
   switch (rating) {
-    case 3: bgClass = 'bg-yellow-200 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'; break;
-    case 2: bgClass = 'bg-orange-200 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'; break;
-    case 1: bgClass = 'bg-amber-200 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'; break;
-    case 0: bgClass = 'bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300'; break;
+    case AgeRatingEnum.ADULT: bgClass = 'bg-yellow-200 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'; break;
+    case AgeRatingEnum.MATURE: bgClass = 'bg-orange-200 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'; break;
+    case AgeRatingEnum.TEEN: bgClass = 'bg-amber-200 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300'; break;
+    case AgeRatingEnum.EVERYONE: bgClass = 'bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-300'; break;
   }
   
   return (
@@ -118,9 +119,8 @@ export function ModerationResults({
   onModelChange,
   onRecheck,
   isLoading = false,
-  bookAgeRating = 0,
+  bookAgeRating = AgeRatingEnum.EVERYONE,
   bookId,
-  isViewing = false,
   isEdit = false,
 }: ModerationResultsProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -384,7 +384,7 @@ export function ModerationResults({
               <div className="flex items-center gap-2">
                 <div className="text-xs font-medium text-slate-600 dark:text-gray-400">Model:</div>
                 <div className="text-xs bg-primary/10 dark:bg-red-900/20 text-primary dark:text-red-400 px-2 py-1 rounded">
-                  {selectedModel === 'omni-moderation-latest' ? 'Level 1' : selectedModel === 'o4-mini' ? 'Level 2' : 'Level 3'}
+                  {selectedModel}
                 </div>
                 
                 {/* Add age rating badge in control bar */}
@@ -439,15 +439,15 @@ export function ModerationResults({
 
                 <Select
                   value={selectedModel}
-                  onValueChange={(value: ModerationModelType) => onModelChange(value)}
+                  onValueChange={(value: DisplayModerationModelType) => onModelChange(value)}
                 >
                   <SelectTrigger className="h-8 text-xs w-[180px] dark:border-gray-600 dark:bg-gray-800 dark:text-white" id="model-select">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                    <SelectItem value={MODERATION_MODELS.OMNI} className="dark:text-white dark:hover:bg-gray-700">Level 1</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.O4_MINI} className="dark:text-white dark:hover:bg-gray-700">Level 2</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.GPT4O} className="dark:text-white dark:hover:bg-gray-700">Level 3</SelectItem>
+                    <SelectItem value='Level 1' className="dark:text-white dark:hover:bg-gray-700">Level 1</SelectItem>
+                    <SelectItem value='Level 2' className="dark:text-white dark:hover:bg-gray-700">Level 2</SelectItem>
+                    <SelectItem value='Level 3' className="dark:text-white dark:hover:bg-gray-700">Level 3</SelectItem>
                   </SelectContent>
                 </Select>
 

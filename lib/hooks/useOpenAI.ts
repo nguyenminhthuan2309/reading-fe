@@ -11,6 +11,7 @@ export const MODERATION_MODELS = {
 } as const;
 
 export type ModerationModelType = typeof MODERATION_MODELS[keyof typeof MODERATION_MODELS];
+export type DisplayModerationModelType = 'Level 1' | 'Level 2' | 'Level 3';
 
 // Types for the moderation response
 export interface ModerationResult extends EnhancedModerationResponse {}
