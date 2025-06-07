@@ -384,7 +384,7 @@ export function ModerationResults({
               <div className="flex items-center gap-2">
                 <div className="text-xs font-medium text-slate-600 dark:text-gray-400">Model:</div>
                 <div className="text-xs bg-primary/10 dark:bg-red-900/20 text-primary dark:text-red-400 px-2 py-1 rounded">
-                  {selectedModel}
+                  {selectedModel === 'omni-moderation-latest' ? 'Level 1' : selectedModel === 'o4-mini' ? 'Level 2' : 'Level 3'}
                 </div>
                 
                 {/* Add age rating badge in control bar */}
@@ -445,9 +445,9 @@ export function ModerationResults({
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                    <SelectItem value={MODERATION_MODELS.OMNI} className="dark:text-white dark:hover:bg-gray-700">Basic Moderation</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.GPT4O} className="dark:text-white dark:hover:bg-gray-700">GPT-4o</SelectItem>
-                    <SelectItem value={MODERATION_MODELS.O4_MINI} className="dark:text-white dark:hover:bg-gray-700">o4-mini</SelectItem>
+                    <SelectItem value={MODERATION_MODELS.OMNI} className="dark:text-white dark:hover:bg-gray-700">Level 1</SelectItem>
+                    <SelectItem value={MODERATION_MODELS.O4_MINI} className="dark:text-white dark:hover:bg-gray-700">Level 2</SelectItem>
+                    <SelectItem value={MODERATION_MODELS.GPT4O} className="dark:text-white dark:hover:bg-gray-700">Level 3</SelectItem>
                   </SelectContent>
                 </Select>
 

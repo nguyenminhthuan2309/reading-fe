@@ -43,9 +43,9 @@ export async function sendOpenAIRequest(params: OpenAIRequest): Promise<OpenAIRe
 
 // Model pricing info (per million tokens)
 export const MODERATION_MODELS = {
-  'omni-moderation-latest': { price: 0, description: 'Basic moderation (Free)' },
-  'gpt-4o': { price: 2.50, description: 'Advanced moderation with GPT-4o ($2.50/1M tokens)' },
-  'o4-mini': { price: 1.10, description: 'Balanced moderation with o4-mini ($1.10/1M tokens)' }
+  'omni-moderation-latest': { price: 0, description: 'Level 1 - Basic moderation (Free)' },
+  'gpt-4o': { price: 2.50, description: 'Level 3 - Advanced moderation ($2.50/1M tokens)' },
+  'o4-mini': { price: 1.10, description: 'Level 2 - Balanced moderation ($1.10/1M tokens)' }
 } as const;
 
 /**

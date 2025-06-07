@@ -336,7 +336,7 @@ export default function UserProfilePage() {
       name: editFormData.name,
       username: editFormData.username,
       bio: editFormData.bio,
-      birthDate: editFormData.birthDate,
+      birthDate: editFormData.birthDate || undefined,
       twitter: editFormData.twitter,
       facebook: editFormData.facebook,
       instagram: editFormData.instagram,

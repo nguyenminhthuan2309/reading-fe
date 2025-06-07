@@ -214,7 +214,7 @@ export default function Header() {
               </NavigationMenuItem>
               
               <NavigationMenuItem>
-                <NavigationMenuTrigger className="text-black bg-white hover:bg-amber-100 hover:text-yellow-700 focus:bg-amber-100 dark:text-white dark:bg-gray-950 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 dark:focus:bg-yellow-900/20">Browse</NavigationMenuTrigger>
+                <NavigationMenuTrigger className="text-black bg-white hover:bg-amber-100 hover:text-yellow-700 focus:bg-amber-100 dark:text-white dark:bg-gray-950 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 dark:focus:bg-yellow-900/20">Genres</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="p-4 w-[600px] md:w-[1000px] bg-white text-black dark:bg-gray-900 dark:text-white">
                     <div className="flex gap-3">
@@ -251,11 +251,6 @@ export default function Header() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-black bg-white hover:bg-amber-100 hover:text-yellow-700 focus:bg-amber-100 dark:text-white dark:bg-gray-950 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 dark:focus:bg-yellow-900/20")}>
-                  <Link href="/books/create">Create</Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
         </div>

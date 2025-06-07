@@ -821,7 +821,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             description: existingModerationResults.description,
             coverImage: existingModerationResults.coverImage,
             chapters: JSON.stringify(mergedChapters),
-            model: MODERATION_MODELS.O4_MINI,
+            model: 'Level 2',
             bookId: bookId,
           };
         } else {
@@ -839,7 +839,7 @@ export function BookForm({ initialData, isEditing = false, onSuccess }: BookForm
             chapters: moderationResult.contentResults?.chapters 
               ? JSON.stringify(moderationResult.contentResults.chapters)
               : null,
-            model: MODERATION_MODELS.O4_MINI,
+            model: 'Level 2',
             bookId: bookId,
           };
         }

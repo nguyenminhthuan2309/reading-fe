@@ -35,7 +35,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/browse" className="text-muted-foreground hover:text-primary transition-colors cursor-pointer">
-                  Browse
+                  Genres
                 </Link>
               </li>
               <li>
