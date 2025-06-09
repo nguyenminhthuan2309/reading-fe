@@ -23,16 +23,9 @@ export default function Home() {
       });
       
       if (response.status === 200) {
-        const mapReadHistory = response.data.data.map((book: Book) => ({
-          ...book,
-          readingProgress: {
-            totalReadChapters: book.chaptersRead?.length || 0,
-            lastReadChapterNumber: book.chaptersRead?.[0]?.chapter || 0,
-            lastReadChapterId: book.chaptersRead?.[0]?.id || 0,
-          },
-        }));
-        return mapReadHistory;
+        return response.data;
       }
+
       throw new Error(response.msg || 'Failed to fetch reading history');
     },
     // On error, don't retry and silently fail - we'll show fallback data
@@ -41,6 +34,15 @@ export default function Home() {
     refetchOnWindowFocus: false,
     enabled: isLoggedIn
   });
+
+  const mapReadHistory = readingHistoryData?.data?.map((book: Book) => ({
+    ...book,
+    readingProgress: {
+      totalReadChapters: book.chaptersRead?.length || 0,
+      lastReadChapterNumber: book.chaptersRead?.[0]?.chapter || 0,
+      lastReadChapterId: book.chaptersRead?.[0]?.id || 0,
+    },
+  }));
   
   // Fetch new releases using React Query - sorted by creation date
   const { data: newReleasesData, isLoading: isLoadingNewReleases } = useQuery({
@@ -143,8 +145,8 @@ export default function Home() {
         <div>
           <SectionCarousel 
             title="Recent Read" 
-            books={readingHistoryData || []} 
-            linkHref="/user/reading-history" 
+            books={mapReadHistory || []} 
+            linkHref="/me?section=history" 
             className="bg-section-light dark:bg-gray-900"
             isLoading={isLoading}
           />
