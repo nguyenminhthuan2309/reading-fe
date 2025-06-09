@@ -66,7 +66,7 @@ export function BookCarousel({ books, isLoading = false }: BookCarouselProps) {
   // Show skeleton loading when loading or no books
   if (isLoading || !books || books.length === 0) {
     return (
-      <div className="relative border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+      <div className="relative border-b border-gray-200 dark:border-gray-700 bg-[#FFB371] dark:bg-gray-900">
         <div className="container mx-auto px-4 py-6">
           <div className="overflow-hidden">
             <div className="h-auto min-h-[500px] md:h-[480px]">
@@ -123,7 +123,7 @@ export function BookCarousel({ books, isLoading = false }: BookCarouselProps) {
   }
 
   return (
-    <div className="relative border-b border-gray-200 dark:border-gray-700 dark:bg-gray-900">
+    <div className="relative border-b border-gray-200 dark:border-gray-700 bg-[#FFB371] dark:bg-gray-900">
       <div className="container mx-auto px-4 py-6">
         {/* Card wrapper */}
         <div className="overflow-hidden">
@@ -138,63 +138,134 @@ export function BookCarousel({ books, isLoading = false }: BookCarouselProps) {
             <CarouselContent className="h-auto min-h-[500px] md:h-[480px]">
               {heroBooks.map((book, index) => (
                 <CarouselItem key={book.id} className="pt-0 h-full">
-                  <div className="relative w-full h-full overflow-visible">
+                  <div className="relative w-full h-full overflow-hidden rounded-2xl border-4 border-orange-400">
+                    {/* Background cover image - light mode only */}
+                    <div className="absolute inset-0 w-full h-full dark:hidden">
+                      <Image
+                        src={book.cover}
+                        alt=""
+                        fill
+                        className="object-cover object-top"
+                        priority
+                      />
+                      {/* Overlay to ensure text readability */}
+                      <div className="absolute inset-0 bg-black/20"></div>
+                    </div>
                     {/* Content container with gradient overlay */}
-                    <div className="relative h-auto min-h-[500px] md:h-full container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-6 py-6">
-                      {/* Book details - now on left side */}
-                      <div className="w-full md:w-2/3 space-y-4 text-center md:text-left order-2 md:order-1">
-                        <div>
-                          <h1 className="text-3xl md:text-5xl font-bold text-yellow-600 dark:text-yellow-400 mb-2 leading-tight text-shadow-sm">
-                            {book.title}
-                          </h1>
-                          <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start">
-                            <p className="text-base text-gray-700 dark:text-gray-300 text-shadow-xs">by {book.author.name}</p>
-                            <span className="text-gray-400">•</span>
-                            <div className="flex flex-wrap gap-1">
-                              {book.categories.map((genre) => (
-                                <span key={genre.id} className="px-2 py-0.5 bg-yellow-500/80 text-white text-xs font-medium uppercase rounded-full">
-                                  {genre.name}
-                                </span>
-                              ))}
+                    <div className="relative h-auto min-h-[500px] md:h-full container mx-auto px-4 flex flex-col md:flex-row items-center justify-center gap-6 py-6 z-10">
+                      {/* Book info box - light mode only */}
+                      <div className="w-full md:w-2/3 order-2 md:order-1">
+                        {/* Light mode - Yellow info box */}
+                        <div className="bg-yellow-100/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 max-w-lg shadow-xl border border-yellow-200/50 dark:hidden">
+                          <div className="space-y-4">
+                            <div>
+                              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 leading-tight">
+                                {book.title}
+                              </h1>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm text-gray-700">by {book.author.name}</p>
+                                <span className="text-gray-400">•</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {book.categories.map((genre) => (
+                                    <span key={genre.id} className="px-2 py-0.5 bg-orange-500 text-white text-xs font-medium uppercase rounded-full">
+                                      {genre.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            <p className="text-gray-800 leading-relaxed text-sm line-clamp-3">
+                              {book.description}
+                            </p>
+
+                            <div className="flex flex-wrap gap-3 text-xs">
+                              <div className="flex items-center bg-white/80 rounded-full px-3 py-1.5 border border-gray-200">
+                                <BookOpen className="h-3 w-3 text-gray-600 mr-1.5" />
+                                <span className="text-gray-800">{book.totalChapters} Chapters</span>
+                              </div>
+                              <div className="flex items-center bg-white/80 rounded-full px-3 py-1.5 border border-gray-200">
+                                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-1.5" />
+                                <span className="text-gray-800">{book.rating.toFixed(1)}</span>
+                              </div>
+                              <div className="flex items-center bg-white/80 rounded-full px-3 py-1.5 border border-gray-200">
+                                <Clock className="h-3 w-3 text-gray-600 mr-1.5" />
+                                <span className="text-gray-800">~{Math.round(book.totalChapters * 8)} min</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3 pt-2">
+                              <Link href={`/books/${book.id}/read?chapter=${book.readingProgress?.lastReadChapterNumber}&id=${book.readingProgress?.lastReadChapterId}`}>
+                                <Button className="bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-full px-5 py-2">
+                                  Start Reading
+                                </Button>
+                              </Link>
+                              <Link href={`/books/${book.id}`}>
+                                <Button variant="outline" className="bg-white/80 border-gray-300 text-gray-700 hover:bg-gray-100 text-sm rounded-full px-4 py-2">
+                                  View Details
+                                </Button>
+                              </Link>
                             </div>
                           </div>
                         </div>
 
-                        <p className="text-gray-800 dark:text-gray-200 max-w-[600px] mx-auto md:mx-0 leading-relaxed text-base md:text-lg line-clamp-3 text-shadow-xs break-words">
-                          {book.description}
-                        </p>
+                        {/* Dark mode - Original styling */}
+                        <div className="hidden dark:block space-y-4 text-center md:text-left">
+                          <div>
+                            <h1 className="text-3xl md:text-5xl font-bold text-yellow-600 dark:text-yellow-400 mb-2 leading-tight text-shadow-sm">
+                              {book.title}
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start">
+                              <p className="text-base text-gray-700 dark:text-gray-300 text-shadow-xs">by {book.author.name}</p>
+                              <span className="text-gray-400">•</span>
+                              <div className="flex flex-wrap gap-1">
+                                {book.categories.map((genre) => (
+                                  <span key={genre.id} className="px-2 py-0.5 bg-yellow-500/80 text-white text-xs font-medium uppercase rounded-full">
+                                    {genre.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
 
-                        <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm">
-                          <div className="flex items-center bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200 dark:border-gray-600">
-                            <BookOpen className="h-4 w-4 text-gray-600 dark:text-gray-400 mr-2" />
-                            <span className="text-gray-800 dark:text-gray-200">{book.totalChapters} Chapters</span>
-                          </div>
-                          <div className="flex items-center bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200 dark:border-gray-600">
-                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-2" />
-                            <span className="text-gray-800 dark:text-gray-200">{book.rating.toFixed(1)}</span>
-                          </div>
-                          <div className="flex items-center bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200 dark:border-gray-600">
-                            <Clock className="h-4 w-4 text-gray-600 dark:text-gray-400 mr-2" />
-                            <span className="text-gray-800 dark:text-gray-200">~{Math.round(book.totalChapters * 8)} min</span>
-                          </div>
-                        </div>
+                          <p className="text-gray-800 dark:text-gray-200 max-w-[600px] mx-auto md:mx-0 leading-relaxed text-base md:text-lg line-clamp-3 text-shadow-xs break-words">
+                            {book.description}
+                          </p>
 
-                        <div className="flex flex-wrap gap-4 pt-2 justify-center md:justify-start">
-                          <Link href={`/books/${book.id}/read?chapter=${book.readingProgress?.lastReadChapterNumber}&id=${book.readingProgress?.lastReadChapterId}`}>
-                            <Button className="bg-yellow-600 hover:bg-yellow-700 text-white text-base rounded-full px-6 py-3">
-                              Start Reading
-                            </Button>
-                          </Link>
-                          <Link href={`/books/${book.id}`}>
-                            <Button variant="outline" className="bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/80 text-base rounded-full px-5 py-3">
-                              View Details
-                            </Button>
-                          </Link>
+                          <div className="flex flex-wrap gap-4 justify-center md:justify-start text-sm">
+                            <div className="flex items-center bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200 dark:border-gray-600">
+                              <BookOpen className="h-4 w-4 text-gray-600 dark:text-gray-400 mr-2" />
+                              <span className="text-gray-800 dark:text-gray-200">{book.totalChapters} Chapters</span>
+                            </div>
+                            <div className="flex items-center bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200 dark:border-gray-600">
+                              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-2" />
+                              <span className="text-gray-800 dark:text-gray-200">{book.rating.toFixed(1)}</span>
+                            </div>
+                            <div className="flex items-center bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-200 dark:border-gray-600">
+                              <Clock className="h-4 w-4 text-gray-600 dark:text-gray-400 mr-2" />
+                              <span className="text-gray-800 dark:text-gray-200">~{Math.round(book.totalChapters * 8)} min</span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-4 pt-2 justify-center md:justify-start">
+                            <Link href={`/books/${book.id}/read?chapter=${book.readingProgress?.lastReadChapterNumber}&id=${book.readingProgress?.lastReadChapterId}`}>
+                              <Button className="bg-yellow-600 hover:bg-yellow-700 text-white text-base rounded-full px-6 py-3">
+                                Start Reading
+                              </Button>
+                            </Link>
+                            <Link href={`/books/${book.id}`}>
+                              <Button variant="outline" className="bg-white/70 dark:bg-gray-800/80 backdrop-blur-sm border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/80 text-base rounded-full px-5 py-3">
+                                View Details
+                              </Button>
+                            </Link>
+                          </div>
                         </div>
                       </div>
 
                       {/* Book cover - enhanced 3D effects */}
                       <div className="w-full max-w-[220px] md:max-w-[300px] md:w-1/3 flex-shrink-0 relative order-1 md:order-2">
+                        {/* Background image pattern */}
+                        <div className="absolute inset-0 opacity-15 bg-gradient-to-br from-orange-200/30 via-yellow-100/20 to-amber-200/30 backdrop-blur-sm"></div>
                         {/* Custom shape background - enhanced */}
                         <div className="absolute inset-0 transform rotate-8 scale-115">
                           <div className="w-full h-full bg-gradient-to-br from-yellow-100 via-yellow-200 to-yellow-300 dark:from-yellow-900/25 dark:via-yellow-800/20 dark:to-yellow-700/15 rounded-2xl opacity-20"></div>
